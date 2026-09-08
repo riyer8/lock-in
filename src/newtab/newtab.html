@@ -4,17 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101118" />
-    <title>LOCK IN | The Winter Arc</title>
+    <title>LOCK IN</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="atmosphere" aria-hidden="true">
-      <span class="orb orb--one"></span>
-      <span class="orb orb--two"></span>
-      <span class="grain"></span>
-    </div>
-
-    <main class="screen landing screen--active" id="landing-screen">
+    <main class="screen landing" id="landing-screen">
       <section class="hero" aria-labelledby="arc-title">
         <p class="label">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -26,25 +20,22 @@
         </p>
 
         <div class="title-group">
-          <h1 id="arc-title">THE <span>WINTER</span> ARC</h1>
+          <h1 id="arc-title">The <span>Winter</span> Arc</h1>
           <p class="date-range">September 7 to December 31, 2026</p>
         </div>
 
         <div class="countdown" aria-live="polite">
           <div class="countdown__value">
             <strong id="days-remaining">0</strong>
-            <span>DAYS<br />REMAINING</span>
+            <span>days<br />left</span>
           </div>
-          <p id="arc-day">CALCULATING THE ARC</p>
+          <p id="arc-day">Loading…</p>
         </div>
 
-        <blockquote>
-          You don't need a new life.<br />
-          You need to build one you love living.
-        </blockquote>
+        <blockquote>Build a life you love living.</blockquote>
 
         <button class="enter-button" id="enter-arc" type="button">
-          <span>ENTER THE ARC</span>
+          <span>BEGIN</span>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12h13M13 7l5 5-5 5" />
           </svg>
@@ -56,10 +47,9 @@
       <section class="identity-panel" aria-labelledby="identity-title">
         <header class="identity-header">
           <p class="step-label">01 / IDENTITY</p>
-          <h1 id="identity-title">WHO ARE WE <span>BECOMING?</span></h1>
+          <h1 id="identity-title">Who do you want to <span>practice being?</span></h1>
           <p>
-            This isn't a habit tracker. We're building the life you actually
-            want to live.
+            Choose the identities you want your daily actions to reinforce.
           </p>
         </header>
 
@@ -68,7 +58,7 @@
             <span class="identity-card__icon">🏋️</span>
             <span class="identity-card__copy">
               <strong>ATHLETE</strong>
-              <small>Strong, capable, energetic</small>
+              <small>Move and care for your body</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -77,7 +67,7 @@
             <span class="identity-card__icon">🧠</span>
             <span class="identity-card__copy">
               <strong>THINKER</strong>
-              <small>Curious, knowledgeable, sharp</small>
+              <small>Learn, reflect, and stay curious</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -86,7 +76,7 @@
             <span class="identity-card__icon">💻</span>
             <span class="identity-card__copy">
               <strong>BUILDER</strong>
-              <small>Creates things instead of just consuming</small>
+              <small>Make things that matter</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -95,7 +85,7 @@
             <span class="identity-card__icon">✨</span>
             <span class="identity-card__copy">
               <strong>GLOW UP</strong>
-              <small>Confident, polished, takes care of herself</small>
+              <small>Care for how you feel and present yourself</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -104,7 +94,7 @@
             <span class="identity-card__icon">🌎</span>
             <span class="identity-card__copy">
               <strong>EXPLORER</strong>
-              <small>Gets outside, travels, tries things</small>
+              <small>Try new places, ideas, and experiences</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -113,7 +103,7 @@
             <span class="identity-card__icon">🫶</span>
             <span class="identity-card__copy">
               <strong>CONNECTED</strong>
-              <small>Invests in friendships, community, and experiences</small>
+              <small>Invest in people and community</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -132,76 +122,64 @@
       <section class="starting-panel" aria-labelledby="fixing-title">
         <header class="identity-header fixing-header">
           <p class="step-label">02 / STARTING POINT</p>
-          <h1 id="fixing-title">WHAT ARE WE <span>FIXING?</span></h1>
-          <p>
-            No judgment. I need to understand where you are before I can help
-            you get where you're going.
-          </p>
+          <h1 id="fixing-title">Where do you want <span>support?</span></h1>
+          <p>Choose the areas that deserve more attention right now.</p>
         </header>
 
         <div class="attention-grid" id="attention-grid">
           <button class="attention-card" type="button" data-area="health-food" aria-pressed="false">
             <span class="attention-card__icon">🥗</span>
-            <span><strong>HEALTH &amp; FOOD</strong><small>Eating, energy, digestion, feeling good in my body</small></span>
+            <span><strong>HEALTH &amp; FOOD</strong><small>Meals, energy, and everyday care</small></span>
           </button>
           <button class="attention-card" type="button" data-area="fitness" aria-pressed="false">
             <span class="attention-card__icon">🏋️</span>
-            <span><strong>FITNESS</strong><small>Training, strength, cardio, consistency</small></span>
+            <span><strong>FITNESS</strong><small>Movement, strength, and consistency</small></span>
           </button>
           <button class="attention-card" type="button" data-area="energy-recovery" aria-pressed="false">
             <span class="attention-card__icon">😴</span>
-            <span><strong>ENERGY &amp; RECOVERY</strong><small>Sleep, rest, feeling sluggish or burned out</small></span>
+            <span><strong>ENERGY &amp; RECOVERY</strong><small>Rest, recovery, and sustainable energy</small></span>
           </button>
           <button class="attention-card" type="button" data-area="mind" aria-pressed="false">
             <span class="attention-card__icon">🧠</span>
-            <span><strong>MIND</strong><small>Focus, motivation, confidence, mental clarity</small></span>
+            <span><strong>MIND</strong><small>Focus, confidence, and mental clarity</small></span>
           </button>
           <button class="attention-card" type="button" data-area="career" aria-pressed="false">
             <span class="attention-card__icon">💻</span>
-            <span><strong>CAREER</strong><small>Learning, building, ambition, professional growth</small></span>
+            <span><strong>CAREER</strong><small>Learning, building, and meaningful work</small></span>
           </button>
           <button class="attention-card" type="button" data-area="appearance" aria-pressed="false">
             <span class="attention-card__icon">✨</span>
-            <span><strong>APPEARANCE</strong><small>Skin, hair, style, grooming, feeling confident</small></span>
+            <span><strong>APPEARANCE</strong><small>Style, grooming, and self-expression</small></span>
           </button>
           <button class="attention-card" type="button" data-area="environment" aria-pressed="false">
             <span class="attention-card__icon">🏠</span>
-            <span><strong>ENVIRONMENT</strong><small>Apartment, organization, routines, surroundings</small></span>
+            <span><strong>ENVIRONMENT</strong><small>Home, organization, and surroundings</small></span>
           </button>
           <button class="attention-card" type="button" data-area="social-life" aria-pressed="false">
             <span class="attention-card__icon">🫶</span>
-            <span><strong>SOCIAL &amp; LIFE</strong><small>Friends, experiences, hobbies, getting out of the house</small></span>
+            <span><strong>SOCIAL &amp; LIFE</strong><small>Friends, experiences, hobbies, and connection</small></span>
           </button>
           <button class="attention-card" type="button" data-area="digital-life" aria-pressed="false">
             <span class="attention-card__icon">📱</span>
-            <span><strong>DIGITAL LIFE</strong><small>Scrolling, distraction, screen time, procrastination</small></span>
+            <span><strong>DIGITAL LIFE</strong><small>Attention, screen time, and intentional use</small></span>
           </button>
         </div>
 
         <section class="details-section" id="details-section" hidden>
-          <h2>WHAT'S GETTING IN THE WAY?</h2>
+          <h2>What makes follow-through harder?</h2>
           <div class="obstacle-grid" id="obstacle-grid">
-            <button type="button" data-obstacle="low-energy" aria-pressed="false">I don't have enough energy</button>
-            <button type="button" data-obstacle="consistency" aria-pressed="false">I struggle with consistency</button>
-            <button type="button" data-obstacle="procrastination" aria-pressed="false">I procrastinate</button>
-            <button type="button" data-obstacle="distraction" aria-pressed="false">I get distracted easily</button>
-            <button type="button" data-obstacle="chaotic-schedule" aria-pressed="false">My schedule gets chaotic</button>
-            <button type="button" data-obstacle="priorities" aria-pressed="false">I don't know what to prioritize</button>
-            <button type="button" data-obstacle="fall-off" aria-pressed="false">I start strong and fall off</button>
-            <button type="button" data-obstacle="motivation" aria-pressed="false">I rely too much on motivation</button>
-            <button type="button" data-obstacle="overwhelmed" aria-pressed="false">I feel overwhelmed</button>
-            <button type="button" data-obstacle="not-sure" aria-pressed="false">I'm not sure</button>
+            <button type="button" data-obstacle="low-energy" aria-pressed="false">Energy feels low</button>
+            <button type="button" data-obstacle="consistency" aria-pressed="false">Consistency feels hard</button>
+            <button type="button" data-obstacle="procrastination" aria-pressed="false">I keep delaying the start</button>
+            <button type="button" data-obstacle="distraction" aria-pressed="false">My attention gets pulled away</button>
+            <button type="button" data-obstacle="chaotic-schedule" aria-pressed="false">My schedule changes often</button>
+            <button type="button" data-obstacle="priorities" aria-pressed="false">My priorities feel unclear</button>
+            <button type="button" data-obstacle="fall-off" aria-pressed="false">I lose momentum</button>
+            <button type="button" data-obstacle="motivation" aria-pressed="false">I wait to feel motivated</button>
+            <button type="button" data-obstacle="overwhelmed" aria-pressed="false">The plan feels too big</button>
+            <button type="button" data-obstacle="not-sure" aria-pressed="false">I'm not sure yet</button>
           </div>
 
-          <div class="context-field">
-            <textarea
-              id="starting-context"
-              rows="3"
-              aria-label="Anything else you want LOCK IN to understand?"
-              placeholder="Anything else you want LOCK IN to understand?"
-            ></textarea>
-            <p>Tell me what's actually going on. You can be completely honest.</p>
-          </div>
         </section>
 
         <button class="continue-button" id="fixing-continue" type="button" disabled>
@@ -217,10 +195,10 @@
       <article class="blueprint-panel" aria-labelledby="blueprint-title">
         <header class="blueprint-header">
           <p class="step-label">03 / BLUEPRINT</p>
-          <h1 id="blueprint-title">YOUR WINTER ARC <span>BLUEPRINT</span></h1>
+          <h1 id="blueprint-title">Your starting <span>blueprint</span></h1>
           <p>
-            I've got a picture of where you are. Now we're going to build the
-            system that gets you where you want to go.
+            Here is what you chose. LOCK IN will use it to shape your daily
+            missions.
           </p>
         </header>
 
@@ -228,16 +206,16 @@
           <section class="blueprint-section">
             <p class="section-number">01</p>
             <div>
-              <h2>WHO YOU'RE BECOMING</h2>
+              <h2>Identities you're practicing</h2>
               <div class="blueprint-identities" id="blueprint-identities"></div>
-              <p>These are the parts of yourself we're going to strengthen.</p>
+              <p>Your daily actions can reinforce these identities.</p>
             </div>
           </section>
 
           <section class="blueprint-section">
             <p class="section-number">02</p>
             <div>
-              <h2>WHERE WE'RE STARTING</h2>
+              <h2>Areas to support</h2>
               <div class="blueprint-areas" id="blueprint-areas"></div>
             </div>
           </section>
@@ -245,32 +223,28 @@
           <section class="blueprint-section">
             <p class="section-number">03</p>
             <div>
-              <h2>THE BIGGEST OBSTACLES</h2>
+              <h2>Common friction</h2>
               <div class="blueprint-obstacles" id="blueprint-obstacles"></div>
             </div>
           </section>
         </div>
 
         <section class="promise">
-          <p class="promise-label">LOCK IN PROMISE</p>
+          <p class="promise-label">HOW THIS WORKS</p>
           <div class="promise-grid">
             <div>
-              <h2>MY JOB</h2>
-              <p>I won't just tell you what to do.</p>
-              <p>
-                I'll learn how you actually live, find what's getting in your
-                way, and help you change the system.
-              </p>
+              <h2>The system</h2>
+              <p>Three daily missions, a quick check-in, and a truthful reflection.</p>
             </div>
             <div>
-              <h2>YOUR JOB</h2>
-              <p>Show up honestly. I'll handle the rest.</p>
+              <h2>Your part</h2>
+              <p>Choose honestly, start small, and update what happened.</p>
             </div>
           </div>
         </section>
 
         <button class="continue-button start-arc-button" id="start-arc" type="button">
-          <span>START MY ARC</span>
+          <span>START WITH TODAY</span>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12h13M13 7l5 5-5 5" />
           </svg>
@@ -284,35 +258,41 @@
           <p class="command-brand">❄️&nbsp; LOCK IN</p>
           <div class="command-topbar__actions">
             <p id="command-arc-day">DAY 1 OF 116</p>
-            <button type="button" id="open-audit">TODAY'S AUDIT</button>
+            <button type="button" id="open-audit">🌙 Today's reflection</button>
           </div>
         </header>
 
         <section class="command-intro">
-          <p>YOUR WINTER ARC</p>
-          <h1 id="command-greeting">GOOD MORNING.</h1>
+          <p>ONE DAY AT A TIME</p>
+          <h1 id="command-greeting">Good morning 🌤️</h1>
         </section>
 
         <div class="command-layout">
           <section class="mission-section" aria-labelledby="mission-title">
             <header>
-              <p class="command-section-label">01 / PRIORITY</p>
-              <h2 id="mission-title">TODAY'S MISSION</h2>
-              <p>
-                You don't need to do everything. These are the things that
-                matter most today.
+              <p class="command-section-label">🎯 START HERE</p>
+              <h2 id="mission-title">Today's focus</h2>
+              <p class="mission-intro-copy">
+                You don't need to do everything. Start with the one that matters
+                most, then let the rest follow.
               </p>
+              <div class="mission-coach">
+                <strong id="mission-progress-summary">0 of 3 complete</strong>
+                <p id="mission-encouragement">
+                  Pick one. Make the first step tiny. Starting counts.
+                </p>
+              </div>
             </header>
             <div class="mission-list" id="mission-list"></div>
           </section>
 
           <aside class="command-sidebar">
             <section class="arc-progress-card" aria-labelledby="arc-progress-title">
-              <p class="command-section-label">YOUR ARC</p>
-              <h2 id="arc-progress-title">WINTER ARC</h2>
+              <p class="command-section-label">❄️ YOUR ARC</p>
+              <h2 id="arc-progress-title">Winter Arc</h2>
               <div class="arc-progress-meta">
                 <strong id="progress-day">DAY 1 / 116</strong>
-                <span>LEVEL 01</span>
+                <span>CALENDAR PROGRESS</span>
               </div>
               <div
                 class="arc-progress-track"
@@ -328,23 +308,23 @@
             </section>
 
             <section class="mood-card" aria-labelledby="mood-title">
-              <p class="command-section-label">CHECK IN</p>
-              <h2 id="mood-title">HOW ARE YOU FEELING?</h2>
+              <p class="command-section-label">🌤️ CHECK IN</p>
+              <h2 id="mood-title">How are you feeling?</h2>
               <div class="mood-options" id="mood-options">
-                <button type="button" data-mood="low" aria-pressed="false">😴<span>LOW</span></button>
-                <button type="button" data-mood="meh" aria-pressed="false">😐<span>MEH</span></button>
-                <button type="button" data-mood="good" aria-pressed="false">🙂<span>GOOD</span></button>
-                <button type="button" data-mood="locked-in" aria-pressed="false">🔥<span>LOCKED IN</span></button>
+                <button type="button" data-mood="low" aria-pressed="false">😴<span>Low</span></button>
+                <button type="button" data-mood="meh" aria-pressed="false">😐<span>Meh</span></button>
+                <button type="button" data-mood="good" aria-pressed="false">🙂<span>Good</span></button>
+                <button type="button" data-mood="locked-in" aria-pressed="false">🔥<span>Locked in</span></button>
               </div>
               <p class="mood-response" id="mood-response" hidden></p>
             </section>
 
             <section class="quick-view" aria-labelledby="quick-view-title">
-              <p class="command-section-label" id="quick-view-title">QUICK VIEW</p>
+              <p class="command-section-label" id="quick-view-title">🌱 YOUR DIRECTION</p>
               <div class="quick-view-grid">
-                <article><span>BODY</span><strong id="body-state">BUILDING</strong></article>
-                <article><span>MIND</span><strong id="mind-state">FOCUSING</strong></article>
-                <article><span>LIFE</span><strong id="life-state">RESETTING</strong></article>
+                <article><span>Body</span><strong id="body-state">Not selected</strong></article>
+                <article><span>Mind</span><strong id="mind-state">Not selected</strong></article>
+                <article><span>Life</span><strong id="life-state">Not selected</strong></article>
               </div>
             </section>
           </aside>
@@ -356,10 +336,10 @@
       <div class="audit-shell">
         <header class="audit-topbar">
           <p class="command-brand">❄️&nbsp; LOCK IN</p>
-          <button type="button" id="close-audit">BACK TO TODAY</button>
+          <button type="button" id="close-audit">BACK TO TODAY'S FOCUS</button>
         </header>
 
-        <nav class="audit-date-nav" aria-label="Audit date">
+        <nav class="audit-date-nav" aria-label="Reflection date">
           <button type="button" id="audit-previous">← PREVIOUS DAY</button>
           <div>
             <p id="audit-date-label">TODAY</p>
@@ -372,18 +352,21 @@
         </nav>
 
         <section class="audit-empty" id="audit-empty" hidden>
-          <p>NO DATA YET</p>
-          <h1>LIVE YOUR DAY.</h1>
-          <span>We'll audit it later.</span>
+          <p>NOTHING HERE YET</p>
+          <h1>Live your day.</h1>
+          <span>Your reflection will be here when the day is done.</span>
         </section>
 
         <article class="audit-content" id="audit-content">
           <header class="audit-hero">
             <div>
-              <p class="command-section-label">TODAY'S AUDIT</p>
-              <h1 id="audit-verdict">SOLID DAY</h1>
+              <p class="command-section-label" id="audit-view-title">TODAY'S REFLECTION</p>
+              <h1 id="audit-verdict">🌤️ Your day at a glance</h1>
+              <p class="audit-verdict-copy" id="audit-verdict-copy">
+                What happened today, and one clear next step.
+              </p>
             </div>
-            <button type="button" id="refresh-audit">REFRESH AUDIT</button>
+            <button type="button" id="refresh-audit">REFRESH REFLECTION</button>
           </header>
 
           <section class="audit-metrics" aria-label="Daily summary">
@@ -397,32 +380,62 @@
             </article>
             <article>
               <span>BROWSER</span>
-              <strong id="audit-browser-total">0m observed</strong>
+              <strong id="audit-browser-total">0m tracked</strong>
             </article>
+          </section>
+
+          <section class="audit-guidance" aria-labelledby="audit-guidance-title">
+            <header>
+              <p class="command-section-label">YOUR NEXT MOVE</p>
+              <h2 id="audit-guidance-title">What to carry forward</h2>
+            </header>
+            <div class="audit-guidance-grid">
+              <article class="audit-guidance-card audit-guidance-card--focus">
+                <span aria-hidden="true">🎯</span>
+                <div>
+                  <p>Focus on this</p>
+                  <strong id="audit-focus"></strong>
+                </div>
+              </article>
+              <article class="audit-guidance-card">
+                <span aria-hidden="true">🌱</span>
+                <div>
+                  <p>Add more of this</p>
+                  <strong id="audit-add-more"></strong>
+                </div>
+              </article>
+              <article class="audit-guidance-card">
+                <span aria-hidden="true">✨</span>
+                <div>
+                  <p>One small novelty</p>
+                  <strong id="audit-make-interesting"></strong>
+                </div>
+              </article>
+            </div>
           </section>
 
           <div class="audit-reflection-grid">
             <section class="audit-section" aria-labelledby="audit-highlights-title">
-              <p class="command-section-label">01 / WHAT LANDED</p>
-              <h2 id="audit-highlights-title">HIGHLIGHTS</h2>
+              <p class="command-section-label">🌟 WHAT HELPED</p>
+              <h2 id="audit-highlights-title">What worked</h2>
               <div class="audit-list" id="audit-highlights"></div>
             </section>
             <section class="audit-section" aria-labelledby="audit-misses-title">
-              <p class="command-section-label">02 / OPEN LOOPS</p>
-              <h2 id="audit-misses-title">MISSES</h2>
+              <p class="command-section-label">🎯 WHAT NEEDS CARE</p>
+              <h2 id="audit-misses-title">Worth your attention</h2>
               <div class="audit-list" id="audit-misses"></div>
             </section>
           </div>
 
           <section class="audit-section audit-browser" aria-labelledby="audit-browser-title">
-            <p class="command-section-label">03 / OBSERVED ATTENTION</p>
-            <h2 id="audit-browser-title">TOP DOMAINS</h2>
+            <p class="command-section-label">⏱️ YOUR ATTENTION</p>
+            <h2 id="audit-browser-title">Where your browser time went</h2>
             <div class="audit-domain-list" id="audit-domains"></div>
           </section>
 
           <section class="audit-section audit-patterns" aria-labelledby="audit-patterns-title">
-            <p class="command-section-label">04 / SIGNALS</p>
-            <h2 id="audit-patterns-title">PATTERNS</h2>
+            <p class="command-section-label">👀 PATTERNS</p>
+            <h2 id="audit-patterns-title">What the data noticed</h2>
             <div class="audit-pattern-list" id="audit-pattern-list"></div>
           </section>
         </article>

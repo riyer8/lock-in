@@ -66,6 +66,12 @@ test("calculates final mission completion state", async () => {
   assert.equal(audit.missions.total, 3);
   assert.equal(audit.missions.completed, 2);
   assert.equal(audit.missions.completionRate, 0.67);
+  assert.deepEqual(audit.guidance, {
+    focus: "Decide whether the unfinished mission is worth carrying forward.",
+    addMore: "Add a quick mood check-in next time for more context.",
+    makeItInteresting:
+      "Choose one small novelty next time: a new place, route, recipe, playlist, or activity.",
+  });
 });
 
 test("aggregates and ranks observed browser domains", async () => {

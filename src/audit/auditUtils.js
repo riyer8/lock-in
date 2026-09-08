@@ -190,17 +190,7 @@
     return count === 1 ? singular : plural;
   }
 
-  function formatSummaryDuration(durationMs) {
-    const totalMinutes = Math.round(durationMs / MINUTE_MS);
-    if (totalMinutes >= 60) {
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-    }
-    return `${totalMinutes}m`;
-  }
-
-  function createSummaries({ missions, browser, patterns }) {
+  function createSummaries({ missions }) {
     const highlights = [];
     const misses = [];
 
@@ -219,24 +209,43 @@
       );
     }
 
-    browser.topDomains
-      .filter(({ durationMs }) => durationMs >= 60 * MINUTE_MS)
-      .slice(0, 2)
-      .forEach(({ domain, durationMs }) => {
-        highlights.push(
-          `${formatSummaryDuration(durationMs)} observed on ${domain}.`,
-        );
-      });
-
-    patterns
-      .filter(({ type }) => type === "HIGH_DISTRACTION_TIME")
-      .forEach(({ domain, durationMs }) => {
-        misses.push(
-          `${formatSummaryDuration(durationMs)} observed on ${domain}.`,
-        );
-      });
-
     return { highlights, misses };
+  }
+
+  function createGuidance({ missions, mood, browser }) {
+    const unfinished = Math.max(0, missions.total - missions.completed);
+    let focus;
+
+    if (missions.total === 0) {
+      focus = "Choose one thing that would make your next day feel meaningful.";
+    } else if (missions.activityCount === 0) {
+      focus = "Start with one mission. One small action is enough to begin.";
+    } else if (unfinished > 0) {
+      focus =
+        unfinished === 1
+          ? "Decide whether the unfinished mission is worth carrying forward."
+          : "Choose one unfinished mission that is worth carrying forward.";
+    } else {
+      focus = "Keep the next plan simple and protect time for what matters most.";
+    }
+
+    let addMore;
+    if (mood.selected === null) {
+      addMore = "Add a quick mood check-in next time for more context.";
+    } else if (browser.totalObservedMs === 0) {
+      addMore = "Keep browser observation on for a clearer picture of your attention.";
+    } else if (missions.completionRate >= POSITIVE_MISSION_THRESHOLD) {
+      addMore = "Add one thing you genuinely want to look forward to.";
+    } else {
+      addMore = "Add one small action that supports your most important mission.";
+    }
+
+    const makeItInteresting =
+      missions.completionRate >= POSITIVE_MISSION_THRESHOLD
+        ? "Try something different next time: a new place, recipe, playlist, or activity."
+        : "Choose one small novelty next time: a new place, route, recipe, playlist, or activity.";
+
+    return { focus, addMore, makeItInteresting };
   }
 
   function determineVerdict({ eventCount, missions, browser, mood }) {
@@ -275,8 +284,8 @@
     analyzeBrowser,
     detectPatterns,
     createSummaries,
+    createGuidance,
     determineVerdict,
-    formatSummaryDuration,
   };
 
   globalScope.LockInAuditUtils = auditUtils;

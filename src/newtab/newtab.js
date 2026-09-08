@@ -4,9 +4,7 @@ const ARC_END = Date.UTC(2026, 11, 31);
 const IDENTITIES_STORAGE_KEY = "lock-in-identities";
 const ATTENTION_AREAS_STORAGE_KEY = "lock-in-attention-areas";
 const OBSTACLES_STORAGE_KEY = "lock-in-obstacles";
-const CONTEXT_STORAGE_KEY = "lock-in-starting-context";
 const ONBOARDING_COMPLETE_STORAGE_KEY = "lock-in-onboarding-complete";
-const NAME_STORAGE_KEY = "lock-in-name";
 
 const storage = {
   readJson(key, fallback) {
@@ -40,64 +38,77 @@ const auditService = new LockInAudit.AuditService({
 });
 
 const IDENTITY_LABELS = {
-  athlete: "ATHLETE",
-  thinker: "THINKER",
-  builder: "BUILDER",
-  "glow-up": "GLOW UP",
-  explorer: "EXPLORER",
-  connected: "CONNECTED",
+  athlete: "Athlete",
+  thinker: "Thinker",
+  builder: "Builder",
+  "glow-up": "Glow up",
+  explorer: "Explorer",
+  connected: "Connected",
 };
 
 const AREA_BLUEPRINTS = {
   "health-food": {
     label: "HEALTH & FOOD",
-    description: "We're building steadier energy and care for your body.",
+    description: "Meals, energy, and everyday care.",
   },
   fitness: {
     label: "FITNESS",
-    description: "We're rebuilding consistency and capability.",
+    description: "Movement, strength, and consistency.",
   },
   "energy-recovery": {
     label: "ENERGY & RECOVERY",
-    description: "Your energy and recovery need attention.",
+    description: "Rest, recovery, and sustainable energy.",
   },
   mind: {
     label: "MIND",
-    description: "We're protecting focus, clarity, and confidence.",
+    description: "Focus, confidence, and mental clarity.",
   },
   career: {
     label: "CAREER",
-    description: "We're making room for learning, building, and growth.",
+    description: "Learning, building, and meaningful work.",
   },
   appearance: {
     label: "APPEARANCE",
-    description: "We're strengthening the care that helps you feel confident.",
+    description: "Style, grooming, and self-expression.",
   },
   environment: {
     label: "ENVIRONMENT",
-    description: "We're shaping surroundings that support your life.",
+    description: "Home, organization, and surroundings.",
   },
   "social-life": {
     label: "SOCIAL & LIFE",
-    description: "We're making space for people, experiences, and connection.",
+    description: "Friends, experiences, hobbies, and connection.",
   },
   "digital-life": {
     label: "DIGITAL LIFE",
-    description: "We're reducing distraction and reclaiming attention.",
+    description: "Attention, screen time, and intentional use.",
   },
 };
 
 const OBSTACLE_LABELS = {
-  "low-energy": "LOW ENERGY",
-  consistency: "INCONSISTENCY",
-  procrastination: "PROCRASTINATION",
-  distraction: "DISTRACTION",
-  "chaotic-schedule": "CHAOTIC SCHEDULE",
-  priorities: "UNCLEAR PRIORITIES",
-  "fall-off": "LOSING MOMENTUM",
-  motivation: "RELYING ON MOTIVATION",
-  overwhelmed: "OVERWHELM",
-  "not-sure": "NOT SURE",
+  "low-energy": "Low energy",
+  consistency: "Hard to stay consistent",
+  procrastination: "Delayed starts",
+  distraction: "Pulled attention",
+  "chaotic-schedule": "Changing schedule",
+  priorities: "Unclear priorities",
+  "fall-off": "Lost momentum",
+  motivation: "Waiting for motivation",
+  overwhelmed: "Plan feels too big",
+  "not-sure": "Not sure yet",
+};
+
+const OBSTACLE_NUDGES = {
+  "low-energy": "Keep the first step small enough for today's energy.",
+  consistency: "Repeatable beats impressive. Start with the smallest version.",
+  procrastination: "Reduce the start to two minutes.",
+  distraction: "Close one competing tab before you begin.",
+  "chaotic-schedule": "Choose one opening in the schedule you have today.",
+  priorities: "Start with the highlighted mission. Ignore the rest for now.",
+  "fall-off": "Restarting counts. Begin with one small action.",
+  motivation: "You do not need to feel ready. Start for two minutes.",
+  overwhelmed: "Shrink the plan to one visible next action.",
+  "not-sure": "Pick one mission. Starting will give you more information.",
 };
 
 const MISSION_CATALOG = [
@@ -155,7 +166,7 @@ const MISSION_CATALOG = [
     id: "recover",
     category: "RECOVERY",
     title: "RECOVER ON PURPOSE",
-    description: "Make space for a real pause before your energy runs out.",
+    description: "Take an intentional pause or recovery block.",
     matches: ({ areas }) => areas.has("energy-recovery"),
   },
   {
@@ -185,8 +196,8 @@ const FALLBACK_MISSIONS = [
   {
     id: "keep-promise",
     category: "ARC",
-    title: "KEEP ONE PROMISE",
-    description: "Follow through on one commitment you made to yourself.",
+    title: "TAKE ONE SMALL STEP",
+    description: "Do one small action you chose for yourself.",
   },
   {
     id: "close-day",
@@ -197,10 +208,10 @@ const FALLBACK_MISSIONS = [
 ];
 
 const MOOD_RESPONSES = {
-  low: "Okay. Today is a minimum-viable day. We protect your energy.",
-  meh: "We don't need a perfect day. Let's get a few wins.",
-  good: "Perfect. Let's use it.",
-  "locked-in": "Then let's make today count.",
+  low: "Thanks for being honest 💛 Choose the smallest useful step.",
+  meh: "No perfect mood required. Two minutes can start momentum 🌱",
+  good: "You have something to work with. Put it toward what matters ✨",
+  "locked-in": "Use the spark, but keep the plan kind and sustainable 🔥",
 };
 
 const MOOD_LABELS = {
@@ -219,7 +230,6 @@ const identityContinueButton = document.querySelector("#identity-continue");
 const attentionCards = [...document.querySelectorAll(".attention-card")];
 const obstacleButtons = [...document.querySelectorAll("[data-obstacle]")];
 const detailsSection = document.querySelector("#details-section");
-const startingContext = document.querySelector("#starting-context");
 const fixingContinueButton = document.querySelector("#fixing-continue");
 const blueprintIdentities = document.querySelector("#blueprint-identities");
 const blueprintAreas = document.querySelector("#blueprint-areas");
@@ -228,6 +238,10 @@ const startArcButton = document.querySelector("#start-arc");
 const commandArcDay = document.querySelector("#command-arc-day");
 const commandGreeting = document.querySelector("#command-greeting");
 const missionList = document.querySelector("#mission-list");
+const missionProgressSummary = document.querySelector(
+  "#mission-progress-summary",
+);
+const missionEncouragement = document.querySelector("#mission-encouragement");
 const progressDay = document.querySelector("#progress-day");
 const arcProgress = document.querySelector("#arc-progress");
 const arcProgressFill = document.querySelector("#arc-progress-fill");
@@ -253,12 +267,17 @@ const auditNextButton = document.querySelector("#audit-next");
 const refreshAuditButton = document.querySelector("#refresh-audit");
 const auditDateLabel = document.querySelector("#audit-date-label");
 const auditDateElement = document.querySelector("#audit-date");
+const auditViewTitle = document.querySelector("#audit-view-title");
 const auditEmpty = document.querySelector("#audit-empty");
 const auditContent = document.querySelector("#audit-content");
 const auditVerdict = document.querySelector("#audit-verdict");
+const auditVerdictCopy = document.querySelector("#audit-verdict-copy");
 const auditMissions = document.querySelector("#audit-missions");
 const auditMood = document.querySelector("#audit-mood");
 const auditBrowserTotal = document.querySelector("#audit-browser-total");
+const auditFocus = document.querySelector("#audit-focus");
+const auditAddMore = document.querySelector("#audit-add-more");
+const auditMakeInteresting = document.querySelector("#audit-make-interesting");
 const auditHighlights = document.querySelector("#audit-highlights");
 const auditMisses = document.querySelector("#audit-misses");
 const auditDomains = document.querySelector("#audit-domains");
@@ -282,14 +301,17 @@ function calculateArcState(date) {
 
 function getArcDayLabel({ currentDay, totalDays }) {
   if (currentDay < 1) {
-    return `THE ARC BEGINS IN ${1 - currentDay} DAYS`;
+    const daysUntilStart = 1 - currentDay;
+    return `Starts in ${daysUntilStart} ${
+      daysUntilStart === 1 ? "day" : "days"
+    }`;
   }
 
   if (currentDay > totalDays) {
-    return `ARC COMPLETE | ${totalDays} DAYS`;
+    return `Complete · ${totalDays} days`;
   }
 
-  return `DAY ${currentDay} OF ${totalDays}`;
+  return `Day ${currentDay} of ${totalDays}`;
 }
 
 function renderArcState() {
@@ -361,6 +383,11 @@ function createTextElement(tagName, className, text) {
   return element;
 }
 
+function toSentenceCase(value) {
+  const text = String(value ?? "").toLowerCase();
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "";
+}
+
 function renderBlueprint() {
   const identityElements = [...selectedIdentities]
     .filter((identity) => IDENTITY_LABELS[identity])
@@ -395,7 +422,7 @@ function renderBlueprint() {
 
   if (obstacleElements.length === 0) {
     obstacleElements.push(
-      createTextElement("span", "blueprint-obstacle", "NONE SELECTED"),
+      createTextElement("span", "blueprint-obstacle", "None selected"),
     );
   }
 
@@ -442,31 +469,48 @@ function buildTodayMissions() {
   return missions.slice(0, 3);
 }
 
-function MissionCard(mission, completedMissions) {
+function MissionCard(mission, completedMissions, isNextMission) {
   const card = document.createElement("article");
   const isComplete = completedMissions.has(mission.id);
-  card.className = `mission-card${isComplete ? " mission-card--complete" : ""}`;
+  card.className = [
+    "mission-card",
+    isComplete ? "mission-card--complete" : "",
+    isNextMission ? "mission-card--next" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const category = createTextElement(
     "p",
     "mission-card__category",
-    mission.category,
+    toSentenceCase(mission.category),
   );
-  const title = createTextElement("h3", "", mission.title);
+  const title = createTextElement("h3", "", toSentenceCase(mission.title));
   const description = createTextElement("p", "mission-card__copy", mission.description);
+  const tinyStart = isNextMission
+    ? createTextElement(
+        "p",
+        "mission-card__nudge",
+        "🌱 Two-minute start: begin small. Continuing is optional.",
+      )
+    : null;
   const footer = document.createElement("footer");
   footer.className = "mission-card__footer";
 
   if (mission.target) {
     footer.append(
-      createTextElement("span", "mission-card__target", mission.target),
+      createTextElement(
+        "span",
+        "mission-card__target",
+        toSentenceCase(mission.target),
+      ),
     );
   }
 
   const completeButton = createTextElement(
     "button",
     "mission-complete",
-    isComplete ? "COMPLETED" : "COMPLETE",
+    isComplete ? "Completed ✓" : "Mark complete",
   );
   completeButton.type = "button";
   completeButton.setAttribute("aria-pressed", String(isComplete));
@@ -497,7 +541,11 @@ function MissionCard(mission, completedMissions) {
   });
 
   footer.append(completeButton);
-  card.append(category, title, description, footer);
+  card.append(category, title, description);
+  if (tinyStart) {
+    card.append(tinyStart);
+  }
+  card.append(footer);
   return card;
 }
 
@@ -505,17 +553,55 @@ function TodayMission(missions = buildTodayMissions()) {
   const completedMissions = new Set(
     storage.readJson(getDailyStorageKey("completed-missions"), []),
   );
+  const completedCount = missions.filter(({ id }) =>
+    completedMissions.has(id),
+  ).length;
+  const nextMission = missions.find(({ id }) => !completedMissions.has(id));
+  const obstacleNudge = [...selectedObstacles]
+    .map((obstacle) => OBSTACLE_NUDGES[obstacle])
+    .find(Boolean);
+
+  missionProgressSummary.textContent = `${completedCount} of ${missions.length} complete`;
+  const encouragement = [
+    obstacleNudge ?? "Pick one. Make the first step tiny. Starting counts.",
+    "Momentum is here 🌱 One real win beats a perfect plan.",
+    "You're close ✨ Keep the next step small and clear.",
+    "You followed through 🌟 Let that be enough for today.",
+  ];
+  missionEncouragement.textContent =
+    encouragement[Math.min(completedCount, encouragement.length - 1)];
+
   missionList.replaceChildren(
-    ...missions.map((mission) => MissionCard(mission, completedMissions)),
+    ...missions.map((mission) =>
+      MissionCard(
+        mission,
+        completedMissions,
+        mission.id === nextMission?.id,
+      ),
+    ),
   );
 }
 
 function ArcProgress(arcState = getCommandArcState()) {
-  const { day, totalDays } = arcState;
+  const { currentDay, day, totalDays } = arcState;
+
+  if (currentDay < 1) {
+    const daysUntilStart = 1 - currentDay;
+    commandArcDay.textContent = `Starts in ${daysUntilStart} ${
+      daysUntilStart === 1 ? "day" : "days"
+    }`;
+    progressDay.textContent = "Not started";
+    arcProgress.setAttribute("aria-valuenow", "0");
+    arcProgress.setAttribute("aria-valuemax", String(totalDays));
+    arcProgressFill.style.width = "0%";
+    return;
+  }
+
   const progress = (day / totalDays) * 100;
 
-  commandArcDay.textContent = `DAY ${day} OF ${totalDays}`;
-  progressDay.textContent = `DAY ${day} / ${totalDays}`;
+  commandArcDay.textContent =
+    currentDay > totalDays ? "Arc complete" : `Day ${day} of ${totalDays}`;
+  progressDay.textContent = `Day ${day} / ${totalDays}`;
   arcProgress.setAttribute("aria-valuenow", String(day));
   arcProgress.setAttribute("aria-valuemax", String(totalDays));
   arcProgressFill.style.width = `${progress}%`;
@@ -537,28 +623,52 @@ function QuickView() {
   const mindAreas = ["mind", "digital-life", "career"];
   const lifeAreas = ["social-life", "environment"];
 
-  bodyState.textContent = bodyAreas.some((area) =>
-    selectedAttentionAreas.has(area),
-  )
-    ? "BUILDING"
-    : "STEADY";
-  mindState.textContent = mindAreas.some((area) =>
-    selectedAttentionAreas.has(area),
-  )
-    ? "FOCUSING"
-    : "CLEAR";
-  lifeState.textContent = lifeAreas.some((area) =>
-    selectedAttentionAreas.has(area),
-  )
-    ? "RESETTING"
-    : "ALIGNING";
+  function showSelectedDirection(element, areas) {
+    const selected = areas.filter((area) => selectedAttentionAreas.has(area));
+    const labels = selected.map((area) =>
+      toSentenceCase(AREA_BLUEPRINTS[area].label),
+    );
+    element.textContent =
+      labels.length > 1
+        ? `${labels[0]} +${labels.length - 1}`
+        : labels[0] ?? "Not selected";
+    element.title = labels.join(", ");
+  }
+
+  showSelectedDirection(bodyState, bodyAreas);
+  showSelectedDirection(mindState, mindAreas);
+  showSelectedDirection(lifeState, lifeAreas);
+}
+
+function getTimeBasedGreeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 8) {
+    return { text: "Sunrise mode", emoji: "🌅" };
+  }
+  if (hour >= 8 && hour < 12) {
+    return { text: "Good morning", emoji: "☀️" };
+  }
+  if (hour >= 12 && hour < 17) {
+    return { text: "Good afternoon", emoji: "🌤️" };
+  }
+  if (hour >= 17 && hour < 20) {
+    return { text: "Sunset mode", emoji: "🌇" };
+  }
+  if (hour >= 20 && hour < 24) {
+    return { text: "Good evening", emoji: "🌙" };
+  }
+  return { text: "Deep night", emoji: "🌌" };
+}
+
+function renderCommandGreeting(date = new Date()) {
+  const greeting = getTimeBasedGreeting(date);
+  commandGreeting.textContent = `${greeting.text} ${greeting.emoji}`;
 }
 
 function CommandCenter() {
-  const name = storage.readText(NAME_STORAGE_KEY).trim();
   const arcState = getCommandArcState();
   const missions = buildTodayMissions();
-  commandGreeting.textContent = name ? `GOOD MORNING, ${name}.` : "GOOD MORNING.";
+  renderCommandGreeting();
   TodayMission(missions);
   ArcProgress(arcState);
   MoodCheckIn();
@@ -613,35 +723,80 @@ function formatMood(mood) {
     .join(" ");
 }
 
+function getVerdictCopy(verdict, { isToday, hasPartialData }) {
+  switch (verdict) {
+    case "STRONG":
+      return {
+        title: "🌟 You followed through",
+        detail: "Most of your planned missions became real action.",
+      };
+    case "SOLID":
+      return {
+        title: "🌱 Good momentum",
+        detail: "You moved the important parts of your day forward.",
+      };
+    case "MIXED":
+      return {
+        title: "🌤️ A mixed day",
+        detail: "Some missions landed and some stayed open.",
+      };
+    case "NEEDS_ATTENTION":
+      return {
+        title: "💛 Room to simplify",
+        detail: "One clear priority can make the next start easier.",
+      };
+    default:
+      if (hasPartialData) {
+        return {
+          title: "🪴 A partial picture",
+          detail: "Some activity was captured, but no missions were available.",
+        };
+      }
+      if (!isToday) {
+        return {
+          title: "Not enough data for this day",
+          detail: "LOCK IN did not capture enough activity to build a reflection.",
+        };
+      }
+      return {
+        title: "🪴 Your day is still unfolding",
+        detail: "Check missions and mood as you go. The picture will get clearer.",
+      };
+  }
+}
+
 function getPatternCopy(pattern) {
   switch (pattern.type) {
     case "HIGH_DISTRACTION_TIME":
       return {
-        title: "HIGH DISTRACTION TIME",
-        detail: `${formatAuditDuration(pattern.durationMs)} observed on ${pattern.domain}.`,
+        title: `Long session on ${pattern.domain}`,
+        detail: `${formatAuditDuration(pattern.durationMs)} tracked. Did that match your intention?`,
       };
     case "STRONG_MISSION_COMPLETION":
       return {
-        title: "STRONG MISSION COMPLETION",
-        detail: "At least 80% of planned missions were completed.",
+        title: "✨ Your plan turned into action",
+        detail: "You completed at least 80% of your planned missions.",
       };
     case "LOW_MISSION_COMPLETION":
       return {
-        title: "LOW MISSION COMPLETION",
-        detail: "Fewer than half of planned missions were completed.",
+        title: "A lighter plan may feel better",
+        detail: "Consider choosing fewer or clearer missions next time.",
       };
     case "NO_MISSION_ACTIVITY":
       return {
-        title: "NO MISSION ACTIVITY",
-        detail: "Missions were planned, but no updates were recorded.",
+        title: "Missions stayed unchanged",
+        detail: "A plan existed, but no completions were recorded.",
       };
     case "LIMITED_BROWSER_DATA":
       return {
-        title: "LIMITED BROWSER DATA",
-        detail: "No completed browser sessions were available to audit.",
+        title: "The browser picture is still forming",
+        detail: "No completed browser sessions were available. This does not mean you were inactive.",
       };
     default:
-      return { title: pattern.type.replaceAll("_", " "), detail: "" };
+      return {
+        title: "Something stood out",
+        detail: "Details are not available for this pattern yet.",
+      };
   }
 }
 
@@ -670,8 +825,15 @@ async function renderDailyAudit() {
   const isFuture = audit.date > todayKey;
   const hasNoFutureData =
     isFuture && audit.verdict === "INSUFFICIENT_DATA";
+  const hasPartialData =
+    audit.mood.selected !== null || audit.browser.totalObservedMs > 0;
 
-  auditDateLabel.textContent = isToday ? "TODAY" : isFuture ? "UPCOMING" : "DAILY AUDIT";
+  auditDateLabel.textContent = isToday ? "TODAY" : isFuture ? "UPCOMING" : "PAST DAY";
+  auditViewTitle.textContent = isToday
+    ? "TODAY'S REFLECTION"
+    : isFuture
+      ? "UPCOMING DAY"
+      : "DAILY REFLECTION";
   auditDateElement.dateTime = audit.date;
   auditDateElement.textContent = selectedAuditDate
     .toLocaleDateString([], {
@@ -689,27 +851,32 @@ async function renderDailyAudit() {
     return;
   }
 
-  auditVerdict.textContent =
-    audit.verdict === "INSUFFICIENT_DATA"
-      ? "NOT ENOUGH DATA"
-      : `${audit.verdict.replaceAll("_", " ")} DAY`;
+  const verdictCopy = getVerdictCopy(audit.verdict, {
+    isToday,
+    hasPartialData,
+  });
+  auditVerdict.textContent = verdictCopy.title;
+  auditVerdictCopy.textContent = verdictCopy.detail;
   auditMissions.textContent = `${audit.missions.completed} / ${audit.missions.total} completed`;
   auditMood.textContent = formatMood(audit.mood.selected);
   auditBrowserTotal.textContent = `${formatAuditDuration(
     audit.browser.totalObservedMs,
-  )} observed`;
+  )} tracked`;
+  auditFocus.textContent = audit.guidance.focus;
+  auditAddMore.textContent = audit.guidance.addMore;
+  auditMakeInteresting.textContent = audit.guidance.makeItInteresting;
 
   renderAuditList(
     auditHighlights,
     audit.highlights,
     "✓",
-    "No highlights recorded yet.",
+    "Nothing to highlight yet.",
   );
   renderAuditList(
     auditMisses,
     audit.misses,
     "→",
-    "No open loops surfaced.",
+    "Nothing pressing right now.",
   );
 
   const domainRows = audit.browser.topDomains.map(({ domain, durationMs }) => {
@@ -722,12 +889,16 @@ async function renderDailyAudit() {
   });
   if (domainRows.length === 0) {
     domainRows.push(
-      createTextElement("p", "audit-list__empty", "No browser activity observed."),
+      createTextElement("p", "audit-list__empty", "No browser time tracked."),
     );
   }
   auditDomains.replaceChildren(...domainRows);
 
-  const patternRows = audit.patterns.map((pattern) => {
+  const visiblePatterns = audit.patterns.filter(
+    ({ type }) =>
+      !(audit.verdict === "STRONG" && type === "STRONG_MISSION_COMPLETION"),
+  );
+  const patternRows = visiblePatterns.map((pattern) => {
     const copy = getPatternCopy(pattern);
     const row = document.createElement("article");
     row.className = `audit-pattern audit-pattern--${pattern.severity}`;
@@ -739,7 +910,7 @@ async function renderDailyAudit() {
   });
   if (patternRows.length === 0) {
     patternRows.push(
-      createTextElement("p", "audit-list__empty", "No patterns surfaced."),
+      createTextElement("p", "audit-list__empty", "Nothing unusual stood out."),
     );
   }
   auditPatternList.replaceChildren(...patternRows);
@@ -911,7 +1082,6 @@ function showScreen(screenId) {
   screens.forEach((screen) => {
     const isActive = screen.id === screenId;
     screen.hidden = !isActive;
-    screen.classList.toggle("screen--active", isActive);
   });
 
   window.scrollTo(0, 0);
@@ -960,10 +1130,6 @@ obstacleButtons.forEach((button) => {
   });
 });
 
-startingContext.addEventListener("input", () => {
-  storage.writeText(CONTEXT_STORAGE_KEY, startingContext.value);
-});
-
 fixingContinueButton.addEventListener("click", () => {
   if (selectedAttentionAreas.size > 0) {
     renderBlueprint();
@@ -976,6 +1142,7 @@ startArcButton.addEventListener("click", () => {
   eventApi.record(EventTypes.ONBOARDING_COMPLETED, {
     identities: [...selectedIdentities],
     attentionAreas: [...selectedAttentionAreas],
+    obstacles: [...selectedObstacles],
   });
   CommandCenter();
   showScreen("command-center-screen");
@@ -992,7 +1159,7 @@ moodButtons.forEach((button) => {
 });
 
 clearEventsButton.addEventListener("click", async () => {
-  if (window.confirm("Clear all life events?")) {
+  if (window.confirm("Clear all stored events? This cannot be undone.")) {
     await eventApi.clearEvents();
     await renderEventStream();
   }
@@ -1011,14 +1178,14 @@ auditTodayButton.addEventListener("click", () => {
 auditNextButton.addEventListener("click", () => moveAuditDate(1));
 refreshAuditButton.addEventListener("click", async () => {
   refreshAuditButton.disabled = true;
-  refreshAuditButton.textContent = "REFRESHING";
+  refreshAuditButton.textContent = "REFRESHING…";
 
   try {
     await renderDailyAudit();
-    refreshAuditButton.textContent = "AUDIT REFRESHED";
+    refreshAuditButton.textContent = "UPDATED";
   } finally {
     setTimeout(() => {
-      refreshAuditButton.textContent = "REFRESH AUDIT";
+      refreshAuditButton.textContent = "REFRESH REFLECTION";
       refreshAuditButton.disabled = false;
     }, 900);
   }
@@ -1039,7 +1206,6 @@ window.addEventListener("hashchange", () => {
 
 renderArcState();
 renderIdentitySelections();
-startingContext.value = storage.readText(CONTEXT_STORAGE_KEY);
 renderStartingPoint();
 renderBlueprint();
 

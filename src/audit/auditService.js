@@ -69,12 +69,15 @@
       });
       const summaries = auditUtils.createSummaries({
         missions: missionAnalysis,
+      });
+      const guidance = auditUtils.createGuidance({
+        missions: missionAnalysis,
+        mood,
         browser,
-        patterns,
       });
 
       const audit = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         date: dateKey,
         missions: {
           total: missionAnalysis.total,
@@ -90,6 +93,7 @@
         highlights: summaries.highlights,
         misses: summaries.misses,
         patterns,
+        guidance,
         verdict: auditUtils.determineVerdict({
           eventCount: events.length,
           missions: missionAnalysis,

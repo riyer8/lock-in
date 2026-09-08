@@ -20,8 +20,8 @@ node --test tests/*.test.js
 
 Open the event stream with `Command+Shift+E` or `Ctrl+Shift+E`.
 
-## Daily Audit
+## Daily reflection
 
-After onboarding, open **Today's Audit** from the command center to review
-mission completion, mood, observed browser time, and deterministic patterns.
-Use **Refresh Audit** to regenerate the persisted audit from the event stream.
+After onboarding, open **Today's reflection** from the command center to review
+mission completion, mood, tracked browser time, and deterministic patterns.
+Use **Refresh reflection** to regenerate it from the event stream.

@@ -44,48 +44,6 @@ button {
   scrollbar-gutter: stable;
 }
 
-.atmosphere,
-.grain {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-.atmosphere {
-  overflow: hidden;
-}
-
-.grain {
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-}
-
-.orb {
-  position: absolute;
-  display: block;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.015);
-  box-shadow:
-    inset 0 0 80px rgba(255, 255, 255, 0.025),
-    0 30px 100px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(2px);
-}
-
-.orb--one {
-  top: -25vw;
-  right: -12vw;
-  width: 54vw;
-  height: 54vw;
-}
-
-.orb--two {
-  bottom: -32vw;
-  left: -18vw;
-  width: 58vw;
-  height: 58vw;
-}
-
 .landing {
   position: relative;
   z-index: 1;
@@ -177,7 +135,7 @@ h1 span {
   padding-left: 17px;
   border-left: 1px solid var(--line);
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
   line-height: 1.7;
@@ -187,7 +145,7 @@ h1 span {
 .countdown > p {
   margin: 18px 0 0;
   color: var(--lavender-dark);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.24em;
 }
@@ -217,7 +175,7 @@ blockquote {
   color: #1b1a24;
   background: #d8d2ec;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.19em;
   animation: rise 900ms 400ms var(--ease-out) both;
@@ -252,8 +210,7 @@ blockquote {
   transform: translateX(3px);
 }
 
-.onboarding,
-.completion {
+.onboarding {
   position: relative;
   z-index: 1;
   min-height: 0;
@@ -281,14 +238,17 @@ blockquote {
 .step-label {
   margin: 0 0 20px;
   color: var(--lavender-dark);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.25em;
 }
 
 .identity-header h1 {
-  font-size: clamp(50px, 5.4vw, 78px);
-  line-height: 0.92;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(40px, 4.8vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
 }
 
 .identity-header > p:last-child {
@@ -358,10 +318,10 @@ blockquote {
 }
 
 .identity-card__copy strong {
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .identity-card__copy small {
@@ -407,9 +367,9 @@ blockquote {
   cursor: pointer;
   color: #1b1a24;
   background: #d8d2ec;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.19em;
+  letter-spacing: 0.08em;
   transition:
     opacity 200ms ease,
     transform 250ms var(--ease-out),
@@ -443,7 +403,7 @@ blockquote {
 }
 
 .fixing-header h1 {
-  font-size: clamp(50px, 5.4vw, 76px);
+  font-size: clamp(40px, 4.8vw, 64px);
 }
 
 .attention-grid {
@@ -478,8 +438,7 @@ blockquote {
 }
 
 .attention-card:focus-visible,
-.obstacle-grid button:focus-visible,
-.context-field textarea:focus-visible {
+.obstacle-grid button:focus-visible {
   outline: 2px solid var(--lavender-dark);
   outline-offset: 3px;
 }
@@ -501,15 +460,15 @@ blockquote {
 }
 
 .attention-card strong {
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: 17px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .attention-card small {
   color: #aaa8b4;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -526,10 +485,10 @@ blockquote {
 
 .details-section h2 {
   margin: 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(36px, 4.5vw, 58px);
-  font-weight: 500;
-  letter-spacing: -0.015em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 
 .obstacle-grid {
@@ -548,7 +507,7 @@ blockquote {
   cursor: pointer;
   color: #c4c2cc;
   background: rgba(255, 255, 255, 0.025);
-  font-size: 11px;
+  font-size: 12px;
   transition:
     color 200ms ease,
     border-color 200ms ease,
@@ -566,51 +525,10 @@ blockquote {
   background: rgba(184, 176, 213, 0.15);
 }
 
-.context-field {
-  max-width: 720px;
-  margin: 34px auto 0;
-  text-align: left;
-}
-
-.context-field textarea {
-  width: 100%;
-  min-height: 104px;
-  resize: vertical;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  outline: none;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.03);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.55;
-  transition:
-    border-color 200ms ease,
-    background 200ms ease;
-}
-
-.context-field textarea:focus {
-  border-color: rgba(216, 210, 236, 0.55);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.context-field textarea::placeholder {
-  color: #74727e;
-}
-
-.context-field p {
-  margin: 9px 0 0;
-  color: #85838f;
-  font-size: 10px;
-}
-
 .blueprint {
   position: relative;
   z-index: 1;
-  height: 100vh;
-  overflow-y: auto;
-  padding: clamp(48px, 8vh, 86px) 36px 72px;
+  padding: clamp(38px, 6vh, 64px) 36px 56px;
   animation: screen-in 600ms var(--ease-out) both;
 }
 
@@ -626,8 +544,11 @@ blockquote {
 }
 
 .blueprint-header h1 {
-  font-size: clamp(62px, 7.5vw, 108px);
-  line-height: 0.9;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(44px, 5.5vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1.03;
 }
 
 .blueprint-header > p:last-child {
@@ -639,7 +560,7 @@ blockquote {
 }
 
 .blueprint-sections {
-  margin-top: clamp(64px, 10vh, 104px);
+  margin-top: clamp(42px, 6vh, 64px);
   border-bottom: 1px solid var(--line);
   text-align: left;
 }
@@ -648,14 +569,14 @@ blockquote {
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   gap: 24px;
-  padding: clamp(34px, 5vh, 54px) 0;
+  padding: clamp(26px, 4vh, 38px) 0;
   border-top: 1px solid var(--line);
 }
 
 .section-number {
   margin: 4px 0 0;
   color: #777582;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.18em;
 }
@@ -663,16 +584,16 @@ blockquote {
 .blueprint-section h2,
 .promise h2 {
   margin: 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(28px, 3vw, 40px);
-  font-weight: 500;
-  letter-spacing: 0.025em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .blueprint-section > div > p {
   margin: 18px 0 0;
   color: #94929f;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .blueprint-identities {
@@ -686,10 +607,10 @@ blockquote {
   display: inline-flex;
   align-items: center;
   color: var(--lavender-dark);
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(24px, 3vw, 38px);
-  font-weight: 500;
-  letter-spacing: 0.035em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(19px, 2.2vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .blueprint-identity:not(:last-child)::after {
@@ -716,8 +637,8 @@ blockquote {
 .blueprint-area-card h3 {
   margin: 0;
   color: var(--lavender-dark);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
 }
 
 .blueprint-area-card p {
@@ -740,14 +661,14 @@ blockquote {
   border-radius: 999px;
   color: #d2cfdd;
   background: rgba(184, 176, 213, 0.08);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.03em;
 }
 
 .promise {
-  margin-top: clamp(64px, 10vh, 104px);
-  padding: clamp(34px, 5vw, 58px);
+  margin-top: clamp(42px, 6vh, 64px);
+  padding: clamp(28px, 4vw, 42px);
   border: 1px solid rgba(216, 210, 236, 0.42);
   border-radius: 12px;
   background: rgba(184, 176, 213, 0.08);
@@ -757,7 +678,7 @@ blockquote {
 .promise-label {
   margin: 0 0 34px;
   color: var(--lavender-dark);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.22em;
 }
@@ -793,9 +714,7 @@ blockquote {
 .command-center {
   position: relative;
   z-index: 1;
-  height: 100vh;
-  overflow-y: auto;
-  padding: 28px 36px 56px;
+  padding: 22px 30px 40px;
   animation: screen-in 500ms var(--ease-out) both;
 }
 
@@ -815,7 +734,7 @@ blockquote {
 .command-topbar p {
   margin: 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2em;
 }
@@ -839,7 +758,7 @@ blockquote {
   cursor: pointer;
   color: #aaa8b4;
   background: transparent;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
 }
@@ -849,6 +768,14 @@ blockquote {
   border: 1px solid rgba(216, 210, 236, 0.28);
   border-radius: 999px;
   color: var(--lavender-dark);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.audit-topbar button,
+.audit-date-nav button,
+#refresh-audit {
+  letter-spacing: 0.06em;
 }
 
 .command-topbar__actions button:hover,
@@ -867,27 +794,39 @@ blockquote {
 }
 
 .command-intro {
-  padding: clamp(38px, 6vh, 68px) 0 clamp(30px, 5vh, 50px);
+  padding: clamp(24px, 4vh, 42px) 0 clamp(20px, 3vh, 32px);
 }
 
 .command-intro p,
 .command-section-label {
   margin: 0;
   color: var(--lavender-dark);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.22em;
 }
 
+.command-center .command-section-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+#command-arc-day {
+  letter-spacing: 0.04em;
+}
+
 .command-intro h1 {
   margin-top: 13px;
-  font-size: clamp(54px, 6.5vw, 94px);
-  line-height: 0.9;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(34px, 4vw, 50px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
 }
 
 .command-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(0, 1.85fr) minmax(290px, 0.72fr);
   gap: 16px;
   align-items: start;
 }
@@ -902,35 +841,63 @@ blockquote {
 }
 
 .mission-section {
-  padding: clamp(28px, 4vw, 46px);
+  padding: clamp(24px, 3vw, 36px);
 }
 
 .mission-section > header h2 {
   margin: 14px 0 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(38px, 4.5vw, 60px);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 0.95;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(34px, 4vw, 50px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
 }
 
-.mission-section > header > p:last-child {
+.mission-intro-copy {
   max-width: 540px;
   margin: 15px 0 0;
   color: #9f9da8;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.mission-coach {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border: 1px solid rgba(216, 210, 236, 0.18);
+  border-radius: 8px;
+  background: rgba(184, 176, 213, 0.055);
+}
+
+.mission-coach strong {
+  flex: none;
+  color: var(--lavender-dark);
+  font-size: 11px;
+}
+
+.mission-coach p {
+  margin: 0;
+  color: #aaa8b4;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 .mission-list {
   display: grid;
-  gap: 10px;
-  margin-top: 34px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 24px;
 }
 
 .mission-card {
   position: relative;
-  padding: 25px 26px 22px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 18px 21px 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
@@ -946,44 +913,60 @@ blockquote {
   transform: translateY(-2px);
 }
 
+.mission-card--next {
+  border-color: rgba(216, 210, 236, 0.38);
+  background: rgba(184, 176, 213, 0.065);
+}
+
 .mission-card__category {
   margin: 0;
   color: var(--lavender-dark);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
 }
 
 .mission-card h3 {
   margin: 9px 0 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(25px, 2.6vw, 36px);
-  font-weight: 500;
-  letter-spacing: 0.025em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(22px, 2.3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .mission-card__copy {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #aaa8b4;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.48;
+}
+
+.mission-card__nudge {
+  margin: 12px 0 0;
+  padding: 9px 10px;
+  border-radius: 7px;
+  color: #c9c5d8;
+  background: rgba(184, 176, 213, 0.09);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .mission-card__footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin-top: 21px;
-  padding-top: 16px;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 11px;
   border-top: 1px solid rgba(238, 237, 244, 0.09);
 }
 
 .mission-card__target {
   color: #777582;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .mission-complete {
@@ -994,9 +977,9 @@ blockquote {
   cursor: pointer;
   color: var(--lavender-dark);
   background: transparent;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.01em;
   transition:
     color 200ms ease,
     background 200ms ease,
@@ -1032,25 +1015,25 @@ blockquote {
 .arc-progress-card,
 .mood-card,
 .quick-view {
-  padding: 26px;
+  padding: 21px;
 }
 
 .arc-progress-card h2,
 .mood-card h2 {
   margin: 12px 0 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: 0.025em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .arc-progress-meta {
   display: flex;
   justify-content: space-between;
-  margin-top: 25px;
+  margin-top: 18px;
   color: #aaa8b4;
-  font-size: 8px;
-  letter-spacing: 0.15em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 
 .arc-progress-meta strong {
@@ -1076,7 +1059,7 @@ blockquote {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-top: 22px;
+  margin-top: 17px;
 }
 
 .mood-options button {
@@ -1084,7 +1067,7 @@ blockquote {
   gap: 7px;
   place-items: center;
   min-width: 0;
-  padding: 12px 4px;
+  padding: 10px 4px;
   border: 1px solid var(--line);
   cursor: pointer;
   color: var(--ink);
@@ -1097,9 +1080,9 @@ blockquote {
 
 .mood-options button span {
   color: #8e8c98;
-  font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .mood-options button:hover,
@@ -1117,7 +1100,7 @@ blockquote {
   padding-top: 16px;
   border-top: 1px solid rgba(238, 237, 244, 0.09);
   color: #b8b6c1;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
   animation: screen-in 300ms var(--ease-out) both;
 }
@@ -1130,34 +1113,34 @@ blockquote {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 7px;
-  margin-top: 17px;
+  margin-top: 14px;
 }
 
 .quick-view-grid article {
   display: grid;
   gap: 7px;
-  padding: 12px 10px;
+  padding: 10px 8px;
   border: 1px solid rgba(238, 237, 244, 0.1);
 }
 
 .quick-view-grid span {
   color: #777582;
-  font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .quick-view-grid strong {
   color: #d1cedb;
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 0;
 }
 
 .daily-audit {
   position: relative;
   z-index: 2;
-  height: 100vh;
-  overflow-y: auto;
   padding: 28px 36px 72px;
   animation: screen-in 500ms var(--ease-out) both;
 }
@@ -1199,14 +1182,14 @@ blockquote {
 .audit-date-nav p {
   margin: 0 0 6px;
   color: var(--lavender-dark);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.18em;
 }
 
 .audit-date-nav time {
   color: #aaa8b4;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.1em;
 }
 
@@ -1230,21 +1213,25 @@ blockquote {
 }
 
 .audit-empty {
-  padding: clamp(100px, 20vh, 210px) 20px;
+  padding: clamp(56px, 12vh, 100px) 20px;
   text-align: center;
 }
 
 .audit-empty p {
   margin: 0;
   color: var(--lavender-dark);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.22em;
 }
 
 .audit-empty h1 {
   margin-top: 17px;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: clamp(54px, 7vw, 92px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
 .audit-empty span {
@@ -1267,7 +1254,19 @@ blockquote {
 
 .audit-hero h1 {
   margin-top: 13px;
-  font-size: clamp(58px, 8vw, 106px);
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
+}
+
+.audit-verdict-copy {
+  max-width: 540px;
+  margin: 20px 0 0;
+  color: #b8b6c1;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 #refresh-audit {
@@ -1305,18 +1304,78 @@ blockquote {
 
 .audit-metrics span {
   color: #777582;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.17em;
 }
 
 .audit-metrics strong {
   overflow: hidden;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(23px, 2.8vw, 36px);
-  font-weight: 500;
-  letter-spacing: 0.025em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
   text-overflow: ellipsis;
+}
+
+.audit-guidance {
+  margin-top: 16px;
+  padding: clamp(28px, 4vw, 42px);
+  border: 1px solid rgba(216, 210, 236, 0.32);
+  border-radius: 12px;
+  background: rgba(184, 176, 213, 0.06);
+}
+
+.audit-guidance > header h2 {
+  margin: 12px 0 0;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.audit-guidance-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.audit-guidance-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  min-height: 142px;
+  padding: 21px;
+  border: 1px solid rgba(238, 237, 244, 0.11);
+  background: rgba(8, 9, 13, 0.22);
+}
+
+.audit-guidance-card--focus {
+  border-color: rgba(216, 210, 236, 0.42);
+  background: rgba(184, 176, 213, 0.08);
+}
+
+.audit-guidance-card > span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.audit-guidance-card p {
+  margin: 1px 0 0;
+  color: var(--lavender-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.audit-guidance-card strong {
+  display: block;
+  margin-top: 12px;
+  color: #d4d2db;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 .audit-reflection-grid {
@@ -1335,10 +1394,10 @@ blockquote {
 
 .audit-section h2 {
   margin: 12px 0 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(30px, 3.5vw, 44px);
-  font-weight: 500;
-  letter-spacing: 0.025em;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .audit-list {
@@ -1353,7 +1412,7 @@ blockquote {
   gap: 8px;
   margin: 0;
   color: #c9c7d0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -1387,7 +1446,7 @@ blockquote {
   padding: 13px 0;
   border-bottom: 1px solid rgba(238, 237, 244, 0.08);
   color: #b8b6c1;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .audit-domain-list strong {
@@ -1420,22 +1479,21 @@ blockquote {
 .audit-pattern h3 {
   margin: 0;
   color: #d2cfdd;
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
 }
 
 .audit-pattern p {
   margin: 12px 0 0;
   color: #8e8c98;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .event-debug {
   position: relative;
   z-index: 2;
-  min-height: 100vh;
-  overflow-y: auto;
   padding: 40px;
   background: #0b0c10;
 }
@@ -1607,26 +1665,6 @@ blockquote {
   letter-spacing: 0.16em;
 }
 
-.completion {
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
-.completion h1 {
-  font-size: clamp(90px, 12vw, 170px);
-}
-
-.completion section > p:not(.step-label) {
-  margin: 24px 0 0;
-  color: #c4c2cc;
-  font-size: 16px;
-}
-
-.completion-button {
-  min-width: 170px;
-}
-
 @keyframes rise {
   from {
     opacity: 0;
@@ -1648,6 +1686,98 @@ blockquote {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (min-width: 821px) and (max-height: 900px) {
+  .landing {
+    padding-block: 28px;
+  }
+
+  .label {
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(56px, 7vw, 96px);
+  }
+
+  .countdown,
+  blockquote,
+  .enter-button {
+    margin-top: 22px;
+  }
+
+  .onboarding {
+    padding-block: 30px;
+  }
+
+  .identity-grid,
+  .attention-grid {
+    margin-top: 24px;
+  }
+
+  .identity-card {
+    min-height: 108px;
+    padding: 19px;
+  }
+
+  .command-intro {
+    padding: 22px 0 18px;
+  }
+
+  .mission-section > header h2 {
+    font-size: clamp(32px, 3.4vw, 44px);
+  }
+
+  .mission-intro-copy {
+    margin-top: 10px;
+  }
+
+  .mission-list {
+    margin-top: 18px;
+  }
+
+  .daily-audit {
+    padding-top: 22px;
+  }
+
+  .audit-date-nav {
+    padding: 16px 0;
+  }
+
+  .audit-content {
+    padding-top: 34px;
+  }
+
+  .audit-hero h1 {
+    font-size: clamp(40px, 5vw, 60px);
+  }
+
+  .audit-verdict-copy {
+    margin-top: 13px;
+  }
+
+  .audit-metrics {
+    margin-top: 28px;
+  }
+
+  .audit-metrics article,
+  .audit-guidance,
+  .audit-section {
+    padding: 24px;
+  }
+
+  .audit-guidance-grid,
+  .audit-list,
+  .audit-domain-list,
+  .audit-pattern-list {
+    margin-top: 20px;
+  }
+
+  .audit-guidance-card {
+    min-height: 118px;
+    padding: 17px;
   }
 }
 
@@ -1712,11 +1842,153 @@ blockquote {
   }
 }
 
-@media (max-width: 820px) {
-  body {
-    overflow-y: auto;
+@media (min-width: 821px) and (max-width: 1100px) {
+  .command-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.58fr);
   }
 
+  .mission-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mission-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 821px) {
+  .daily-audit {
+    padding: 18px 30px 38px;
+  }
+
+  .audit-topbar {
+    padding-bottom: 15px;
+  }
+
+  .audit-date-nav {
+    padding: 13px 0;
+  }
+
+  .audit-content {
+    display: grid;
+    grid-template-columns: minmax(310px, 0.85fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "hero metrics"
+      "guidance guidance"
+      "reflection reflection"
+      "browser patterns";
+    gap: 12px;
+    padding-top: 24px;
+  }
+
+  .audit-hero {
+    grid-area: hero;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 6px 0;
+  }
+
+  .audit-hero h1 {
+    font-size: clamp(32px, 3.5vw, 48px);
+  }
+
+  .audit-verdict-copy {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  #refresh-audit {
+    margin: 0;
+    padding: 9px 13px;
+  }
+
+  .audit-metrics {
+    grid-area: metrics;
+    margin-top: 0;
+  }
+
+  .audit-metrics article {
+    padding: 18px;
+  }
+
+  .audit-metrics strong {
+    font-size: clamp(17px, 1.8vw, 24px);
+  }
+
+  .audit-guidance {
+    grid-area: guidance;
+    margin-top: 0;
+    padding: 20px;
+  }
+
+  .audit-guidance > header h2 {
+    font-size: clamp(25px, 2.8vw, 34px);
+  }
+
+  .audit-guidance-grid {
+    margin-top: 17px;
+  }
+
+  .audit-guidance-card {
+    min-height: 106px;
+    padding: 15px;
+  }
+
+  .audit-reflection-grid {
+    grid-area: reflection;
+    margin-top: 0;
+  }
+
+  .audit-section {
+    padding: 20px;
+  }
+
+  .audit-section h2 {
+    font-size: clamp(23px, 2.5vw, 31px);
+  }
+
+  .audit-list {
+    margin-top: 17px;
+  }
+
+  .audit-browser {
+    grid-area: browser;
+    margin-top: 0;
+  }
+
+  .audit-patterns {
+    grid-area: patterns;
+    margin-top: 0;
+  }
+
+  .audit-domain-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 18px;
+    margin-top: 16px;
+  }
+
+  .audit-domain-list > div {
+    padding: 9px 0;
+  }
+
+  .audit-pattern-list {
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .audit-pattern {
+    min-height: 82px;
+    padding: 15px;
+  }
+
+  .audit-pattern p {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 820px) {
   .identity-grid,
   .attention-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1736,8 +2008,20 @@ blockquote {
     grid-template-columns: 1fr;
   }
 
+  .mission-list {
+    grid-template-columns: 1fr;
+  }
+
   .audit-reflection-grid {
     grid-template-columns: 1fr;
+  }
+
+  .audit-guidance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-guidance-card {
+    min-height: 0;
   }
 
   .event-debug-panel > header {
