@@ -125,6 +125,39 @@ test("returns an insufficient-data audit for an empty day", async () => {
   assert.deepEqual(audit.misses, []);
 });
 
+test("produces every populated verdict at its completion threshold", async () => {
+  const cases = [
+    { completed: 5, verdict: "STRONG" },
+    { completed: 3, verdict: "SOLID" },
+    { completed: 2, verdict: "MIXED" },
+    { completed: 1, verdict: "NEEDS_ATTENTION" },
+  ];
+
+  for (const { completed, verdict } of cases) {
+    const { eventApi, auditService } = createHarness();
+    const plannedMissions = Array.from({ length: 5 }, (_, index) => ({
+      missionId: `mission-${index}`,
+    }));
+    await record(
+      eventApi,
+      EventTypes.COMMAND_CENTER_OPENED,
+      { plannedMissions },
+      0,
+    );
+    for (let index = 0; index < completed; index += 1) {
+      await record(
+        eventApi,
+        EventTypes.MISSION_COMPLETED,
+        { missionId: `mission-${index}` },
+        index + 1,
+      );
+    }
+
+    const audit = await auditService.generateDailyAudit(TEST_DATE);
+    assert.equal(audit.verdict, verdict);
+  }
+});
+
 test("reports no mission activity when a plan exists without toggles", async () => {
   const { eventApi, auditService } = createHarness();
   await record(

@@ -10,16 +10,6 @@ A focused Chrome new-tab extension.
 4. Choose this project folder.
 5. Open a new tab.
 
-## Development
-
-Run tests:
-
-```sh
-node --test tests/*.test.js
-```
-
-Open the event stream with `Command+Shift+E` or `Ctrl+Shift+E`.
-
 ## Daily reflection
 
 After onboarding, open **Today's reflection** from the command center to review

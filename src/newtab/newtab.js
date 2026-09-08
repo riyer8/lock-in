@@ -145,16 +145,16 @@ const OBSTACLE_LABELS = {
 };
 
 const OBSTACLE_NUDGES = {
-  "low-energy": "Keep the first step small enough for today's energy.",
-  consistency: "Repeatable beats impressive. Start with the smallest version.",
-  procrastination: "Reduce the start to two minutes.",
-  distraction: "Close one competing tab before you begin.",
-  "chaotic-schedule": "Choose one opening in the schedule you have today.",
-  priorities: "Start with the highlighted mission. Ignore the rest for now.",
+  "low-energy": "Keep the first step small enough for today.",
+  consistency: "The smallest version still counts.",
+  procrastination: "Start for two minutes.",
+  distraction: "Close one extra tab before you begin.",
+  "chaotic-schedule": "Use one opening you actually have today.",
+  priorities: "Start with the first one. Ignore the rest for now.",
   "fall-off": "Restarting counts. Begin with one small action.",
-  motivation: "You do not need to feel ready. Start for two minutes.",
-  overwhelmed: "Shrink the plan to one visible next action.",
-  "not-sure": "Pick one mission. Starting will give you more information.",
+  motivation: "You don't need to feel ready. Two minutes is enough.",
+  overwhelmed: "One visible next action.",
+  "not-sure": "Pick the first one. Starting will tell you more.",
 };
 
 const MISSION_CATALOG = [
@@ -253,18 +253,11 @@ const FALLBACK_MISSIONS = [
   },
 ];
 
-const MOOD_RESPONSES = {
-  low: "Thanks for being honest 💛 Choose the smallest useful step.",
-  meh: "No perfect mood required. Two minutes can start momentum 🌱",
-  good: "You have something to work with. Put it toward what matters ✨",
-  "locked-in": "Use the spark, but keep the plan kind and sustainable 🔥",
-};
-
 const MOOD_LABELS = {
-  low: "LOW",
-  meh: "MEH",
-  good: "GOOD",
-  "locked-in": "LOCKED IN",
+  low: "Low",
+  meh: "Meh",
+  good: "Good",
+  "locked-in": "Locked in",
 };
 
 const daysRemainingElement = document.querySelector("#days-remaining");
@@ -273,8 +266,10 @@ const arcTitleElement = document.querySelector("#arc-title");
 const arcDateRangeElement = document.querySelector("#arc-date-range");
 const screens = document.querySelectorAll(".screen");
 const enterArcButton = document.querySelector("#enter-arc");
+const identityBackButton = document.querySelector("#identity-back");
 const identityCards = [...document.querySelectorAll(".identity-card")];
 const identityContinueButton = document.querySelector("#identity-continue");
+const fixingBackButton = document.querySelector("#fixing-back");
 const attentionCards = [...document.querySelectorAll(".attention-card")];
 const obstacleButtons = [...document.querySelectorAll("[data-obstacle]")];
 const detailsSection = document.querySelector("#details-section");
@@ -282,6 +277,7 @@ const fixingContinueButton = document.querySelector("#fixing-continue");
 const blueprintIdentities = document.querySelector("#blueprint-identities");
 const blueprintAreas = document.querySelector("#blueprint-areas");
 const blueprintObstacles = document.querySelector("#blueprint-obstacles");
+const blueprintBackButton = document.querySelector("#blueprint-back");
 const startArcButton = document.querySelector("#start-arc");
 const commandArcDay = document.querySelector("#command-arc-day");
 const commandGreeting = document.querySelector("#command-greeting");
@@ -290,14 +286,12 @@ const missionProgressSummary = document.querySelector(
   "#mission-progress-summary",
 );
 const missionEncouragement = document.querySelector("#mission-encouragement");
-const progressDay = document.querySelector("#progress-day");
+const becomingDate = document.querySelector("#becoming-date");
+const becomingIdentities = document.querySelector("#becoming-identities");
+const commandGoals = document.querySelector("#command-goals");
 const arcProgress = document.querySelector("#arc-progress");
 const arcProgressFill = document.querySelector("#arc-progress-fill");
 const moodButtons = [...document.querySelectorAll("[data-mood]")];
-const moodResponse = document.querySelector("#mood-response");
-const bodyState = document.querySelector("#body-state");
-const mindState = document.querySelector("#mind-state");
-const lifeState = document.querySelector("#life-state");
 const eventList = document.querySelector("#event-list");
 const clearEventsButton = document.querySelector("#clear-events");
 const closeEventsButton = document.querySelector("#close-events");
@@ -320,7 +314,7 @@ const savedGoalList = document.querySelector("#saved-goal-list");
 const newGoalButton = document.querySelector("#new-goal");
 const cancelGoalButton = document.querySelector("#cancel-goal");
 const smartSummary = document.querySelector("#smart-summary");
-const smartIndicators = [...document.querySelectorAll("[data-smart]")];
+const smartProgress = document.querySelector("#smart-progress");
 const milestoneCard = document.querySelector("#milestone-card");
 const milestoneTitle = document.querySelector("#milestone-title");
 const milestoneCountdown = document.querySelector("#milestone-countdown");
@@ -329,6 +323,8 @@ const weeklyConsistency = document.querySelector("#weekly-consistency");
 const recoveryMessage = document.querySelector("#recovery-message");
 const weeklyReviewForm = document.querySelector("#weekly-review-form");
 const weeklyReviewStatus = document.querySelector("#weekly-review-status");
+const reviewCreateGoalButton = document.querySelector("#review-create-goal");
+const saveWeeklyReviewButton = document.querySelector("#save-weekly-review");
 const closeAuditButton = document.querySelector("#close-audit");
 const auditPreviousButton = document.querySelector("#audit-previous");
 const auditTodayButton = document.querySelector("#audit-today");
@@ -578,21 +574,22 @@ function renderSmartProgress() {
   const draft = goalFromForm(
     activeGoals.find(({ id }) => id === document.querySelector("#goal-id").value),
   );
-  const { criteria, completed } = LockInGoals.calculateSMARTCompleteness(draft);
-  smartIndicators.forEach((indicator) => {
-    indicator.classList.toggle("is-complete", Boolean(criteria[indicator.dataset.smart]));
-  });
+  const { completed } = LockInGoals.calculateSMARTCompleteness(draft);
   smartSummary.textContent =
     completed === 5
-      ? "SMART foundation complete. Now make the first action easy to enter."
-      : `${completed} of 5 SMART checks complete. Clear beats perfect.`;
+      ? "Ready to save."
+      : `${completed} of 5 filled in.`;
+  smartProgress.setAttribute("aria-valuenow", String(completed));
+  [...smartProgress.children].forEach((segment, index) => {
+    segment.classList.toggle("is-complete", index < completed);
+  });
 }
 
 function resetGoalForm() {
   goalForm.reset();
   document.querySelector("#goal-id").value = "";
   document.querySelector("#metric-current").value = "";
-  goalFormTitle.textContent = "Define one clear outcome";
+  goalFormTitle.textContent = "New goal";
   goalFormError.textContent = "";
   goalForm.hidden = false;
   renderSmartProgress();
@@ -624,7 +621,7 @@ function fillGoalForm(goal) {
     document.querySelector(`#${id}`).value = value ?? "";
   });
   document.querySelector("#goal-feasible").checked = true;
-  goalFormTitle.textContent = "Refine this goal";
+  goalFormTitle.textContent = "Edit goal";
   goalFormError.textContent = "";
   goalForm.hidden = false;
   renderSmartProgress();
@@ -645,7 +642,7 @@ async function updateGoalStatus(goal, status) {
 
 function renderGoalList() {
   const activeCount = activeGoals.filter(({ status }) => status === "active").length;
-  goalCount.textContent = `${activeCount} / 3 active`;
+  goalCount.textContent = `${activeCount} / 3`;
   newGoalButton.disabled = activeCount >= 3;
 
   if (activeGoals.length === 0) {
@@ -661,14 +658,15 @@ function renderGoalList() {
       .map((goal) => {
         const card = document.createElement("article");
         card.className = "saved-goal-card";
+        card.dataset.status = goal.status;
         const area = AREA_BLUEPRINTS[goal.area]?.label ?? goal.area;
-        const edit = createTextElement("button", "", "EDIT");
+        const edit = createTextElement("button", "", "Edit");
         const pause = createTextElement(
           "button",
           "",
-          goal.status === "active" ? "PAUSE" : "RESUME",
+          goal.status === "active" ? "Pause" : "Resume",
         );
-        const archive = createTextElement("button", "", "ARCHIVE");
+        const archive = createTextElement("button", "", "Archive");
         edit.type = pause.type = archive.type = "button";
         edit.addEventListener("click", () => fillGoalForm(goal));
         pause.addEventListener("click", () =>
@@ -679,7 +677,7 @@ function renderGoalList() {
         actions.className = "saved-goal-actions";
         actions.append(edit, pause, archive);
         card.append(
-          createTextElement("small", "command-section-label", area),
+          createTextElement("small", "aside-kicker", toSentenceCase(area)),
           createTextElement("h3", "", goal.outcome),
           createTextElement(
             "p",
@@ -757,9 +755,9 @@ function buildTodayMissions() {
       category: AREA_BLUEPRINTS[mission.area]?.label ?? mission.area,
       title: goal?.outcome ?? mission.outcome,
       description: mission.action,
-      target: goal?.cue?.trigger
-        ? `When ${goal.cue.trigger}, at ${goal.cue.place}`
-        : "TODAY",
+        target: goal?.cue?.trigger
+          ? `When ${goal.cue.trigger} · ${goal.cue.place}`
+          : "Today",
       minimumAction: goal?.actions?.minimum,
       standardAction: goal?.actions?.standard,
       stretchAction: goal?.actions?.stretch,
@@ -773,11 +771,11 @@ function buildTodayMissions() {
       area: "milestone",
       category: "MILESTONE",
       title: milestone.title,
-      description: "A timely step for an upcoming date that matters.",
+      description: "A date that matters is close.",
       target:
         milestone.daysUntil === 0
-          ? "TODAY"
-          : `${milestone.daysUntil} DAYS TO GO`,
+          ? "Today"
+          : `${milestone.daysUntil} ${milestone.daysUntil === 1 ? "day" : "days"} left`,
       minimumAction: milestone.title,
       standardAction: milestone.title,
     });
@@ -823,13 +821,6 @@ function MissionCard(mission, completedMissions, isNextMission) {
   );
   const title = createTextElement("h3", "", toSentenceCase(mission.title));
   const description = createTextElement("p", "mission-card__copy", mission.description);
-  const tinyStart = isNextMission
-    ? createTextElement(
-        "p",
-        "mission-card__nudge",
-        "🌱 Two-minute start: begin small. Continuing is optional.",
-      )
-    : null;
   const footer = document.createElement("footer");
   footer.className = "mission-card__footer";
 
@@ -846,7 +837,7 @@ function MissionCard(mission, completedMissions, isNextMission) {
   const completeButton = createTextElement(
     "button",
     "mission-complete",
-    isComplete ? "Completed ✓" : "Mark complete",
+    isComplete ? "Done" : "Mark done",
   );
   completeButton.type = "button";
   completeButton.setAttribute("aria-pressed", String(isComplete));
@@ -904,7 +895,7 @@ function MissionCard(mission, completedMissions, isNextMission) {
     const levels = document.createElement("div");
     levels.className = "completion-levels";
     [
-      ["minimum", `Minimum: ${mission.minimumAction}`],
+      ["minimum", "Min"],
       ["standard", "Standard"],
       ...(mission.stretchAction ? [["stretch", "Stretch"]] : []),
     ].forEach(([level, label]) => {
@@ -961,9 +952,6 @@ function MissionCard(mission, completedMissions, isNextMission) {
     footer.append(completeButton);
   }
   card.append(category, title, description);
-  if (tinyStart) {
-    card.append(tinyStart);
-  }
   card.append(footer);
   return card;
 }
@@ -980,15 +968,17 @@ function TodayMission(missions = buildTodayMissions()) {
     .map((obstacle) => OBSTACLE_NUDGES[obstacle])
     .find(Boolean);
 
-  missionProgressSummary.textContent = `${completedCount} of ${missions.length} complete`;
+  missionProgressSummary.textContent = `${completedCount} of ${missions.length}`;
   const encouragement = [
-    obstacleNudge ?? "Pick one. Make the first step tiny. Starting counts.",
-    "Momentum is here 🌱 One real win beats a perfect plan.",
-    "You're close ✨ Keep the next step small and clear.",
-    "You followed through 🌟 Let that be enough for today.",
+    obstacleNudge ?? "Choose your first move. You can handle it. ✨",
+    "One down. Keep it sharp and doable. ✨",
+    "One left. Finish clean if it still matters. 🔥",
+    "Done. Enjoy that. 💅",
   ];
-  missionEncouragement.textContent =
+  const nudge =
     encouragement[Math.min(completedCount, encouragement.length - 1)];
+  missionEncouragement.textContent = nudge;
+  missionEncouragement.hidden = !nudge;
 
   missionList.replaceChildren(
     ...missions.map((mission) =>
@@ -1009,7 +999,6 @@ function ArcProgress(arcState = getCommandArcState()) {
     commandArcDay.textContent = `Starts in ${daysUntilStart} ${
       daysUntilStart === 1 ? "day" : "days"
     }`;
-    progressDay.textContent = "Not started";
     arcProgress.setAttribute("aria-valuenow", "0");
     arcProgress.setAttribute("aria-valuemax", String(totalDays));
     arcProgressFill.style.width = "0%";
@@ -1020,7 +1009,6 @@ function ArcProgress(arcState = getCommandArcState()) {
 
   commandArcDay.textContent =
     currentDay > totalDays ? "Arc complete" : `Day ${day} of ${totalDays}`;
-  progressDay.textContent = `Day ${day} / ${totalDays}`;
   arcProgress.setAttribute("aria-valuenow", String(day));
   arcProgress.setAttribute("aria-valuemax", String(totalDays));
   arcProgressFill.style.width = `${progress}%`;
@@ -1032,46 +1020,114 @@ function MoodCheckIn() {
   moodButtons.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.mood === mood));
   });
-
-  moodResponse.hidden = !MOOD_RESPONSES[mood];
-  moodResponse.textContent = MOOD_RESPONSES[mood] ?? "";
 }
 
-function QuickView() {
-  const bodyAreas = ["health-food", "fitness", "energy-recovery", "appearance"];
-  const mindAreas = ["mind", "digital-life", "career"];
-  const lifeAreas = ["social-life", "environment"];
+function renderBecomingReminder(missions, completedToday) {
+  becomingDate.textContent = `By ${ARC_END_DATE.toLocaleDateString([], {
+    month: "long",
+    day: "numeric",
+  })}`;
 
-  function showSelectedDirection(element, areas) {
-    const selected = areas.filter((area) => selectedAttentionAreas.has(area));
-    const labels = selected.map((area) =>
-      toSentenceCase(AREA_BLUEPRINTS[area].label),
+  const identities = [...selectedIdentities]
+    .map((identity) => IDENTITY_LABELS[identity])
+    .filter(Boolean);
+  becomingIdentities.textContent =
+    identities.length > 0
+      ? identities.join(" · ")
+      : "Focused · self-trusting · fully yours";
+
+  const nextGoalId = missions.find(
+    (mission) =>
+      mission.goalId && !completedToday.has(mission.id),
+  )?.goalId;
+  const goals = activeGoals
+    .filter(({ status }) => status === "active")
+    .sort((first, second) => {
+      if (first.id === nextGoalId) return -1;
+      if (second.id === nextGoalId) return 1;
+      return 0;
+    });
+  if (goals.length === 0) {
+    commandGoals.replaceChildren(
+      createTextElement(
+        "p",
+        "command-goals__empty",
+        "Your goals will stay here once you add them.",
+      ),
     );
-    element.textContent =
-      labels.length > 1
-        ? `${labels[0]} +${labels.length - 1}`
-        : labels[0] ?? "Not selected";
-    element.title = labels.join(", ");
+    return;
   }
 
-  showSelectedDirection(bodyState, bodyAreas);
-  showSelectedDirection(mindState, mindAreas);
-  showSelectedDirection(lifeState, lifeAreas);
+  commandGoals.replaceChildren(
+    ...goals.map((goal, index) => {
+      const item = document.createElement("article");
+      const isPriority = goal.id === nextGoalId || (!nextGoalId && index === 0);
+      const progressRange = goal.metric.target - goal.metric.baseline;
+      const progressPercent = Math.round(
+        Math.min(
+          1,
+          Math.max(
+            0,
+            progressRange === 0
+              ? 0
+              : (goal.metric.current - goal.metric.baseline) / progressRange,
+          ),
+        ) * 100,
+      );
+      const progress = `${goal.metric.current} of ${goal.metric.target} ${goal.metric.unit}`;
+      const progressTrack = document.createElement("span");
+      const progressFill = document.createElement("span");
+      progressTrack.className = "command-goals__progress";
+      progressTrack.setAttribute("role", "progressbar");
+      progressTrack.setAttribute("aria-label", `${goal.outcome} progress`);
+      progressTrack.setAttribute("aria-valuemin", "0");
+      progressTrack.setAttribute("aria-valuemax", "100");
+      progressTrack.setAttribute("aria-valuenow", String(progressPercent));
+      progressFill.style.width = `${progressPercent}%`;
+      progressTrack.append(progressFill);
+
+      item.className = isPriority
+        ? "command-goal command-goal--priority"
+        : "command-goal";
+      item.append(
+        createTextElement(
+          "span",
+          "command-goals__rank",
+          isPriority ? "Today's priority" : `Goal ${index + 1}`,
+        ),
+        createTextElement("strong", "", goal.outcome),
+        createTextElement("small", "", progress),
+        progressTrack,
+      );
+      if (goal.actions.minimum) {
+        item.append(
+          createTextElement(
+            "small",
+            "command-goals__minimum",
+            `On a hard day: ${goal.actions.minimum}`,
+          ),
+        );
+      }
+      return item;
+    }),
+  );
 }
 
 function renderMilestone() {
   const { next, task } = getMilestoneState();
-  milestoneCard.hidden = !next;
-  if (!next) {
+  const isToday = next?.daysUntil === 0;
+  const isActiveReminder = Boolean(task) || isToday;
+  milestoneCard.hidden = !isActiveReminder;
+  if (!isActiveReminder) {
     return;
   }
+  milestoneCard.classList.toggle("personal-reminder--today", isToday);
   milestoneTitle.textContent = next.label ?? "Upcoming milestone";
   milestoneCountdown.textContent =
-    next.daysUntil === 0
+    isToday
       ? "Today"
-      : `${next.daysUntil} ${next.daysUntil === 1 ? "day" : "days"} away`;
-  milestoneTask.textContent =
-    task?.title ?? "The important preparation is handled. Be present for it.";
+      : `In ${next.daysUntil} ${next.daysUntil === 1 ? "day" : "days"}`;
+  milestoneTask.textContent = task?.title ?? "Preparation is done. Be there for it.";
 }
 
 function renderWeeklyConsistency() {
@@ -1082,44 +1138,42 @@ function renderWeeklyConsistency() {
     new Date(),
   );
   weeklyConsistency.textContent = consistency.planned
-    ? `${consistency.completed} of ${consistency.planned} planned opportunities · ${consistency.percent}%`
-    : "No planned opportunities yet";
+    ? `${consistency.completed} of ${consistency.planned} · ${consistency.percent}%`
+    : "Nothing planned yet";
 
   const recentMiss = [...missionHistory]
     .reverse()
     .find((entry) => entry.planned && !entry.completed && entry.goalId);
   const goal = activeGoals.find(({ id }) => id === recentMiss?.goalId);
-  recoveryMessage.textContent = goal
+  const recovery = goal
     ? LockInGoals.buildLapseRecovery(goal, {
         date: recentMiss.date,
         nextDate: new Date(),
       }).message
-    : "Every planned opportunity is a fresh chance.";
+    : "";
+  recoveryMessage.textContent = recovery;
+  recoveryMessage.hidden = !recovery;
 }
 
 function getTimeBasedGreeting(date = new Date()) {
   const hour = date.getHours();
-  if (hour >= 5 && hour < 8) {
-    return { text: "Sunrise mode", emoji: "🌅" };
+  if (hour < 5) {
+    return "Still up 🌌";
   }
-  if (hour >= 8 && hour < 12) {
-    return { text: "Good morning", emoji: "☀️" };
+  if (hour < 12) {
+    return "Good morning ☀️";
   }
-  if (hour >= 12 && hour < 17) {
-    return { text: "Good afternoon", emoji: "🌤️" };
+  if (hour < 17) {
+    return "Good afternoon ✨";
   }
-  if (hour >= 17 && hour < 20) {
-    return { text: "Sunset mode", emoji: "🌇" };
+  if (hour < 21) {
+    return "Good evening 🌙";
   }
-  if (hour >= 20 && hour < 24) {
-    return { text: "Good evening", emoji: "🌙" };
-  }
-  return { text: "Deep night", emoji: "🌌" };
+  return "Good night 🌙";
 }
 
 function renderCommandGreeting(date = new Date()) {
-  const greeting = getTimeBasedGreeting(date);
-  commandGreeting.textContent = `${greeting.text} ${greeting.emoji}`;
+  commandGreeting.textContent = getTimeBasedGreeting(date);
 }
 
 async function CommandCenter() {
@@ -1149,7 +1203,7 @@ async function CommandCenter() {
   TodayMission(missions);
   ArcProgress(arcState);
   MoodCheckIn();
-  QuickView();
+  renderBecomingReminder(missions, completedToday);
   renderMilestone();
   renderWeeklyConsistency();
   eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
@@ -1164,6 +1218,7 @@ async function CommandCenter() {
 
 let screenBeforeDebug = "landing-screen";
 let observerDebugTimer = null;
+let debugReturnFocus = null;
 
 function formatDuration(durationMs) {
   const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
@@ -1193,7 +1248,7 @@ function formatAuditDuration(durationMs) {
 
 function formatMood(mood) {
   if (!mood) {
-    return "Not selected";
+    return "No check-in";
   }
   return mood
     .toLowerCase()
@@ -1206,40 +1261,40 @@ function getVerdictCopy(verdict, { isToday, hasPartialData }) {
   switch (verdict) {
     case "STRONG":
       return {
-        title: "🌟 You followed through",
-        detail: "Most of your planned missions became real action.",
+        title: "You followed through ✨",
+        detail: "Most of what you planned actually happened. That's yours.",
       };
     case "SOLID":
       return {
-        title: "🌱 Good momentum",
-        detail: "You moved the important parts of your day forward.",
+        title: "A solid day ✨",
+        detail: "The important parts moved forward. Keep that energy.",
       };
     case "MIXED":
       return {
-        title: "🌤️ A mixed day",
-        detail: "Some missions landed and some stayed open.",
+        title: "A mixed day",
+        detail: "Some of it landed. Some of it didn't.",
       };
     case "NEEDS_ATTENTION":
       return {
-        title: "💛 Room to simplify",
-        detail: "One clear priority can make the next start easier.",
+        title: "A lighter day",
+        detail: "No shame. Reset your crown and choose one clear next step. 👑",
       };
     default:
       if (hasPartialData) {
         return {
-          title: "🪴 A partial picture",
-          detail: "Some activity was captured, but no missions were available.",
+          title: "A partial picture",
+          detail: "Some activity was captured, but no missions were planned.",
         };
       }
       if (!isToday) {
         return {
-          title: "Not enough data for this day",
-          detail: "LOCK IN did not capture enough activity to build a reflection.",
+          title: "Not enough for this day",
+          detail: "There wasn't enough recorded activity to look back on.",
         };
       }
       return {
-        title: "🪴 Your day is still unfolding",
-        detail: "Check missions and mood as you go. The picture will get clearer.",
+        title: "Still unfolding",
+        detail: "Check in as you go. This will fill in.",
       };
   }
 }
@@ -1248,33 +1303,33 @@ function getPatternCopy(pattern) {
   switch (pattern.type) {
     case "HIGH_DISTRACTION_TIME":
       return {
-        title: `Long session on ${pattern.domain}`,
-        detail: `${formatAuditDuration(pattern.durationMs)} tracked. Did that match your intention?`,
+        title: `A long stretch on ${pattern.domain}`,
+        detail: `${formatAuditDuration(pattern.durationMs)}. Did that match what you meant to do?`,
       };
     case "STRONG_MISSION_COMPLETION":
       return {
-        title: "✨ Your plan turned into action",
-        detail: "You completed at least 80% of your planned missions.",
+        title: "The plan became action",
+        detail: "You finished at least 80% of today's missions.",
       };
     case "LOW_MISSION_COMPLETION":
       return {
-        title: "A lighter plan may feel better",
-        detail: "Consider choosing fewer or clearer missions next time.",
+        title: "Tomorrow could be lighter",
+        detail: "Fewer or smaller missions might be easier to enter.",
       };
     case "NO_MISSION_ACTIVITY":
       return {
-        title: "Missions stayed unchanged",
-        detail: "A plan existed, but no completions were recorded.",
+        title: "Missions stayed untouched",
+        detail: "A plan was there. Nothing was marked done.",
       };
     case "LIMITED_BROWSER_DATA":
       return {
-        title: "The browser picture is still forming",
-        detail: "No completed browser sessions were available. This does not mean you were inactive.",
+        title: "Browser time is still thin",
+        detail: "No finished sessions were recorded. That doesn't mean you were idle.",
       };
     default:
       return {
         title: "Something stood out",
-        detail: "Details are not available for this pattern yet.",
+        detail: "Not enough detail for this one yet.",
       };
   }
 }
@@ -1282,6 +1337,7 @@ function getPatternCopy(pattern) {
 function renderAuditList(container, items, marker, emptyCopy) {
   const rows = items.map((item) => {
     const row = document.createElement("p");
+    row.setAttribute("role", "listitem");
     row.append(
       createTextElement("span", "audit-list__marker", marker),
       createTextElement("span", "", item),
@@ -1290,7 +1346,9 @@ function renderAuditList(container, items, marker, emptyCopy) {
   });
 
   if (rows.length === 0) {
-    rows.push(createTextElement("p", "audit-list__empty", emptyCopy));
+    const emptyRow = createTextElement("p", "audit-list__empty", emptyCopy);
+    emptyRow.setAttribute("role", "listitem");
+    rows.push(emptyRow);
   }
   container.replaceChildren(...rows);
 }
@@ -1314,21 +1372,19 @@ async function renderDailyAudit() {
   const hasPartialData =
     audit.mood.selected !== null || audit.browser.totalObservedMs > 0;
 
-  auditDateLabel.textContent = isToday ? "TODAY" : isFuture ? "UPCOMING" : "PAST DAY";
+  auditDateLabel.textContent = isToday ? "Today" : isFuture ? "Upcoming" : "Past";
   auditViewTitle.textContent = isToday
-    ? "TODAY'S REFLECTION"
+    ? "Today"
     : isFuture
-      ? "UPCOMING DAY"
-      : "DAILY REFLECTION";
+      ? "Upcoming"
+      : "Looking back";
   auditDateElement.dateTime = audit.date;
-  auditDateElement.textContent = selectedAuditDate
-    .toLocaleDateString([], {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    })
-    .toUpperCase();
+  auditDateElement.textContent = selectedAuditDate.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
   auditTodayButton.disabled = isToday;
   auditEmpty.hidden = !hasNoFutureData;
   auditContent.hidden = hasNoFutureData;
@@ -1343,16 +1399,16 @@ async function renderDailyAudit() {
   });
   auditVerdict.textContent = verdictCopy.title;
   auditVerdictCopy.textContent = verdictCopy.detail;
-  auditMissions.textContent = `${audit.missions.completed} / ${audit.missions.total} completed`;
+  auditMissions.textContent = `${audit.missions.completed} / ${audit.missions.total}`;
   auditMood.textContent = formatMood(audit.mood.selected);
-  auditBrowserTotal.textContent = `${formatAuditDuration(
+  auditBrowserTotal.textContent = formatAuditDuration(
     audit.browser.totalObservedMs,
-  )} tracked`;
+  );
   auditFocus.textContent = audit.guidance.focus;
   auditAddMore.textContent = audit.guidance.addMore;
   auditMakeInteresting.textContent = audit.guidance.makeItInteresting;
   const levelSummary = audit.missions.levels
-    ? `${audit.missions.levels.minimum} minimum · ${audit.missions.levels.standard} standard · ${audit.missions.levels.stretch} stretch`
+    ? `${audit.missions.levels.minimum} min · ${audit.missions.levels.standard} standard · ${audit.missions.levels.stretch} stretch`
     : "No completion levels recorded";
   const goalRows = Object.entries(audit.missions.byGoal ?? {}).map(
     ([goalId, count]) => {
@@ -1364,35 +1420,36 @@ async function renderDailyAudit() {
   );
   if (milestoneOnDate) {
     goalRows.unshift(
-      `${milestoneOnDate.label}: be present; the preparation was there to support the day.`,
+      `${milestoneOnDate.label}: the day itself. Be there for it.`,
     );
   } else if (milestoneYesterday) {
     goalRows.unshift(
-      `After ${milestoneYesterday.label}: keep what mattered and release what did not.`,
+      `After ${milestoneYesterday.label}: keep what mattered.`,
     );
   }
   renderAuditList(
     auditGoalProgress,
     [levelSummary, ...goalRows],
     "↗",
-    "No goal actions recorded yet.",
+    "No goal actions yet.",
   );
 
   renderAuditList(
     auditHighlights,
     audit.highlights,
     "✓",
-    "Nothing to highlight yet.",
+    "Nothing yet.",
   );
   renderAuditList(
     auditMisses,
     audit.misses,
     "→",
-    "Nothing pressing right now.",
+    "Nothing pressing.",
   );
 
   const domainRows = audit.browser.topDomains.map(({ domain, durationMs }) => {
     const row = document.createElement("div");
+    row.setAttribute("role", "listitem");
     row.append(
       createTextElement("span", "", domain),
       createTextElement("strong", "", formatAuditDuration(durationMs)),
@@ -1400,9 +1457,13 @@ async function renderDailyAudit() {
     return row;
   });
   if (domainRows.length === 0) {
-    domainRows.push(
-      createTextElement("p", "audit-list__empty", "No browser time tracked."),
+    const emptyRow = createTextElement(
+      "p",
+      "audit-list__empty",
+      "No browser time recorded.",
     );
+    emptyRow.setAttribute("role", "listitem");
+    domainRows.push(emptyRow);
   }
   auditDomains.replaceChildren(...domainRows);
 
@@ -1414,6 +1475,8 @@ async function renderDailyAudit() {
     const copy = getPatternCopy(pattern);
     const row = document.createElement("article");
     row.className = `audit-pattern audit-pattern--${pattern.severity}`;
+    row.setAttribute("data-severity", pattern.severity);
+    row.setAttribute("role", "listitem");
     row.append(
       createTextElement("h3", "", copy.title),
       createTextElement("p", "", copy.detail),
@@ -1421,9 +1484,13 @@ async function renderDailyAudit() {
     return row;
   });
   if (patternRows.length === 0) {
-    patternRows.push(
-      createTextElement("p", "audit-list__empty", "Nothing unusual stood out."),
+    const emptyRow = createTextElement(
+      "p",
+      "audit-list__empty",
+      "Nothing unusual.",
     );
+    emptyRow.setAttribute("role", "listitem");
+    patternRows.push(emptyRow);
   }
   auditPatternList.replaceChildren(...patternRows);
 }
@@ -1483,27 +1550,36 @@ async function renderObserverDebug(events) {
   );
   const isActive = Boolean(activeSession);
 
-  observerStatus.textContent = isActive ? "ACTIVE" : "INACTIVE";
+  observerStatus.textContent = isActive ? "Active" : "Idle";
   observerStatusDot.parentElement.classList.toggle(
     "observer-status--active",
     isActive,
   );
-  observerDomain.textContent = activeSession?.domain ?? "NONE";
+  observerDomain.textContent = activeSession?.domain ?? "None";
   observerDuration.textContent = activeSession
     ? formatDuration(activeDuration)
     : "0s";
   observerTotal.textContent = formatDuration(totalDuration);
-  observerDomains.replaceChildren(
-    ...domainTotals.slice(0, 5).map(({ domain, durationMs }) => {
+  const domainRows = domainTotals.slice(0, 5).map(({ domain, durationMs }) => {
       const row = document.createElement("div");
       row.className = "observer-domain-row";
+      row.setAttribute("role", "listitem");
       row.append(
         createTextElement("span", "", domain),
         createTextElement("strong", "", formatDuration(durationMs)),
       );
       return row;
-    }),
-  );
+    });
+  if (domainRows.length === 0) {
+    const empty = createTextElement(
+      "p",
+      "observer-domains-empty",
+      "No domains tracked today.",
+    );
+    empty.setAttribute("role", "listitem");
+    domainRows.push(empty);
+  }
+  observerDomains.replaceChildren(...domainRows);
 }
 
 function formatEventMetadata(event) {
@@ -1535,24 +1611,37 @@ function formatEventMetadata(event) {
   return "";
 }
 
+function formatEventType(type) {
+  return String(type)
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 async function renderEventStream() {
   const events = (await eventApi.getEvents()).slice().reverse();
   await renderObserverDebug(events);
 
   if (events.length === 0) {
-    eventList.replaceChildren(
-      createTextElement("p", "event-list-empty", "NO EVENTS"),
+    const empty = createTextElement(
+      "p",
+      "event-list-empty",
+      "No events yet. Your local activity will appear here.",
     );
+    empty.setAttribute("role", "status");
+    eventList.replaceChildren(empty);
     return;
   }
 
   const eventElements = events.map((event) => {
     const item = document.createElement("article");
     const timestamp = document.createElement("time");
-    const title = createTextElement("h2", "", event.type);
+    const title = createTextElement("h3", "", formatEventType(event.type));
     const metadata = formatEventMetadata(event);
 
     timestamp.dateTime = event.timestamp;
+    timestamp.title = new Date(event.timestamp).toLocaleString();
     timestamp.textContent = new Date(event.timestamp).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -1574,9 +1663,11 @@ async function openEventDebug() {
   const activeScreen = [...screens].find((screen) => !screen.hidden);
   if (activeScreen?.id !== "event-debug-screen") {
     screenBeforeDebug = activeScreen?.id ?? screenBeforeDebug;
+    debugReturnFocus = document.activeElement;
   }
   showScreen("event-debug-screen");
   await renderEventStream();
+  closeEventsButton.focus();
   clearInterval(observerDebugTimer);
   observerDebugTimer = setInterval(async () => {
     await renderObserverDebug(await eventApi.getEvents());
@@ -1588,15 +1679,24 @@ function closeEventDebug() {
   observerDebugTimer = null;
   history.replaceState(null, "", `${location.pathname}${location.search}`);
   showScreen(screenBeforeDebug);
+  if (debugReturnFocus instanceof HTMLElement) {
+    debugReturnFocus.focus();
+  }
 }
 
 function showScreen(screenId) {
+  let activeScreen = null;
   screens.forEach((screen) => {
     const isActive = screen.id === screenId;
     screen.hidden = !isActive;
+    if (isActive) {
+      activeScreen = screen;
+    }
   });
 
-  window.scrollTo(0, 0);
+  if (activeScreen) {
+    activeScreen.scrollTop = 0;
+  }
 }
 
 goalForm.addEventListener("input", renderSmartProgress);
@@ -1685,11 +1785,28 @@ openWeeklyReviewButton.addEventListener("click", () => {
     options.push(option);
   }
   reviewGoal.replaceChildren(...options);
+  const hasActiveGoal = options.some(({ value }) => value);
+  [...weeklyReviewForm.elements].forEach((control) => {
+    if (
+      control !== reviewCreateGoalButton &&
+      control !== closeWeeklyReviewButton
+    ) {
+      control.disabled = !hasActiveGoal;
+    }
+  });
+  reviewCreateGoalButton.hidden = hasActiveGoal;
+  saveWeeklyReviewButton.hidden = !hasActiveGoal;
   weeklyReviewStatus.hidden = true;
   showScreen("weekly-review-screen");
 });
-closeWeeklyReviewButton.addEventListener("click", () => {
+closeWeeklyReviewButton.addEventListener("click", async () => {
+  await CommandCenter();
   showScreen("command-center-screen");
+});
+reviewCreateGoalButton.addEventListener("click", () => {
+  renderGoalList();
+  resetGoalForm();
+  showScreen("goals-screen");
 });
 weeklyReviewForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1727,14 +1844,16 @@ weeklyReviewForm.addEventListener("submit", async (event) => {
   }
   await privateStorage.write(WEEKLY_REVIEWS_STORAGE_KEY, weeklyReviews);
   await eventApi.record(EventTypes.WEEKLY_REVIEW_COMPLETED, review);
-  weeklyReviewStatus.textContent =
-    "Saved. Your next week begins with the smallest promise you chose.";
+  weeklyReviewStatus.textContent = "Saved. Next week uses the minimum you chose.";
   weeklyReviewStatus.hidden = false;
-  weeklyReviewForm.reset();
+  await CommandCenter();
 });
 
 enterArcButton.addEventListener("click", () => {
   showScreen("identity-screen");
+});
+identityBackButton.addEventListener("click", () => {
+  showScreen("landing-screen");
 });
 
 identityCards.forEach((card) => {
@@ -1752,6 +1871,9 @@ identityContinueButton.addEventListener("click", () => {
   if (selectedIdentities.size > 0) {
     showScreen("fixing-screen");
   }
+});
+fixingBackButton.addEventListener("click", () => {
+  showScreen("identity-screen");
 });
 
 attentionCards.forEach((card) => {
@@ -1781,6 +1903,9 @@ fixingContinueButton.addEventListener("click", () => {
     renderBlueprint();
     showScreen("blueprint-screen");
   }
+});
+blueprintBackButton.addEventListener("click", () => {
+  showScreen("fixing-screen");
 });
 
 startArcButton.addEventListener("click", async () => {
@@ -1830,20 +1955,25 @@ auditTodayButton.addEventListener("click", () => {
 auditNextButton.addEventListener("click", () => moveAuditDate(1));
 refreshAuditButton.addEventListener("click", async () => {
   refreshAuditButton.disabled = true;
-  refreshAuditButton.textContent = "REFRESHING…";
+  refreshAuditButton.textContent = "Refreshing…";
 
   try {
     await renderDailyAudit();
-    refreshAuditButton.textContent = "UPDATED";
+    refreshAuditButton.textContent = "Updated";
   } finally {
     setTimeout(() => {
-      refreshAuditButton.textContent = "REFRESH REFLECTION";
+      refreshAuditButton.textContent = "Refresh";
       refreshAuditButton.disabled = false;
     }, 900);
   }
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.querySelector("#event-debug-screen").hidden) {
+    event.preventDefault();
+    closeEventDebug();
+    return;
+  }
   if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === "E") {
     event.preventDefault();
     openEventDebug();
