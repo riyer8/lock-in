@@ -1,7 +1,7 @@
 "use strict";
 
 const http = require("node:http");
-const { CoachError, requestCoachResponse } = require("./coach.js");
+const { CoachError, requestCoachResponse, requestDailyPlan } = require("./coach.js");
 
 const HOST = process.env.COACH_HOST || "127.0.0.1";
 const PORT = Number(process.env.COACH_PORT) || 8787;
@@ -78,7 +78,10 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if (request.method === "OPTIONS" && request.url === "/api/coach") {
+  if (
+    request.method === "OPTIONS" &&
+    (request.url === "/api/coach" || request.url === "/api/plan")
+  ) {
     response.writeHead(204, {
       ...responseHeaders(origin),
       "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -89,7 +92,9 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if (request.method !== "POST" || request.url !== "/api/coach") {
+  const isCoachRequest = request.method === "POST" && request.url === "/api/coach";
+  const isPlanRequest = request.method === "POST" && request.url === "/api/plan";
+  if (!isCoachRequest && !isPlanRequest) {
     sendJson(response, 404, { error: "Not found." }, origin);
     return;
   }
@@ -101,6 +106,11 @@ async function handleRequest(request, response) {
 
   try {
     const context = await readJsonBody(request);
+    if (isPlanRequest) {
+      const plan = await requestDailyPlan(context);
+      sendJson(response, 200, { plan }, origin);
+      return;
+    }
     const coaching = await requestCoachResponse(context);
     sendJson(response, 200, { coaching }, origin);
   } catch (error) {

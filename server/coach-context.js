@@ -3,7 +3,8 @@
 const MAX_GOALS = 10;
 const MAX_RECENT_AUDITS = 6;
 const MAX_RECENT_EVENTS = 100;
-const MAX_CURRENT_MISSIONS = 3;
+const MAX_CURRENT_MISSIONS = 5;
+const MAX_RECENT_MISSION_OUTCOMES = 35;
 const MAX_INTERVENTION_OUTCOMES = 20;
 
 class ContextError extends Error {
@@ -61,6 +62,11 @@ function buildCoachContext(value) {
       "currentMissions",
       MAX_CURRENT_MISSIONS,
     ),
+    recentMissionOutcomes: requireArray(
+      value.recentMissionOutcomes ?? [],
+      "recentMissionOutcomes",
+      MAX_RECENT_MISSION_OUTCOMES,
+    ),
     interventionOutcomes: requireArray(
       value.interventionOutcomes,
       "interventionOutcomes",
@@ -75,6 +81,7 @@ function buildCoachContext(value) {
     context.recentAudits.length > 0 ||
     context.recentEvents.length > 0 ||
     context.currentMissions.length > 0 ||
+    context.recentMissionOutcomes.length > 0 ||
     context.interventionOutcomes.length > 0;
 
   if (!hasContext) {

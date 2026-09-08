@@ -410,6 +410,12 @@
               <p id="mission-progress-summary">0 of 3</p>
             </header>
             <p class="mission-nudge" id="mission-encouragement" hidden></p>
+            <div class="mission-plan-bar">
+              <button type="button" id="generate-plan">Generate Today's Plan</button>
+              <button type="button" id="regenerate-plan" hidden>Regenerate Plan</button>
+              <p id="plan-status" class="mission-plan-status" hidden></p>
+              <p id="plan-error" class="mission-plan-error" role="alert" hidden></p>
+            </div>
             <div class="mission-list" id="mission-list"></div>
           </section>
 
@@ -684,6 +690,7 @@
     <script src="../audit/auditUtils.js"></script>
     <script src="../audit/auditService.js"></script>
     <script src="../coach/context-builder.js"></script>
+    <script src="../coach/plan-builder.js"></script>
     <script src="newtab.js"></script>
   </body>
 </html>

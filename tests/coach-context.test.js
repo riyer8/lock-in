@@ -25,13 +25,18 @@ test("builds a bounded coach context and drops noisy events", () => {
         metadata: { missionId: "build" },
       },
     ],
-    currentMissions: Array.from({ length: 5 }, (_, index) => ({
+    currentMissions: Array.from({ length: 6 }, (_, index) => ({
       id: `mission-${index}`,
+    })),
+    recentMissionOutcomes: Array.from({ length: 40 }, (_, index) => ({
+      date: "2026-09-08",
+      completed: index % 2 === 0,
     })),
   });
 
   assert.equal(context.recentAudits.length, RECENT_WINDOW_DAYS - 1);
-  assert.equal(context.currentMissions.length, 3);
+  assert.equal(context.currentMissions.length, 5);
+  assert.equal(context.recentMissionOutcomes.length, 35);
   assert.deepEqual(
     context.recentEvents.map(({ type }) => type),
     ["MISSION_COMPLETED"],

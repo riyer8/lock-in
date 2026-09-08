@@ -27,8 +27,11 @@ const GOALS_STORAGE_KEY = "lock-in-goals-v1";
 const MISSION_HISTORY_STORAGE_KEY = "lock-in-mission-history-v1";
 const WEEKLY_REVIEWS_STORAGE_KEY = "lock-in-weekly-reviews-v1";
 const COACH_API_URL = "http://127.0.0.1:8787/api/coach";
+const PLAN_API_URL = "http://127.0.0.1:8787/api/plan";
 const COACH_HEALTH_URL = "http://127.0.0.1:8787/health";
 const COACH_LOADING_MESSAGE = "Looking for the useful signal…";
+const PLAN_LOADING_MESSAGE = "Choosing what matters today…";
+const ADAPTIVE_PLAN_STORAGE_NAME = "adaptive-plan";
 
 const storage = {
   readJson(key, fallback) {
@@ -351,6 +354,10 @@ const auditHighlights = document.querySelector("#audit-highlights");
 const auditMisses = document.querySelector("#audit-misses");
 const auditDomains = document.querySelector("#audit-domains");
 const auditPatternList = document.querySelector("#audit-pattern-list");
+const generatePlanButton = document.querySelector("#generate-plan");
+const regeneratePlanButton = document.querySelector("#regenerate-plan");
+const planStatus = document.querySelector("#plan-status");
+const planError = document.querySelector("#plan-error");
 const askCoachButton = document.querySelector("#ask-coach");
 const coachLoading = document.querySelector("#coach-loading");
 const coachResponse = document.querySelector("#coach-response");
@@ -751,7 +758,46 @@ function getMilestoneState(date = new Date()) {
   };
 }
 
-function buildTodayMissions() {
+function milestoneMissionFromState() {
+  const milestone = getMilestoneState().task;
+  if (!milestone) return null;
+  return {
+    id: `milestone:${milestone.id}`,
+    milestoneTaskId: milestone.id,
+    area: "milestone",
+    category: "MILESTONE",
+    title: milestone.title,
+    description: "A date that matters is close.",
+    target:
+      milestone.daysUntil === 0
+        ? "Today"
+        : `${milestone.daysUntil} ${milestone.daysUntil === 1 ? "day" : "days"} left`,
+    minimumAction: milestone.title,
+    standardAction: milestone.title,
+    reason: "Kept because a date-bound commitment is close.",
+  };
+}
+
+function readAdaptivePlan() {
+  const saved = storage.readJson(
+    getDailyStorageKey(ADAPTIVE_PLAN_STORAGE_NAME),
+    null,
+  );
+  return Array.isArray(saved?.missions) && saved.missions.length >= 3
+    ? saved.missions
+    : null;
+}
+
+function areaLabels() {
+  return Object.fromEntries(
+    Object.entries(AREA_BLUEPRINTS).map(([area, blueprint]) => [
+      area,
+      blueprint.label,
+    ]),
+  );
+}
+
+function buildDefaultMissions() {
   const adaptiveMissions = LockInGoals.selectDailyMissions(
     activeGoals,
     missionHistory,
@@ -767,30 +813,17 @@ function buildTodayMissions() {
       category: AREA_BLUEPRINTS[mission.area]?.label ?? mission.area,
       title: goal?.outcome ?? mission.outcome,
       description: mission.action,
-        target: goal?.cue?.trigger
-          ? `When ${goal.cue.trigger} · ${goal.cue.place}`
-          : "Today",
+      target: goal?.cue?.trigger
+        ? `When ${goal.cue.trigger} · ${goal.cue.place}`
+        : "Today",
       minimumAction: goal?.actions?.minimum,
       standardAction: goal?.actions?.standard,
       stretchAction: goal?.actions?.stretch,
     };
   });
-  const milestone = getMilestoneState().task;
+  const milestone = milestoneMissionFromState();
   if (milestone) {
-    adaptiveMissions.unshift({
-      id: `milestone:${milestone.id}`,
-      milestoneTaskId: milestone.id,
-      area: "milestone",
-      category: "MILESTONE",
-      title: milestone.title,
-      description: "A date that matters is close.",
-      target:
-        milestone.daysUntil === 0
-          ? "Today"
-          : `${milestone.daysUntil} ${milestone.daysUntil === 1 ? "day" : "days"} left`,
-      minimumAction: milestone.title,
-      standardAction: milestone.title,
-    });
+    adaptiveMissions.unshift(milestone);
   }
   if (adaptiveMissions.length > 0) {
     return adaptiveMissions.slice(0, 3);
@@ -815,6 +848,10 @@ function buildTodayMissions() {
   return missions.slice(0, 3);
 }
 
+function buildTodayMissions() {
+  return readAdaptivePlan() ?? buildDefaultMissions();
+}
+
 function MissionCard(mission, completedMissions, isNextMission) {
   const card = document.createElement("article");
   const isComplete = completedMissions.has(mission.id);
@@ -833,6 +870,9 @@ function MissionCard(mission, completedMissions, isNextMission) {
   );
   const title = createTextElement("h3", "", toSentenceCase(mission.title));
   const description = createTextElement("p", "mission-card__copy", mission.description);
+  const reason = mission.reason
+    ? createTextElement("p", "mission-card__nudge", mission.reason)
+    : null;
   const footer = document.createElement("footer");
   footer.className = "mission-card__footer";
 
@@ -964,6 +1004,9 @@ function MissionCard(mission, completedMissions, isNextMission) {
     footer.append(completeButton);
   }
   card.append(category, title, description);
+  if (reason) {
+    card.append(reason);
+  }
   card.append(footer);
   return card;
 }
@@ -1001,6 +1044,7 @@ function TodayMission(missions = buildTodayMissions()) {
       ),
     ),
   );
+  updatePlanButtons();
 }
 
 function ArcProgress(arcState = getCommandArcState()) {
@@ -1561,8 +1605,27 @@ async function collectCoachContext(date = new Date()) {
       target: mission.target,
       completed: completedMissions.has(mission.id),
       completionLevel: history?.level ?? null,
+      reason: mission.reason ?? "",
+      priority: mission.priority ?? "",
     };
   });
+  const windowStart = LockInGoals.formatDateKey(
+    LockInGoals.addDays(date, 1 - LockInCoachContext.RECENT_WINDOW_DAYS),
+  );
+  const todayKey = getDateKey(date);
+  const recentMissionOutcomes = missionHistory
+    .filter(
+      (entry) =>
+        entry?.date && entry.date >= windowStart && entry.date <= todayKey,
+    )
+    .slice(-LockInCoachContext.MAX_RECENT_MISSION_OUTCOMES)
+    .map((entry) => ({
+      date: entry.date,
+      area: entry.area ?? "",
+      completed: Boolean(entry.completed),
+      level: entry.level ?? null,
+      planned: entry.planned !== false,
+    }));
   const upcomingMilestones = (PERSONAL_CONFIG.milestones ?? [])
     .filter(
       ({ date: milestoneDate }) =>
@@ -1593,6 +1656,7 @@ async function collectCoachContext(date = new Date()) {
     recentAudits: audits.slice(1),
     recentEvents,
     currentMissions,
+    recentMissionOutcomes,
   });
 }
 
@@ -1606,16 +1670,18 @@ async function isCoachReachable() {
   }
 }
 
-async function ensureCoachBackend() {
+async function ensureCoachBackend(onStarting) {
   if (await isCoachReachable()) {
     return;
   }
 
-  coachLoading.textContent = "Starting the local coach…";
+  if (typeof onStarting === "function") {
+    onStarting();
+  }
 
   if (!globalThis.chrome?.runtime?.sendMessage) {
     throw new Error(
-      "Run npm run setup-coach once, reload LOCK IN, then click Ask Coach again.",
+      "Run npm run setup-coach once, reload LOCK IN, then try again.",
     );
   }
 
@@ -1624,7 +1690,7 @@ async function ensureCoachBackend() {
     result = await chrome.runtime.sendMessage({ type: "ENSURE_COACH_BACKEND" });
   } catch {
     throw new Error(
-      "Reload LOCK IN on chrome://extensions after running npm run setup-coach, then try Ask Coach again.",
+      "Reload LOCK IN on chrome://extensions after running npm run setup-coach, then try again.",
     );
   }
 
@@ -1634,11 +1700,152 @@ async function ensureCoachBackend() {
 
   if (!result || result?.code === "NATIVE_HOST_UNAVAILABLE") {
     throw new Error(
-      "Run npm run setup-coach once in the LOCK IN folder, reload the extension, then click Ask Coach again.",
+      "Run npm run setup-coach once in the LOCK IN folder, reload the extension, then try again.",
     );
   }
 
   throw new Error(result?.error || "Could not start the local coach.");
+}
+
+function updatePlanButtons() {
+  const hasPlan = Boolean(readAdaptivePlan());
+  generatePlanButton.hidden = hasPlan;
+  regeneratePlanButton.hidden = !hasPlan;
+}
+
+function preservedPlanMissions() {
+  const preserved = [];
+  const milestone = milestoneMissionFromState();
+  const current = readAdaptivePlan() ?? buildDefaultMissions();
+  const completed = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
+  );
+  if (milestone) {
+    const existing = current.find(
+      (mission) => mission.milestoneTaskId === milestone.milestoneTaskId,
+    );
+    preserved.push(existing ?? milestone);
+  }
+  current.forEach((mission) => {
+    if (
+      completed.has(mission.id) &&
+      !preserved.some((item) => item.id === mission.id)
+    ) {
+      preserved.push(mission);
+    }
+  });
+  return preserved;
+}
+
+async function syncAdaptivePlanHistory(missions) {
+  const today = getDateKey();
+  const ids = new Set(missions.map((mission) => mission.id));
+  const completedToday = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
+  );
+  missionHistory = missionHistory.filter((entry) => {
+    if (entry.date !== today) return true;
+    if (ids.has(entry.missionId)) return true;
+    if (entry.completed || completedToday.has(entry.missionId)) return true;
+    return false;
+  });
+  missions.forEach((mission) => {
+    const exists = missionHistory.some(
+      (entry) => entry.missionId === mission.id && entry.date === today,
+    );
+    if (!exists) {
+      missionHistory.push({
+        missionId: mission.id,
+        goalId: mission.goalId,
+        milestoneTaskId: mission.milestoneTaskId,
+        area: mission.area ?? mission.category,
+        date: today,
+        planned: true,
+        completed: completedToday.has(mission.id),
+      });
+    }
+  });
+  await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
+  storage.writeJson(
+    getDailyStorageKey("completed-missions"),
+    [...completedToday].filter((id) => ids.has(id)),
+  );
+}
+
+async function applyTodayPlan(missions) {
+  storage.writeJson(getDailyStorageKey(ADAPTIVE_PLAN_STORAGE_NAME), {
+    missions,
+    generatedAt: new Date().toISOString(),
+  });
+  await syncAdaptivePlanHistory(missions);
+  const completedToday = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
+  );
+  TodayMission(missions);
+  renderBecomingReminder(missions, completedToday);
+  renderWeeklyConsistency();
+}
+
+async function generateTodayPlan() {
+  generatePlanButton.disabled = true;
+  regeneratePlanButton.disabled = true;
+  planStatus.textContent = PLAN_LOADING_MESSAGE;
+  planStatus.hidden = false;
+  planError.hidden = true;
+
+  try {
+    await ensureCoachBackend(() => {
+      planStatus.textContent = "Starting the local coach…";
+    });
+    planStatus.textContent = PLAN_LOADING_MESSAGE;
+    const context = await collectCoachContext();
+    const response = await fetch(PLAN_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(context),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || "The plan could not be created right now.");
+    }
+    const proposed = result.plan?.missions;
+    if (!Array.isArray(proposed) || proposed.length < 3) {
+      throw new Error("The coach returned an incomplete plan.");
+    }
+
+    const missions = LockInPlanBuilder.buildAdaptiveMissions({
+      proposed,
+      goals: activeGoals.filter(({ status }) => status === "active"),
+      date: new Date(),
+      recentOutcomes: context.recentMissionOutcomes,
+      preserved: preservedPlanMissions(),
+      areaLabels: areaLabels(),
+    });
+    if (missions.length < 3) {
+      throw new Error("The coach returned too few usable missions.");
+    }
+    await applyTodayPlan(missions);
+    planStatus.textContent = "Today's plan is ready.";
+  } catch (error) {
+    planStatus.hidden = true;
+    planError.textContent =
+      error instanceof TypeError
+        ? "Could not reach the coach. Reload LOCK IN after running npm run setup-coach."
+        : error.message;
+    planError.hidden = false;
+  } finally {
+    generatePlanButton.disabled = false;
+    regeneratePlanButton.disabled = false;
+    updatePlanButtons();
+    if (!planError.hidden) {
+      return;
+    }
+    window.setTimeout(() => {
+      if (planStatus.textContent === "Today's plan is ready.") {
+        planStatus.hidden = true;
+      }
+    }, 1600);
+  }
 }
 
 async function askCoach() {
@@ -1649,7 +1856,9 @@ async function askCoach() {
   coachError.hidden = true;
 
   try {
-    await ensureCoachBackend();
+    await ensureCoachBackend(() => {
+      coachLoading.textContent = "Starting the local coach…";
+    });
     coachLoading.textContent = COACH_LOADING_MESSAGE;
     const response = await fetch(COACH_API_URL, {
       method: "POST",
@@ -2133,6 +2342,8 @@ moodButtons.forEach((button) => {
 });
 
 askCoachButton.addEventListener("click", askCoach);
+generatePlanButton.addEventListener("click", generateTodayPlan);
+regeneratePlanButton.addEventListener("click", generateTodayPlan);
 clearEventsButton.addEventListener("click", async () => {
   if (window.confirm("Clear all stored events? This cannot be undone.")) {
     await eventApi.clearEvents();

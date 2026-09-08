@@ -2,6 +2,8 @@
   "use strict";
 
   const RECENT_WINDOW_DAYS = 7;
+  const MAX_CURRENT_MISSIONS = 5;
+  const MAX_RECENT_MISSION_OUTCOMES = 35;
   const IMPORTANT_EVENT_TYPES = new Set([
     "MISSION_COMPLETED",
     "MISSION_UNCOMPLETED",
@@ -42,6 +44,7 @@
     recentAudits = [],
     recentEvents = [],
     currentMissions = [],
+    recentMissionOutcomes = [],
   } = {}) {
     const sortedEvents = [...recentEvents].sort(
       (first, second) => eventTime(second) - eventTime(first),
@@ -66,13 +69,19 @@
       todayAudit,
       recentAudits: recentAudits.slice(0, RECENT_WINDOW_DAYS - 1),
       recentEvents: importantEvents,
-      currentMissions: currentMissions.slice(0, 3),
+      currentMissions: currentMissions.slice(0, MAX_CURRENT_MISSIONS),
+      recentMissionOutcomes: recentMissionOutcomes.slice(
+        0,
+        MAX_RECENT_MISSION_OUTCOMES,
+      ),
       interventionOutcomes,
     };
   }
 
   const contextBuilder = {
     IMPORTANT_EVENT_TYPES,
+    MAX_CURRENT_MISSIONS,
+    MAX_RECENT_MISSION_OUTCOMES,
     RECENT_WINDOW_DAYS,
     buildCoachContext,
     isInterventionOutcome,

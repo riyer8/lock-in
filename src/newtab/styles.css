@@ -1004,7 +1004,8 @@ blockquote {
 }
 
 .mission-card--complete h3,
-.mission-card--complete .mission-card__copy {
+.mission-card--complete .mission-card__copy,
+.mission-card--complete .mission-card__nudge {
   opacity: 0.5;
 }
 
@@ -1046,6 +1047,50 @@ blockquote {
 #ask-coach:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.mission-plan-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.mission-plan-bar button {
+  padding: 9px 14px;
+  border: 1px solid rgba(216, 210, 236, 0.45);
+  border-radius: 999px;
+  color: #171722;
+  background: var(--lavender-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mission-plan-bar button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.mission-plan-bar button[hidden],
+.mission-plan-status[hidden],
+.mission-plan-error[hidden] {
+  display: none;
+}
+
+.mission-plan-status,
+.mission-plan-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mission-plan-status {
+  color: #aaa8b4;
+}
+
+.mission-plan-error {
+  color: #e7aaa8;
 }
 
 .coach-card__status,
@@ -2445,6 +2490,10 @@ blockquote {
   line-height: 1.45;
 }
 
+.mission-plan-bar {
+  margin-top: 14px;
+}
+
 .mission-list {
   gap: 0;
   margin-top: 18px;
@@ -2507,6 +2556,19 @@ blockquote {
 .mission-card__copy {
   font-size: 13px;
   line-height: 1.5;
+}
+
+.mission-card__nudge {
+  margin: 10px 0 0;
+  padding: 0;
+  color: #8f8c99;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mission-card--complete .mission-card__nudge {
+  opacity: 0.5;
 }
 
 .mission-card__footer {

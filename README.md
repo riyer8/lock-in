@@ -37,9 +37,18 @@ uses a one-time native helper to launch the local backend.
 If you move this folder, run `npm run setup-coach` again.
 
 The backend listens on `http://127.0.0.1:8787` and exposes
-`GET /health` and `POST /api/coach`. The extension is permitted to call that
-local origin; regular web-page origins are rejected. `.env` is excluded from
-both git and Cursor agent access.
+`GET /health`, `POST /api/coach`, and `POST /api/plan`. The extension is
+permitted to call that local origin; regular web-page origins are rejected.
+`.env` is excluded from both git and Cursor agent access.
+
+## Adaptive daily plan
+
+**Generate Today's Plan** uses the same bounded seven-day context as Ask Coach.
+The backend returns 3–5 structured missions. LOCK IN maps those onto the same
+Command Center mission objects, keeps date-bound and already-completed
+commitments, and scales the plan down when recent completion is low.
+
+Use **Regenerate Plan** to replace today's plan without dropping finished work.
 
 ## Daily reflection
 
@@ -59,6 +68,7 @@ reload the unpacked extension. The committed example contains no personal
 information.
 
 Each goal includes a measurable outcome, deadline, action cue, minimum action,
-normal action, stretch action, and an if-then recovery plan. Daily missions are
-selected from at most three active goals and nearby milestones. Progress uses
+normal action, stretch action, and an if-then recovery plan. Daily missions
+default from at most three active goals and nearby milestones. Generate Today's
+Plan can replace that with 3–5 adaptive missions for the day. Progress uses
 planned-opportunity consistency instead of a breakable streak.
