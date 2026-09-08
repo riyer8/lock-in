@@ -1,6 +1,8 @@
 # LOCK IN
 
-A local-first Chrome new-tab behavior-change system.
+A local-first Chrome new-tab behavior-change system for a Winter Arc.
+
+**Agents and anyone changing the product:** read [docs/PRODUCT.md](docs/PRODUCT.md) first. That is the canonical purpose, philosophy, and architecture. [AGENTS.md](AGENTS.md) is how to work in this repo.
 
 Identity → goals → behaviors → daily plan → real-world data → audit →
 patterns → experiments → AI coach → adapt, then repeat.

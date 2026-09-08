@@ -1,0 +1,24 @@
+---
+description: Canonical LOCK IN product context — read before changing or building anything
+alwaysApply: true
+---
+
+# LOCK IN product context
+
+Before changing or building anything, read `docs/PRODUCT.md`. That file is the product source of truth. `AGENTS.md` explains how to work in this repo. If code and the product doc disagree, move toward the doc.
+
+LOCK IN is a personal behavior-change system for a Winter Arc, not a habit tracker, todo list, calendar, or dashboard.
+
+The product is the loop: **Choose → Plan → Act → Observe → Audit → Learn → Adapt**.
+
+Do not build a feature unless it helps the user make better life decisions and actually follow through.
+
+Constraints:
+
+- Behavior (EventStore) is the source of truth, not intentions.
+- Recovery over punishment. Never miss twice. If a plan repeatedly fails, change the plan.
+- About 3–5 important actions per day. Today answers “what should I do right now?”
+- Distinguish fact / observation / hypothesis / action. Never present guesses as facts.
+- Today is the primary screen. Do not turn it into a metrics dashboard.
+- Design: premium, calm, cinematic, personal. No SaaS dashboards, rainbow gradients, gamification, or motivational quotes.
+- Local-first, incremental, modular. Do not add infrastructure unless the feature requires it.

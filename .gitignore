@@ -1,4 +1,7 @@
-.cursor/
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/product-context.mdc
 .env
 .env.*
 !.env.example

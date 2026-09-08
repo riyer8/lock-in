@@ -139,7 +139,6 @@ const APP_SCREENS = new Set([
   "goals-screen",
   "arc-screen",
   "daily-audit-screen",
-  "coach-screen",
   "progress-screen",
 ]);
 const SCREEN_HASH = {
@@ -151,12 +150,12 @@ const SCREEN_HASH = {
   "goals-screen": "goals",
   "arc-screen": "arc",
   "daily-audit-screen": "audit",
-  "coach-screen": "coach",
-  "progress-screen": "progress",
+  "progress-screen": "evidence",
 };
 const HASH_SCREEN = Object.fromEntries(
   Object.entries(SCREEN_HASH).map(([screenId, hash]) => [hash, screenId]),
 );
+HASH_SCREEN.progress = "progress-screen";
 const ONBOARDING_SCREENS = new Set([
   "landing-screen",
   "identity-screen",
@@ -182,7 +181,6 @@ const commandArcDay = document.querySelector("#command-arc-day");
 const commandGreeting = document.querySelector("#command-greeting");
 const todayFocusList = document.querySelector("#today-focus-list");
 const startFocusButton = document.querySelector("#start-focus");
-const coachTeaser = document.querySelector("#coach-teaser");
 const todayTheme = document.querySelector("#today-theme");
 const todayFollowThrough = document.querySelector("#today-follow-through");
 const commandArcInline = document.querySelector("#command-arc-inline");
@@ -450,6 +448,7 @@ function fillGoalForm(goal) {
     : "No planned days yet. The first completed behavior becomes evidence.";
   updateGoalReadiness();
   goalDetail.hidden = false;
+  goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function openGoalForIdentity(identityId) {
@@ -469,9 +468,32 @@ function openGoalForIdentity(identityId) {
   goalFormError.textContent = "";
   goalDetail.hidden = false;
   updateGoalReadiness();
+  goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderIdentityPicker() {
+  const grid = $("identity-picker-grid");
+  if (!grid) return;
+  grid.replaceChildren(
+    ...Object.values(IDENTITY_CATALOG).map((meta) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "identity-chip";
+      button.dataset.identity = meta.id;
+      button.setAttribute("aria-pressed", String(selectedIdentities.has(meta.id)));
+      button.textContent = `${meta.icon} ${meta.label}`;
+      button.addEventListener("click", () => {
+        toggleSavedSelection(selectedIdentities, meta.id, IDENTITIES_STORAGE_KEY);
+        renderIdentityPicker();
+        renderIdentityGoals();
+      });
+      return button;
+    }),
+  );
 }
 
 function renderIdentityGoals() {
+  renderIdentityPicker();
   const identities = [...selectedIdentities].filter((id) => IDENTITY_CATALOG[id]);
   const cards = identities.map((identityId) => {
     const meta = IDENTITY_CATALOG[identityId];
@@ -479,14 +501,16 @@ function renderIdentityGoals() {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "identity-goal-card";
-    card.append(
-      createTextElement("span", "", `${meta.icon} ${meta.label.toUpperCase()}`),
+    const copy = document.createElement("div");
+    copy.className = "identity-goal-card__copy";
+    copy.append(
+      createTextElement("small", "", meta.label.toUpperCase()),
       createTextElement("strong", "", goal?.outcome || "Add a goal"),
       createTextElement(
         "p",
         "",
         goal?.deadline
-          ? `Target: ${
+          ? `Target ${
               LockInGoals.parseDate(goal.deadline)?.toLocaleDateString([], {
                 month: "short",
                 day: "numeric",
@@ -495,12 +519,21 @@ function renderIdentityGoals() {
           : meta.aspiration,
       ),
     );
+    card.append(
+      createTextElement("span", "identity-goal-card__icon", meta.icon),
+      copy,
+      createTextElement("span", "identity-goal-card__open", goal ? "Open" : "Write"),
+    );
     card.addEventListener("click", () => openGoalForIdentity(identityId));
     return card;
   });
   if (!cards.length) {
     identityGoalGrid.replaceChildren(
-      createTextElement("p", "", "Choose identities in onboarding, then return here."),
+      createTextElement(
+        "p",
+        "goal-detail__hint",
+        "Tap an identity above to start a card. One primary goal per identity.",
+      ),
     );
     return;
   }
@@ -592,17 +625,33 @@ function followThroughCopy() {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function currentTheme() {
+async function recentCheckinSignals(date = new Date()) {
+  const start = LockInGoals.startOfDay(LockInGoals.addDays(date, -6));
+  const events = await eventApi.getEventsBetween(start, LockInGoals.endOfDay(date));
+  return {
+    recentEnergy: events
+      .filter((event) => event.type === EventTypes.ENERGY_CHECKIN)
+      .map((event) => ({ score: event.metadata?.score })),
+    recentSleep: events
+      .filter((event) => event.type === EventTypes.SLEEP_CHECKIN)
+      .map((event) => ({ hours: event.metadata?.hours })),
+    fitness: events.filter((event) => event.type === EventTypes.FITNESS_CHECKIN),
+    events,
+  };
+}
+
+async function currentTheme(date = new Date()) {
   const misses = activeGoals.reduce(
     (highest, goal) =>
-      Math.max(highest, LockInGoals.countConsecutiveMisses(missionHistory, goal.id, new Date())),
+      Math.max(highest, LockInGoals.countConsecutiveMisses(missionHistory, goal.id, date)),
     0,
   );
+  const { recentEnergy, recentSleep } = await recentCheckinSignals(date);
   return LockInGoals.deriveFocusTheme({
     consecutiveMisses: misses,
     activeExperiment: experiments.find((item) => item.status === "active") || null,
-    recentEnergy: [],
-    recentSleep: [],
+    recentEnergy,
+    recentSleep,
   });
 }
 
@@ -616,7 +665,7 @@ async function renderToday() {
   const completed = await completedMissionIds();
   const arcState = calculateArcState(new Date());
   commandGreeting.textContent = getTimeBasedGreeting();
-  todayTheme.textContent = currentTheme();
+  todayTheme.textContent = await currentTheme();
   todayFollowThrough.textContent = followThroughCopy();
   commandArcInline.textContent = ` · ${getArcDayLabel(arcState)}`;
   if (!missions.length) {
@@ -631,15 +680,13 @@ async function renderToday() {
         const item = document.createElement("li");
         if (completed.has(mission.id)) item.classList.add("is-complete");
         item.append(
-          createTextElement("span", "", `${index + 1}.`),
-          createTextElement("span", "", mission.title),
+          createTextElement("span", "focus-index", String(index + 1).padStart(2, "0")),
+          createTextElement("span", "focus-copy", mission.title),
         );
         return item;
       }),
     );
   }
-  const pending = coachInsight?.status === "pending";
-  coachTeaser.hidden = !pending;
 }
 
 async function syncPlannedHistory(missions) {
@@ -694,13 +741,15 @@ async function openFocusMode() {
   $("focus-title").textContent = mission.title;
   const cue = mission.cue;
   $("focus-cue").textContent = cue?.trigger
-    ? `When ${cue.trigger}${cue.place ? ` · ${cue.place}` : ""}`
+    ? `${cue.trigger}${cue.place ? ` · ${cue.place}` : ""}`
     : "Do this now.";
   $("focus-minimum").textContent = mission.minimumAction
     ? `Hard-day version: ${mission.minimumAction}`
     : "";
   $("focus-skip-wrap").hidden = true;
   $("focus-skip-reason").value = "";
+  if ($("focus-skip-actions")) $("focus-skip-actions").hidden = true;
+  if ($("focus-primary-actions")) $("focus-primary-actions").hidden = false;
   focusMode.hidden = false;
 }
 
@@ -835,32 +884,36 @@ async function ensureCoachBackend(onStarting) {
   throw new Error(result?.error || "Could not start the local coach.");
 }
 
-function renderCoachInsight() {
-  const observation = $("coach-observation");
-  if (!coachInsight) {
-    observation.textContent = "When a few days of evidence exist, I’ll tell you what I’m noticing.";
-    $("coach-pattern").textContent = "";
-    $("coach-priority").textContent = "";
-    $("coach-next-action").textContent = "";
-    $("coach-encouragement").textContent = "";
-    $("coach-adapt-reason").textContent = "";
-    $("yes-fix-it").hidden = true;
-    return;
+function noticingCopy(insight) {
+  if (!insight) {
+    return "When a few days of evidence exist, I’ll tell you what I’m noticing.";
   }
-  observation.textContent = coachInsight.observation || "";
-  $("coach-pattern").textContent = coachInsight.pattern || "";
-  $("coach-priority").textContent = coachInsight.priority || "";
-  $("coach-next-action").textContent = coachInsight.nextAction || "";
-  $("coach-encouragement").textContent = coachInsight.encouragement || "";
-  $("coach-adapt-reason").textContent = coachInsight.proposedAdaptation?.reason || "";
-  $("yes-fix-it").hidden = coachInsight.status === "applied";
+  return [insight.observation, insight.pattern, insight.encouragement]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function renderCoachInsight() {
+  const noticing = $("coach-noticing");
+  const offer = $("coach-offer");
+  const fixIt = $("yes-fix-it");
+  if (!noticing) return;
+  noticing.textContent = noticingCopy(coachInsight);
+  const pending = Boolean(coachInsight && coachInsight.status !== "applied");
+  if (offer) offer.hidden = !pending;
+  if (fixIt) fixIt.hidden = !pending;
 }
 
 function renderCoachThread() {
   const thread = $("coach-thread");
   if (!coachThread.length) {
     thread.replaceChildren(
-      createTextElement("p", "coach-message", "Chat is for arguing with the proposal, not for starting from zero."),
+      createTextElement(
+        "p",
+        "coach-message",
+        "Use this when the plan feels wrong. Add context, push back, or ask for a sharper next move.",
+      ),
     );
     return;
   }
@@ -902,10 +955,7 @@ async function refreshCoachInsight() {
     renderCoachInsight();
     await renderToday();
   } catch (caught) {
-    error.textContent =
-      caught instanceof TypeError
-        ? "Could not reach the coach. Reload LOCK IN after running npm run setup-coach."
-        : caught.message;
+    error.textContent = coachOfflineCopy();
     error.hidden = false;
   } finally {
     loading.textContent = COACH_LOADING_MESSAGE;
@@ -1023,9 +1073,33 @@ async function renderDailyAudit() {
   const empty = !audit.happened?.length && !audit.missed?.length && audit.missions.total === 0;
   $("audit-empty").hidden = !empty;
   $("audit-content").hidden = empty;
-  const happened = audit.happened?.length
-    ? audit.happened
-    : audit.highlights.map((label) => ({ label }));
+  const sleep = events.find((event) => event.type === EventTypes.SLEEP_CHECKIN);
+  const energy = events.find((event) => event.type === EventTypes.ENERGY_CHECKIN);
+  const fitness = events.find((event) => event.type === EventTypes.FITNESS_CHECKIN);
+  $("sleep-hours").value = sleep?.metadata?.hours ?? "";
+  $("energy-score").value = energy?.metadata?.score ?? "";
+  $("energy-at").value = energy?.metadata?.at ?? "";
+  $("fitness-activity").value = fitness?.metadata?.activity ?? "";
+  $("fitness-minutes").value = fitness?.metadata?.durationMin ?? "";
+  const dateKey = getDateKey(date);
+  const completedTitles = missionHistory
+    .filter((entry) => entry.date === dateKey && entry.completed)
+    .map((entry) => {
+      const goal = activeGoals.find((item) => item.id === entry.goalId);
+      const behavior = behaviorsForGoal(entry.goalId)[0];
+      return (
+        behavior?.standard ||
+        goal?.actions?.standard ||
+        goal?.outcome ||
+        String(entry.missionId || "").split(":").at(-1).replaceAll("-", " ")
+      );
+    });
+  const happenedExtras = (audit.happened || []).filter((item) => item.evidence !== "missions");
+  const happened = completedTitles.length
+    ? [...completedTitles.map((label) => ({ label })), ...happenedExtras]
+    : happenedExtras.length
+      ? happenedExtras
+      : (audit.happened?.length ? audit.happened : audit.highlights.map((label) => ({ label })));
   const missed = audit.missed?.length
     ? audit.missed
     : audit.misses.map((label) => ({ label }));
@@ -1037,11 +1111,23 @@ async function renderDailyAudit() {
       ? missed.map((item) => createTextElement("p", "", item.label || item))
       : [createTextElement("p", "", "Nothing important was left open.")]),
   );
-  $("audit-verdict").textContent = "What happened?";
+  $("audit-kept-count").textContent = audit.missions.total
+    ? `${audit.missions.completed}/${audit.missions.total}`
+    : "0/0";
+  $("audit-missed-count").textContent = String(missed.length);
+  $("audit-signal-count").textContent =
+    usefulPattern && usefulPattern.type !== "INSUFFICIENT_PATTERN_DATA" ? "Found" : "Learning";
+  $("audit-verdict").textContent = audit.missions.total
+    ? audit.missions.completed === audit.missions.total
+      ? "You followed through."
+      : "The day left a signal."
+    : "What actually happened?";
   $("audit-verdict-copy").textContent =
     audit.missions.total
       ? `${audit.missions.completed}/${audit.missions.total} important actions.`
-      : "A quiet day, or the plan never started.";
+      : happened.length
+        ? `${happened.length} things logged. No planned action score for this date.`
+        : "A quiet day, or the plan never started.";
   if (usefulPattern?.type === "PLAN_UNREALISTIC") {
     const recovery = LockInGoals.buildLapseRecovery(
       activeGoals.find((goal) => goal.id === usefulPattern.goalId) || activeGoals[0] || {},
@@ -1054,7 +1140,7 @@ async function renderDailyAudit() {
   $("audit-coach-copy").textContent =
     coachInsight?.proposedAdaptation?.reason ||
     coachInsight?.nextAction ||
-    "Open Coach when you want a proposed change.";
+    "Use Try this when the plan needs a small correction.";
   const finished = experiments.find(
     (experiment) =>
       experiment.status === "active" &&
@@ -1083,22 +1169,31 @@ async function saveCheckins() {
   const energy = Number($("energy-score").value);
   const activity = $("fitness-activity").value.trim();
   const minutes = Number($("fitness-minutes").value);
+  const stamped = new Date(selectedAuditDate);
+  stamped.setHours(21, 0, 0, 0);
+  const at = stamped.toISOString();
   if (Number.isFinite(hours) && hours > 0) {
-    await eventApi.record(EventTypes.SLEEP_CHECKIN, { hours }, "manual");
+    await eventApi.record(EventTypes.SLEEP_CHECKIN, { hours }, "manual", at);
   }
   if (Number.isFinite(energy) && energy >= 1) {
     await eventApi.record(
       EventTypes.ENERGY_CHECKIN,
       { score: energy, at: $("energy-at").value.trim() || "now" },
       "manual",
+      at,
     );
     const active = experiments.find((item) => item.status === "active");
     if (active) {
-      await eventApi.record(EventTypes.EXPERIMENT_MEASURE, {
-        experimentId: active.id,
-        key: "energy",
-        value: energy,
-      });
+      await eventApi.record(
+        EventTypes.EXPERIMENT_MEASURE,
+        {
+          experimentId: active.id,
+          key: "energy",
+          value: energy,
+        },
+        "lock-in",
+        at,
+      );
     }
   }
   if (activity) {
@@ -1106,23 +1201,33 @@ async function saveCheckins() {
       EventTypes.FITNESS_CHECKIN,
       { activity, durationMin: Number.isFinite(minutes) ? minutes : 0 },
       "manual",
+      at,
     );
   }
   await renderDailyAudit();
   celebrate("Logged.", { burst: false });
 }
 
-function renderArcScreen() {
+async function renderArcScreen() {
   const state = calculateArcState(new Date());
+  const totalDays = Math.max(1, state.totalDays || 116);
+  const currentDay = Math.min(totalDays, Math.max(1, state.currentDay));
+  const arcProgress = Math.min(100, Math.max(0, Math.round((currentDay / totalDays) * 100)));
   $("arc-overview-name").textContent = ARC_CONFIG.name || "Winter Arc";
   $("arc-overview-range").textContent = `${ARC_START_DATE.toLocaleDateString([], {
     month: "short",
     day: "numeric",
-  })} ─────────────── ${ARC_END_DATE.toLocaleDateString([], {
+  })} - ${ARC_END_DATE.toLocaleDateString([], {
     month: "short",
     day: "numeric",
   })}`;
-  $("arc-overview-day").textContent = `Day ${Math.max(1, state.currentDay)}`;
+  $("arc-overview-day").textContent = `Day ${currentDay}`;
+  $("arc-overview-copy").textContent =
+    currentDay <= 7
+      ? "You are still at the beginning. The win is proving that this version of you shows up."
+      : "This is the long view: not vibes, not streaks, just evidence that your life is bending in the right direction.";
+  $("arc-year-progress").style.width = `${arcProgress}%`;
+  $("arc-year-copy").textContent = `${arcProgress}% through the arc. ${totalDays - currentDay} days left to make the rest of the year feel different.`;
   const identities = [...selectedIdentities].filter((id) => IDENTITY_CATALOG[id]);
   const rows = identities.map((identityId) => {
     const adherence = LockInGoals.calculateIdentityAdherence(
@@ -1134,18 +1239,30 @@ function renderArcScreen() {
     );
     const row = document.createElement("div");
     row.className = "arc-identity-row";
+    const copy = document.createElement("div");
+    copy.className = "arc-identity-copy";
+    copy.append(
+      createTextElement("strong", "", IDENTITY_CATALOG[identityId].label),
+      createTextElement(
+        "small",
+        "",
+        adherence.planned
+          ? `${adherence.completed} of ${adherence.planned} promises kept`
+          : "No planned actions yet",
+      ),
+    );
     const bar = document.createElement("div");
     bar.className = "arc-bar";
     bar.append(document.createElement("span"));
     bar.firstChild.style.width = `${adherence.percent}%`;
-    row.append(
-      createTextElement("strong", "", IDENTITY_CATALOG[identityId].label.toUpperCase()),
-      bar,
-      createTextElement("span", "", `${adherence.percent}%`),
-    );
+    row.append(copy, bar, createTextElement("span", "arc-percent", `${adherence.percent}%`));
     return { row, adherence, identityId };
   });
-  $("arc-identity-bars").replaceChildren(...rows.map((item) => item.row));
+  $("arc-identity-bars").replaceChildren(
+    ...(rows.length
+      ? rows.map((item) => item.row)
+      : [createTextElement("p", "arc-caption", "Choose identities and lock goals to start seeing proof here.")]),
+  );
   const overall = rows.reduce(
     (sum, item) => {
       sum.completed += item.adherence.completed;
@@ -1159,22 +1276,43 @@ function renderArcScreen() {
     : "0%";
   const best = [...rows].sort((left, right) => right.adherence.percent - left.adherence.percent)[0];
   $("arc-transformation").textContent = best
-    ? IDENTITY_CATALOG[best.identityId].label.toUpperCase()
-    : currentTheme();
+    ? `Your ${IDENTITY_CATALOG[best.identityId].label} self is showing up.`
+    : await currentTheme();
   $("arc-transformation-copy").textContent = best
-    ? `${best.adherence.completed} of ${best.adherence.planned} planned ${IDENTITY_CATALOG[best.identityId].label} actions happened.`
-    : "Evidence will appear as you complete behaviors.";
+    ? `${best.adherence.completed} of ${best.adherence.planned} planned ${IDENTITY_CATALOG[best.identityId].label} actions happened. Keep making that identity easier to repeat.`
+    : "Evidence will appear here as you complete real behaviors.";
 }
 
-function renderProgress() {
+function weekdayTrendRows() {
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return labels
+    .map((label, day) => {
+      const planned = missionHistory.filter((entry) => {
+        if (!entry.planned) return false;
+        const date = LockInGoals.parseDate(entry.date);
+        return date && date.getDay() === day;
+      });
+      return {
+        label,
+        planned: planned.length,
+        completed: planned.filter((entry) => entry.completed).length,
+      };
+    })
+    .filter((row) => row.planned > 0);
+}
+
+async function renderProgress() {
+  const start = LockInGoals.startOfDay(LockInGoals.addDays(new Date(), -13));
+  const events = await eventApi.getEventsBetween(start, LockInGoals.endOfDay(new Date()));
   const patterns = LockInPatterns.detectMultiDayPatterns({
     history: missionHistory,
-    events: [],
+    events,
     goals: activeGoals,
     asOf: new Date(),
   });
   const lens = patterns.find((pattern) => pattern.type !== "INSUFFICIENT_PATTERN_DATA");
-  $("progress-lens").textContent = lens?.copy || "Don’t measure everything. Measure what helps you decide.";
+  $("progress-lens").textContent =
+    lens?.copy || "This tab is for raw signals that help Audit make better decisions.";
   const sections = [];
   const add = (title, body) => {
     if (!body) return;
@@ -1183,6 +1321,14 @@ function renderProgress() {
     card.append(createTextElement("h2", "", title), createTextElement("p", "", body));
     sections.push(card);
   };
+  const addCustom = (title, nodes) => {
+    if (!nodes.length) return;
+    const card = document.createElement("section");
+    card.className = "progress-card surface-card";
+    card.append(createTextElement("h2", "", title), ...nodes);
+    sections.push(card);
+  };
+
   activeGoals
     .filter((goal) => goal.status === "active")
     .forEach((goal) => {
@@ -1191,39 +1337,101 @@ function renderProgress() {
         LockInGoals.startOfWeek(new Date()),
         new Date(),
       );
+      if (!consistency.planned) return;
       add(
         IDENTITY_CATALOG[goal.identityId]?.label || goal.outcome,
-        `${goal.outcome}. ${consistency.planned ? `${consistency.percent}% of planned opportunities this week.` : "No planned opportunities yet."}`,
+        `${goal.outcome}. ${consistency.percent}% of planned opportunities this week (${consistency.completed} of ${consistency.planned}).`,
       );
     });
-  const week = LockInGoals.calculateWeeklyConsistency(
-    missionHistory,
-    LockInGoals.startOfWeek(new Date()),
-    new Date(),
-  );
-  add("Consistency", week.planned ? `${week.completed} of ${week.planned} planned actions this week.` : "");
-  const completed = missionHistory.filter((entry) => entry.completed).slice(-8);
-  if (completed.length) {
-    add(
-      "Completed missions",
-      completed.map((entry) => entry.missionId.split(":").at(-1)).join(" · "),
+
+  const weekdays = weekdayTrendRows();
+  if (weekdays.length) {
+    addCustom(
+      "Day patterns",
+      weekdays.map((row) => {
+        const percent = Math.round((row.completed / row.planned) * 100);
+        const line = document.createElement("div");
+        line.className = "weekday-row";
+        const bar = document.createElement("div");
+        bar.className = "arc-bar";
+        bar.append(document.createElement("span"));
+        bar.firstChild.style.width = `${percent}%`;
+        line.append(
+          createTextElement("span", "", row.label),
+          bar,
+          createTextElement("span", "", `${percent}%`),
+        );
+        return line;
+      }),
     );
   }
-  const fitnessNote = "Fitness progression appears after manual check-ins on Audit.";
-  add("Fitness", fitnessNote);
-  if (experiments.length) {
+
+  const completed = missionHistory.filter((entry) => entry.completed).slice(-6);
+  if (completed.length) {
     add(
-      "Experiments",
-      experiments
-        .map((item) => `${item.hypothesis} (${item.status})`)
+      "Recent proof",
+      completed
+        .map((entry) => {
+          const title = entry.missionId.split(":").at(-1).replaceAll("-", " ");
+          return `${entry.date} · ${title}`;
+        })
         .join(" · "),
     );
   }
+
+  const weekdayTotals = {};
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = LockInGoals.addDays(new Date(), -offset);
+    LockInBrowserObserver.getBrowserTimeByDomain(events, date).forEach(({ domain, durationMs }) => {
+      weekdayTotals[domain] = (weekdayTotals[domain] || 0) + durationMs;
+    });
+  }
+  const attention = Object.entries(weekdayTotals)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 5);
+  if (attention.length) {
+    add(
+      "Browser attention",
+      `Last 7 days in the browser: ${attention
+        .map(([domain, durationMs]) => `${domain} ${formatDuration(durationMs)}`)
+        .join(" · ")}`,
+    );
+  }
+
+  const fitness = events.filter((event) => event.type === EventTypes.FITNESS_CHECKIN);
+  if (fitness.length) {
+    const minutes = fitness.reduce(
+      (sum, event) => sum + (Number(event.metadata?.durationMin) || 0),
+      0,
+    );
+    add(
+      "Fitness",
+      `${fitness.length} check-ins · ${minutes} minutes. ${fitness
+        .slice(-4)
+        .map((event) => event.metadata?.activity || "session")
+        .join(" · ")}`,
+    );
+  }
+
+  if (experiments.length) {
+    add(
+      "Experiments",
+      experiments.map((item) => `${item.hypothesis} (${item.status})`).join(" · "),
+    );
+  }
+
   const milestones = PERSONAL_CONFIG.milestones ?? [];
   if (milestones.length) {
     add(
       "Milestones",
       milestones.map((item) => `${item.label} · ${item.date}`).join(" · "),
+    );
+  }
+
+  if (!sections.length) {
+    add(
+      "Waiting on evidence",
+      "Complete a behavior, log a check-in, or let a few browser days accumulate. Sections appear only when they have something to show.",
     );
   }
   $("progress-sections").replaceChildren(...sections);
@@ -1333,6 +1541,9 @@ function showScreen(screenId) {
     if (isActive) activeScreen = screen;
   });
   if (activeScreen) activeScreen.scrollTop = 0;
+  window.scrollTo({ top: 0, left: 0 });
+  celebrateRoot?.classList.remove("is-on");
+  if (celebrateRoot) celebrateRoot.hidden = true;
   const inApp = APP_SCREENS.has(screenId);
   if (appNav) appNav.hidden = !inApp;
   document.body.classList.toggle("app-ready", inApp);
@@ -1396,15 +1607,8 @@ async function loadAppScreen(screenId) {
     await renderDailyAudit();
   }
   if (screenId === "command-center-screen") await CommandCenter();
-  if (screenId === "coach-screen") {
-    renderCoachInsight();
-    renderCoachThread();
-    if (!coachInsight || coachInsight.date !== getDateKey()) {
-      refreshCoachInsight().catch(() => {});
-    }
-  }
-  if (screenId === "arc-screen") renderArcScreen();
-  if (screenId === "progress-screen") renderProgress();
+  if (screenId === "arc-screen") await renderArcScreen();
+  if (screenId === "progress-screen") await renderProgress();
 }
 
 async function openAppScreen(screenId) {
@@ -1459,22 +1663,27 @@ $("close-focus")?.addEventListener("click", closeFocusMode);
 $("focus-done")?.addEventListener("click", async () => {
   const missions = await buildTodayMissions();
   const mission = missions.find((item) => item.id === focusMissionId);
-  if (mission) await completeMission(mission);
   closeFocusMode();
+  if (mission) await completeMission(mission);
 });
 $("focus-skip")?.addEventListener("click", () => {
   $("focus-skip-wrap").hidden = false;
+  if ($("focus-skip-actions")) $("focus-skip-actions").hidden = false;
+  if ($("focus-primary-actions")) $("focus-primary-actions").hidden = true;
 });
-$("focus-skip-reason")?.addEventListener("keydown", async (event) => {
-  if (event.key !== "Enter") return;
+async function skipCurrentFocus() {
   const reason = $("focus-skip-reason").value.trim();
   if (!reason) return;
   const missions = await buildTodayMissions();
   const mission = missions.find((item) => item.id === focusMissionId);
   if (mission) await completeMission(mission, { skipped: true, reason });
   closeFocusMode();
+}
+$("focus-skip-reason")?.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter") return;
+  await skipCurrentFocus();
 });
-$("open-coach-teaser")?.addEventListener("click", () => openAppScreen("coach-screen"));
+$("focus-skip-confirm")?.addEventListener("click", skipCurrentFocus);
 $("save-checkins")?.addEventListener("click", saveCheckins);
 $("audit-previous")?.addEventListener("click", () => {
   selectedAuditDate.setDate(selectedAuditDate.getDate() - 1);
@@ -1489,16 +1698,26 @@ $("audit-today")?.addEventListener("click", () => {
   renderDailyAudit();
 });
 $("refresh-audit")?.addEventListener("click", renderDailyAudit);
+function coachOfflineCopy() {
+  return "The local coach isn’t running. Try again once it is.";
+}
+
 $("try-this")?.addEventListener("click", async () => {
   const proposal = coachInsight?.proposedAdaptation || {
     type: "protect-slot",
     changes: "Move the hardest work to the first slot tomorrow.",
     reason: "Protect the slipping goal.",
   };
+  const status = $("audit-adapt-status");
+  if (status) {
+    status.hidden = false;
+    status.textContent = "Working on tomorrow…";
+  }
   try {
     await applyAdaptation(proposal);
-  } catch (error) {
-    $("audit-coach-copy").textContent = error.message;
+    if (status) status.textContent = "Tomorrow’s plan changed.";
+  } catch {
+    if (status) status.textContent = coachOfflineCopy();
   }
 });
 $("keep-experiment")?.addEventListener("click", async () => {
@@ -1530,8 +1749,8 @@ $("yes-fix-it")?.addEventListener("click", async () => {
       },
     );
     renderCoachInsight();
-  } catch (error) {
-    $("coach-error").textContent = error.message;
+  } catch {
+    $("coach-error").textContent = coachOfflineCopy();
     $("coach-error").hidden = false;
   }
 });
@@ -1544,8 +1763,8 @@ $("coach-chat-form")?.addEventListener("submit", async (event) => {
   input.value = "";
   try {
     await sendCoachChat(text);
-  } catch (error) {
-    $("coach-error").textContent = error.message;
+  } catch {
+    $("coach-error").textContent = coachOfflineCopy();
     $("coach-error").hidden = false;
   }
 });

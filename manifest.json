@@ -2,9 +2,15 @@
   "manifest_version": 3,
   "name": "LOCK IN",
   "version": "1.4.0",
-  "description": "A local-first daily focus and reflection system.",
-  "permissions": ["storage", "tabs", "nativeMessaging"],
-  "host_permissions": ["http://127.0.0.1:8787/*"],
+  "description": "ramya's winter lock in.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8787/*"
+  ],
   "background": {
     "service_worker": "src/background/background.js"
   },
