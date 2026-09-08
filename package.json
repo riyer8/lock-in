@@ -4,9 +4,9 @@
   "private": true,
   "description": "A local-first daily focus and reflection system.",
   "scripts": {
-    "start": "node --env-file=.env server/server.js",
-    "setup-coach": "node server/setup-coach.js",
-    "test": "node --test"
+    "start": "python3 server/server.py",
+    "setup-coach": "python3 server/setup_coach.py",
+    "test": "node --test && python3 -m unittest discover -s tests -p 'test_*.py'"
   },
   "engines": {
     "node": ">=20.6"

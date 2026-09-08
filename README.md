@@ -12,7 +12,7 @@ A focused Chrome new-tab extension.
 
 ## AI Coach
 
-The AI Coach sends a bounded seven-day context to a local Node.js backend only
+The AI Coach sends a bounded seven-day context to a local Python backend only
 when you select **Ask Coach**. That context includes the Personal Blueprint,
 active goals, current missions, today's audit, six prior daily audits, important
 recent events, and any available intervention outcomes. It does not send the
@@ -22,15 +22,18 @@ The backend asks OpenAI for a structured observation, pattern, single priority,
 concrete next action, and evidence-based encouragement. The OpenAI key stays in
 the backend process and is never loaded by the extension.
 
-Requires Node.js 20.6 or newer. Chrome cannot start Node itself, so Ask Coach
-uses a one-time native helper to launch the local backend.
+Requires Python 3.9 or newer. Chrome cannot start Python itself, so Ask Coach
+uses a one-time native helper to launch the local backend. The new-tab page,
+goals, audits, and observer stay in JavaScript because Chrome extensions cannot
+run Python.
 
 1. Copy `.env.example` to `.env`.
 2. Add your key to `OPENAI_DEVELOPER_KEY` in `.env`.
 3. Optionally change `OPENAI_MODEL`.
 4. Load the unpacked extension in Chrome.
-5. Run `npm run setup-coach` once. After that, **Ask Coach** starts the backend
-   for you — no terminal on later uses, including after reboot.
+5. Run `npm run setup-coach` once (`python3 server/setup_coach.py` also works).
+   After that, **Ask Coach** starts the backend for you — no terminal on later
+   uses, including after reboot.
 6. Reload LOCK IN on `chrome://extensions`.
 7. Open a new tab and select **Ask Coach**.
 
