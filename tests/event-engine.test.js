@@ -114,3 +114,14 @@ test("persistence errors do not escape into the application", async () => {
     console.error = originalError;
   }
 });
+
+test("records goal archive and completion events", async () => {
+  const api = new EventApi(new EventStore(new MemoryStorage()));
+  await api.record(EventTypes.GOAL_ARCHIVED, { goalId: "goal-primary", status: "cancelled" });
+  await api.record(EventTypes.GOAL_COMPLETED, { goalId: "goal-primary", status: "completed" });
+  const events = await api.getEvents();
+  assert.deepEqual(
+    events.map((event) => event.type),
+    [EventTypes.GOAL_ARCHIVED, EventTypes.GOAL_COMPLETED],
+  );
+});

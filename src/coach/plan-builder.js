@@ -64,6 +64,7 @@
     );
     return (
       available.find((goal) => normalizeLabel(goal.outcome) === title) ||
+      available.find((goal) => normalizeLabel(goal.title) === title) ||
       available.find((goal) => {
         const area = normalizeLabel(goal.area);
         const label = normalizeLabel(areaLabels[goal.area] || goal.areaLabel);

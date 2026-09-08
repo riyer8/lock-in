@@ -4,6 +4,8 @@ MAX_RECENT_EVENTS = 100
 MAX_CURRENT_MISSIONS = 5
 MAX_RECENT_MISSION_OUTCOMES = 35
 MAX_INTERVENTION_OUTCOMES = 20
+MAX_CHAT_MESSAGES = 12
+MAX_CHAT_MESSAGE_CHARS = 400
 
 
 class ContextError(Exception):
@@ -23,6 +25,30 @@ def require_array(value, name, maximum):
     if len(value) > maximum:
         raise ContextError(f"{name} contains too many items.", 413, "CONTEXT_TOO_LARGE")
     return value
+
+
+def sanitize_messages(value):
+    messages = require_array(
+        value if value is not None else [],
+        "messages",
+        MAX_CHAT_MESSAGES,
+    )
+    cleaned = []
+    for item in messages:
+        if not is_plain_object(item):
+            continue
+        role = item.get("role")
+        text = item.get("text")
+        if role not in ("user", "coach") or not isinstance(text, str):
+            continue
+        trimmed = text.strip()[:MAX_CHAT_MESSAGE_CHARS]
+        if not trimmed:
+            continue
+        entry = {"role": role, "text": trimmed}
+        if isinstance(item.get("asOf"), str) and item["asOf"]:
+            entry["asOf"] = item["asOf"]
+        cleaned.append(entry)
+    return cleaned
 
 
 def build_coach_context(value):
@@ -85,11 +111,7 @@ def build_coach_context(value):
         "activeExperiment": value.get("activeExperiment")
         if isinstance(value.get("activeExperiment"), dict)
         else None,
-        "messages": require_array(
-            value.get("messages") if value.get("messages") is not None else [],
-            "messages",
-            12,
-        ),
+        "messages": sanitize_messages(value.get("messages")),
     }
 
     has_context = (

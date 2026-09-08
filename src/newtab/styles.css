@@ -6123,10 +6123,10 @@ body.app-ready .command-center {
 
 .arc-identity-row {
   display: grid;
-  grid-template-columns: 120px 1fr 48px;
-  gap: 12px;
+  grid-template-columns: minmax(92px, 132px) minmax(0, 1fr) 3.25em;
+  gap: 8px 14px;
   align-items: center;
-  margin: 10px 0;
+  margin: 0;
 }
 
 .arc-bar {

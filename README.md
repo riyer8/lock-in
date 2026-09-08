@@ -36,8 +36,9 @@ the same event types with a different `source`.
 The Coach tab (and Audit’s **Try this**) send a bounded seven-day context
 to a local Python backend. That context includes the Personal Blueprint,
 active goals, current missions, today’s audit, six prior daily audits,
-important recent events, patterns, experiments, and the last insight. It
-does not send the entire event history.
+important recent events, intervention outcomes, patterns, experiments,
+the last insight, and the current chat thread. It does not send the
+entire event history.
 
 The backend asks OpenAI for a structured observation, pattern, priority,
 next action, encouragement, and a proposed adaptation. Chat uses the same

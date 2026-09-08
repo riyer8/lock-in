@@ -4,6 +4,8 @@
   const RECENT_WINDOW_DAYS = 7;
   const MAX_CURRENT_MISSIONS = 5;
   const MAX_RECENT_MISSION_OUTCOMES = 35;
+  const MAX_CHAT_MESSAGES = 12;
+  const MAX_CHAT_MESSAGE_CHARS = 400;
   const IMPORTANT_EVENT_TYPES = new Set([
     "MISSION_COMPLETED",
     "MISSION_UNCOMPLETED",
@@ -41,6 +43,17 @@
     );
   }
 
+  function summarizeMessage(message) {
+    const role = message?.role === "coach" ? "coach" : message?.role === "user" ? "user" : "";
+    const text = typeof message?.text === "string" ? message.text.trim() : "";
+    if (!role || !text) return null;
+    return {
+      role,
+      text: text.slice(0, MAX_CHAT_MESSAGE_CHARS),
+      asOf: typeof message?.asOf === "string" ? message.asOf : "",
+    };
+  }
+
   function buildCoachContext({
     asOf = new Date().toISOString(),
     blueprint = {},
@@ -54,6 +67,7 @@
     patterns = [],
     lastInsight = null,
     activeExperiment = null,
+    messages = [],
   } = {}) {
     const sortedEvents = [...recentEvents].sort(
       (first, second) => eventTime(second) - eventTime(first),
@@ -91,11 +105,16 @@
         activeExperiment && typeof activeExperiment === "object"
           ? activeExperiment
           : null,
+      messages: (Array.isArray(messages) ? messages : [])
+        .map(summarizeMessage)
+        .filter(Boolean)
+        .slice(-MAX_CHAT_MESSAGES),
     };
   }
 
   const contextBuilder = {
     IMPORTANT_EVENT_TYPES,
+    MAX_CHAT_MESSAGES,
     MAX_CURRENT_MISSIONS,
     MAX_RECENT_MISSION_OUTCOMES,
     RECENT_WINDOW_DAYS,

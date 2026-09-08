@@ -16,6 +16,7 @@
         <button type="button" data-nav="goals-screen">Goals</button>
         <button type="button" data-nav="arc-screen">Arc</button>
         <button type="button" data-nav="daily-audit-screen">Audit</button>
+        <button type="button" data-nav="coach-screen">Coach</button>
         <button type="button" data-nav="progress-screen">Evidence</button>
       </div>
       <p id="command-arc-day">Day 1 of 116</p>
@@ -277,88 +278,92 @@
     <main class="screen goals-screen loop-screen" id="goals-screen" hidden>
       <div class="goals-shell identity-goals-shell">
         <section class="goals-hero surface-card" aria-labelledby="goals-title">
-          <p class="aside-kicker">Who I'm becoming</p>
-          <h1 id="goals-title">Goals that change you</h1>
-          <p>One goal per identity. Write why, outcome, behavior.</p>
+          <div class="goals-hero__row">
+            <div>
+              <p class="aside-kicker">Who I'm becoming</p>
+              <h1 id="goals-title">Outcomes that change you</h1>
+              <p>A goal is a meaningful outcome. Behaviors are the repeatable actions that move it. Today turns those into concrete missions.</p>
+            </div>
+            <button type="button" class="continue-button" id="create-goal">Create a goal</button>
+          </div>
         </section>
         <section class="identity-picker surface-card" aria-labelledby="identity-picker-title">
           <p class="aside-kicker" id="identity-picker-title">Identities I'm practicing</p>
-          <p class="goal-detail__hint">Add or drop identities. Cards follow this set.</p>
+          <p class="goal-detail__hint">Category for goals. Cards are outcomes, not habits.</p>
           <div id="identity-picker-grid" class="identity-picker__row"></div>
         </section>
         <div id="identity-goal-grid" class="identity-goal-grid"></div>
         <article class="goal-detail surface-card" id="goal-detail" hidden>
-          <header class="goal-detail__header">
-            <div>
-              <p class="aside-kicker" id="goal-detail-identity">Athlete</p>
-              <h2 id="goal-detail-title">New goal</h2>
-            </div>
-            <button type="button" class="ghost-button" id="close-goal-detail">Close</button>
-          </header>
           <form id="goal-form" class="goal-detail-form">
+            <header class="goal-detail__header">
+              <div>
+                <p class="aside-kicker" id="goal-detail-identity">New goal</p>
+                <label class="goal-title-label">
+                  <span class="sr-only">Goal title</span>
+                  <input id="goal-title" required maxlength="140" placeholder="Run a half marathon" />
+                </label>
+              </div>
+              <button type="button" class="ghost-button" id="close-goal-detail">Close</button>
+            </header>
             <input type="hidden" id="goal-id" />
             <input type="hidden" id="goal-identity" />
             <section>
+              <h3>Category</h3>
+              <label>Who this belongs to
+                <select id="goal-category" required></select>
+              </label>
+            </section>
+            <section>
               <h3>Why</h3>
               <label>Why this matters
-                <textarea id="goal-why" required maxlength="300" placeholder="Who this makes you"></textarea>
+                <textarea id="goal-why" required maxlength="300" placeholder="Become a stronger athlete."></textarea>
               </label>
             </section>
             <section>
               <h3>Outcome</h3>
-              <label>Outcome
-                <input id="goal-outcome" required maxlength="140" placeholder="Run a half marathon" />
+              <label>What done looks like
+                <textarea id="goal-outcome" maxlength="300" placeholder="Complete a half marathon."></textarea>
               </label>
-              <div class="loop-form-grid">
-                <label>Target date<input id="goal-deadline" type="date" required /></label>
-                <label>Now
-                  <input id="metric-current" type="number" step="any" placeholder="Now" />
-                </label>
-                <label>Target
-                  <input id="metric-target" type="number" step="any" placeholder="Goal" />
-                </label>
-                <label>Unit<input id="metric-unit" maxlength="40" placeholder="miles, hours…" /></label>
-              </div>
+              <label>Target date<input id="goal-deadline" type="date" /></label>
             </section>
             <section>
               <h3>Behaviors</h3>
-              <p class="goal-detail__hint">Standard creates the outcome. Minimum keeps trust.</p>
-              <label>Standard action<input id="action-standard" required maxlength="140" placeholder="Run 30 min" /></label>
-              <label>Minimum action<input id="action-minimum" required maxlength="140" placeholder="Walk 10 min" /></label>
-              <div class="loop-form-grid">
-                <label>After / when<input id="cue-trigger" required maxlength="100" placeholder="After morning coffee" /></label>
-                <label>Time<input id="cue-time" maxlength="40" placeholder="7:30 AM" /></label>
-                <label>Where<input id="cue-place" required maxlength="80" placeholder="The park" /></label>
-                <label>Days each week
-                  <select id="goal-frequency" required>
-                    <option value="3">3 days</option>
-                    <option value="1">1 day</option>
-                    <option value="2">2 days</option>
-                    <option value="4">4 days</option>
-                    <option value="5">5 days</option>
-                    <option value="6">6 days</option>
-                    <option value="7">Every day</option>
-                  </select>
-                </label>
-              </div>
+              <p class="goal-detail__hint">Repeatable actions that move this outcome. Not today's checklist.</p>
+              <div id="goal-behavior-list" class="goal-behavior-list"></div>
+              <button type="button" class="text-button" id="add-goal-behavior">Add a behavior</button>
+            </section>
+            <section id="goal-today-section">
+              <h3>Today</h3>
+              <p id="goal-today-copy" class="goal-detail__hint">Save this goal to see today's missions.</p>
+              <ul id="goal-today-list" class="goal-today-list"></ul>
             </section>
             <section id="goal-progress-section">
-              <h3>Progress</h3>
-              <p id="goal-progress-copy">No evidence yet. Complete one behavior.</p>
+              <h3>Evidence</h3>
+              <p id="goal-progress-copy">No evidence yet. Complete a mission that moves this goal.</p>
             </section>
             <section>
               <h3>Obstacles</h3>
-              <label>What makes this hard<input id="goal-obstacle" required maxlength="140" placeholder="Evenings get overloaded" /></label>
-              <label>Recovery move<input id="goal-recovery" required maxlength="180" placeholder="Do the minimum before deciding" /></label>
+              <label>What makes this hard<input id="goal-obstacle" maxlength="140" placeholder="Evenings get overloaded" /></label>
+              <label>Recovery move<input id="goal-recovery" maxlength="180" placeholder="Do the smallest useful action, then return" /></label>
             </section>
             <p class="form-error" id="goal-form-error" role="alert"></p>
             <p id="goal-readiness" class="goal-readiness"></p>
             <div class="goal-form-actions">
-              <button type="button" class="ghost-button" id="cancel-goal">Cancel</button>
-              <button type="submit" class="continue-button">Save</button>
+              <button type="button" class="text-button danger-button" id="release-goal" hidden>Archive</button>
+              <div class="goal-form-actions__primary">
+                <button type="button" class="ghost-button" id="pause-goal" hidden>Pause</button>
+                <button type="button" class="ghost-button" id="complete-goal" hidden>Mark reached</button>
+                <button type="button" class="ghost-button" id="cancel-goal">Cancel</button>
+                <button type="submit" class="continue-button">Save</button>
+              </div>
             </div>
           </form>
         </article>
+        <details class="released-goals surface-card" id="released-goals" hidden>
+          <summary id="released-goals-title">Archived and reached</summary>
+          <p class="goal-detail__hint">These stay off Today. Restore if this outcome should come back.</p>
+          <div id="released-goal-list" class="released-goal-list"></div>
+        </details>
       </div>
     </main>
 
@@ -369,7 +374,10 @@
           <hr class="today-rule" />
           <p id="today-focus-kicker" class="aside-kicker">Today's focus</p>
           <ol class="today-focus-list" id="today-focus-list"></ol>
-          <button type="button" class="continue-button today-start" id="start-focus">Start</button>
+          <div class="today-hero-actions">
+            <button type="button" class="continue-button today-start" id="start-focus">Start</button>
+            <button type="button" class="continue-button" id="write-goal" hidden>Write a goal</button>
+          </div>
           <div class="today-context-grid" aria-label="Today context">
             <section class="today-day-card surface-card" aria-labelledby="today-day-title">
               <div class="today-card-heading">
@@ -547,6 +555,34 @@
           </div>
           <button type="button" class="continue-button" id="save-checkins">Save check-ins</button>
         </details>
+      </div>
+    </main>
+
+    <main class="screen coach-screen loop-screen" id="coach-screen" hidden>
+      <div class="coach-shell">
+        <section class="coach-insight surface-card" aria-labelledby="coach-insight-title">
+          <p class="aside-kicker">What should I do differently?</p>
+          <h1 id="coach-insight-title">Ask what to do next.</h1>
+          <p id="coach-noticing" class="coach-noticing"></p>
+          <p id="coach-offer" class="coach-offer" hidden>I can change tomorrow’s plan around this.</p>
+          <div class="coach-insight-actions">
+            <button type="button" class="continue-button" id="yes-fix-it" hidden>Yes, fix it</button>
+            <button type="button" class="ghost-button" id="refresh-insight">Look again</button>
+          </div>
+          <p id="coach-loading" class="coach-card__status" role="status" hidden>Reading today’s context…</p>
+          <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
+        </section>
+        <section class="coach-chat surface-card" aria-labelledby="coach-chat-title">
+          <p class="aside-kicker" id="coach-chat-title">Talk</p>
+          <div id="coach-thread" class="coach-thread" aria-live="polite"></div>
+          <p id="coach-chat-loading" class="coach-card__status" role="status" hidden>Reading your recent days…</p>
+          <p id="coach-chat-error" class="coach-card__error" role="alert" hidden></p>
+          <form id="coach-chat-form" class="coach-chat-form">
+            <label class="sr-only" for="coach-chat-input">Message the coach</label>
+            <input id="coach-chat-input" maxlength="400" autocomplete="off" placeholder="What’s getting in the way?" />
+            <button type="submit" id="coach-chat-send">Send</button>
+          </form>
+        </section>
       </div>
     </main>
 

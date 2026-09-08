@@ -221,6 +221,50 @@ test("reports goal action levels and milestone preparation", async () => {
   assert.ok(audit.highlights.some((item) => item.includes("minimum-version")));
 });
 
+test("uses the latest Today plan instead of every mission id from the day", async () => {
+  const { eventApi, auditService } = createHarness();
+  await record(
+    eventApi,
+    EventTypes.COMMAND_CENTER_OPENED,
+    {
+      plannedMissions: [
+        { missionId: "old-a", title: "Old A", goalId: "goal-1" },
+        { missionId: "old-b", title: "Old B", goalId: "goal-2" },
+        { missionId: "old-c", title: "Old C", goalId: "goal-3" },
+      ],
+    },
+    0,
+  );
+  await record(
+    eventApi,
+    EventTypes.COMMAND_CENTER_OPENED,
+    {
+      plannedMissions: [
+        { missionId: "now-a", title: "Run 3x/week", goalId: "goal-1" },
+        { missionId: "now-b", title: "Deep work", goalId: "goal-2" },
+        { missionId: "now-c", title: "Recover", goalId: "goal-3" },
+      ],
+    },
+    1,
+  );
+  await record(
+    eventApi,
+    EventTypes.MISSION_COMPLETED,
+    { missionId: "old-a", title: "Run 3x/week", goalId: "goal-1" },
+    2,
+  );
+  await record(
+    eventApi,
+    EventTypes.MISSION_COMPLETED,
+    { missionId: "now-b", title: "Deep work", goalId: "goal-2" },
+    3,
+  );
+
+  const audit = await auditService.generateDailyAudit(TEST_DATE);
+  assert.equal(audit.missions.total, 3);
+  assert.equal(audit.missions.completed, 2);
+});
+
 test("is reproducible from the same event stream and persists the result", async () => {
   const { eventApi, auditService } = createHarness();
   await record(eventApi, EventTypes.MOOD_SELECTED, { mood: "ENERGIZED" }, 0);

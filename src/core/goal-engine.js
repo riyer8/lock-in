@@ -5,7 +5,16 @@
   const BEHAVIOR_VERSION = 1;
   const DAY_MS = 24 * 60 * 60 * 1000;
   const ACTIVE_STATUSES = new Set(["active", "in-progress"]);
+  const PAUSED_STATUS = "paused";
   const FINAL_STATUSES = new Set(["completed", "cancelled", "archived"]);
+  const GOAL_STATUSES = new Set([
+    "active",
+    "in-progress",
+    "paused",
+    "completed",
+    "cancelled",
+    "archived",
+  ]);
 
   const IDENTITY_CATALOG = Object.freeze({
     athlete: Object.freeze({
@@ -196,10 +205,41 @@
     return reverse[identityId] || "";
   }
 
+  function categoryFromIdentity(identityId) {
+    return IDENTITY_CATALOG[identityId]?.label || "";
+  }
+
+  function identityFromCategory(category, area) {
+    const requested = text(category).toLowerCase();
+    if (IDENTITY_CATALOG[requested]) return requested;
+    const match = Object.values(IDENTITY_CATALOG).find(
+      (identity) => identity.label.toLowerCase() === requested,
+    );
+    if (match) return match.id;
+    return identityFromArea(area);
+  }
+
+  function goalTitle(source, outcome = "") {
+    return text(source?.title) || text(outcome) || text(source?.outcome);
+  }
+
+  function normalizeObstacles(source) {
+    const listed = Array.isArray(source?.obstacles)
+      ? source.obstacles.map((item) => text(item)).filter(Boolean)
+      : [];
+    if (listed.length) return listed;
+    const single = text(source?.obstacle);
+    return single ? [single] : [];
+  }
+
+  function isPlannableGoal(goal) {
+    return ACTIVE_STATUSES.has(text(goal?.status).toLowerCase());
+  }
+
   function resolveIdentityId(source, area) {
     const explicit = text(source?.identityId).toLowerCase();
     if (IDENTITY_CATALOG[explicit]) return explicit;
-    return identityFromArea(area);
+    return identityFromCategory(source?.category, area);
   }
 
   function hasUsableMetric(metric) {
@@ -271,7 +311,8 @@
     const area = text(source.area);
     const identityId = resolveIdentityId(source, area);
     const outcome = text(source.outcome);
-    const generatedId = `${identityId || area}-${outcome}`
+    const title = goalTitle(source, outcome);
+    const generatedId = `${identityId || area}-${title || outcome}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
@@ -289,17 +330,23 @@
       recoveryPlan: text(source.recoveryPlan),
     };
     if (listed.length) {
-      return listed.map((behavior, index) =>
-        normalizeBehaviorRecord(
-          {
-            ...behavior,
-            id: text(behavior?.id) || `${goalId}-behavior-${index}`,
-            goalId,
-          },
-          fallback,
-          now,
-        ),
-      );
+      const normalized = listed
+        .map((behavior, index) => {
+          const record = typeof behavior === "string" ? { standard: text(behavior) } : behavior;
+          return normalizeBehaviorRecord(
+            {
+              ...record,
+              id: text(record?.id) || `${goalId}-behavior-${index}`,
+              goalId,
+              standard:
+                text(record?.standard) || text(record?.title) || text(behavior),
+            },
+            fallback,
+            now,
+          );
+        })
+        .filter((behavior) => behavior.standard || behavior.minimum);
+      if (normalized.length) return normalized;
     }
     if (!fallback.standard && !fallback.minimum) return [];
     return [
@@ -319,7 +366,8 @@
     const area = text(source.area);
     const identityId = resolveIdentityId(source, area);
     const outcome = text(source.outcome);
-    const generatedId = `${identityId || area}-${outcome}`
+    const title = goalTitle(source, outcome);
+    const generatedId = `${identityId || area}-${title || outcome}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
@@ -329,20 +377,29 @@
       parseDate(timestamps.createdAt) ||
       new Date(0);
     const nowIso = nowDate.toISOString();
-    const deadline = formatDateKey(source.deadline);
-    const status = text(source.status).toLowerCase() || "active";
+    const targetDate = formatDateKey(source.targetDate) || formatDateKey(source.deadline);
+    const status = GOAL_STATUSES.has(text(source.status).toLowerCase())
+      ? text(source.status).toLowerCase()
+      : "active";
     const behaviors = extractBehaviorsFromGoal(source, nowDate);
     const primary = behaviors[0];
+    const obstacles = normalizeObstacles({
+      ...source,
+      obstacle: text(source.obstacle) || text(primary?.friction?.obstacle),
+    });
 
     return {
       version: GOAL_VERSION,
       id: text(source.id) || `goal-${generatedId || "untitled"}`,
       identityId,
+      category: text(source.category) || categoryFromIdentity(identityId),
       area: area || areaFromIdentity(identityId),
-      outcome,
+      title,
+      outcome: outcome || title,
       why: text(source.why),
       metric: normalizeMetric(source.metric),
-      deadline,
+      deadline: targetDate,
+      targetDate,
       frequencyPerWeek: clamp(
         Math.round(
           finiteNumber(source.frequencyPerWeek, primary?.schedule?.daysPerWeek || 0),
@@ -360,7 +417,9 @@
         standard: text(actions.standard) || text(primary?.standard),
         stretch: text(actions.stretch) || text(primary?.stretch),
       },
-      obstacle: text(source.obstacle) || text(primary?.friction?.obstacle),
+      behaviors,
+      obstacle: obstacles[0] || "",
+      obstacles,
       recoveryPlan: text(source.recoveryPlan) || text(primary?.friction?.recoveryPlan),
       reward: text(source.reward),
       status: status || "active",
@@ -372,30 +431,28 @@
   }
 
   function validateGoalRecord(input, now = null) {
+    const source = isObject(input) ? input : {};
     const goal = normalizeGoalRecord(input, now);
     const errors = [];
     if (!isObject(input)) errors.push("Goal must be an object.");
     if (goal.version !== GOAL_VERSION) errors.push(`Unsupported goal version: ${goal.version}.`);
     if (!goal.identityId || !IDENTITY_CATALOG[goal.identityId]) {
-      errors.push("identityId is required.");
+      errors.push("identityId or category is required.");
     }
     if (!goal.area) errors.push("area is required.");
-    if (!goal.outcome) errors.push("outcome is required.");
+    if (!goal.title && !goal.outcome) errors.push("title is required.");
     if (!goal.why) errors.push("why is required.");
     if (goal.metric.unit && goal.metric.target === goal.metric.baseline) {
       errors.push("metric.target must differ from metric.baseline.");
     }
-    if (!goal.deadline) errors.push("deadline must be a valid date.");
-    if (goal.frequencyPerWeek < 1) errors.push("frequencyPerWeek must be between 1 and 7.");
-    if (!goal.actions.minimum || !goal.actions.standard) {
-      errors.push("minimum and standard actions are required.");
+    const requestedDate = text(source.targetDate) || text(source.deadline);
+    if (requestedDate && !goal.targetDate) {
+      errors.push("targetDate must be a valid date.");
     }
-    if (!goal.cue.trigger || !goal.cue.place) {
-      errors.push("cue trigger and place are required.");
-    }
-    if (!goal.obstacle || !goal.recoveryPlan) {
-      errors.push("obstacle and recoveryPlan are required.");
-    }
+    const hasBehavior = (goal.behaviors || []).some(
+      (behavior) => text(behavior.standard) || text(behavior.minimum),
+    );
+    if (!hasBehavior) errors.push("at least one behavior is required.");
     if (!goal.timestamps.createdAt || !goal.timestamps.updatedAt) {
       errors.push("timestamps must be valid.");
     }
@@ -645,6 +702,10 @@
     return date;
   }
 
+  function historyBehaviorId(entry) {
+    return text(entry?.behaviorId) || text(entry?.mission?.behaviorId);
+  }
+
   function selectDailyMissions(goals, history, milestones, date, limit = 3) {
     const today = startOfDay(date);
     if (!today) return [];
@@ -653,6 +714,7 @@
     const weekStart = startOfWeek(today);
     const normalizedGoals = (Array.isArray(goals) ? goals : []).map((input, index) => ({
       goal: normalizeGoalRecord(input, today),
+      input,
       index,
     }));
     const areasByGoalId = new Map(
@@ -666,16 +728,58 @@
       if (area && age >= 0 && age <= 6) recentAreas.set(area, (recentAreas.get(area) || 0) + 1);
     });
 
-    const candidates = normalizedGoals
-      .filter(({ goal }) => ACTIVE_STATUSES.has(goal.status) && goal.deadline)
-      .map(({ goal, index }) => {
-        const goalHistory = safeHistory.filter((entry) => historyGoalId(entry) === goal.id);
-        const weekCompletions = goalHistory.filter(
+    const candidates = [];
+    normalizedGoals.forEach(({ goal, input, index }) => {
+      if (!isPlannableGoal(goal)) return;
+      const behaviors = extractBehaviorsFromGoal({ ...input, ...goal, id: goal.id }, today)
+        .filter(
+          (behavior) =>
+            text(behavior.status).toLowerCase() !== "archived" &&
+            (behavior.standard || behavior.minimum),
+        );
+      if (!behaviors.length) return;
+      const goalHistory = safeHistory.filter((entry) => historyGoalId(entry) === goal.id);
+      const relatedTasks = milestoneTasks.filter((task) => task.goalId === goal.id);
+      const relatedMilestoneDays = safeMilestones
+        .filter(
+          (milestone) =>
+            isOpen(milestone) && text(milestone.goalId) === goal.id,
+        )
+        .map((milestone) => differenceInCalendarDays(milestoneDate(milestone), today))
+        .filter(
+          (days) =>
+            Number.isFinite(days) &&
+            days >= 0 &&
+            days <= DEFAULT_PRIVATE_CONFIG.milestoneLookaheadDays,
+        );
+      const nearestMilestone = relatedMilestoneDays.length
+        ? Math.min(...relatedMilestoneDays)
+        : Infinity;
+      const milestoneScore = Number.isFinite(nearestMilestone)
+        ? 1 / (nearestMilestone + 1)
+        : 0;
+      const targetDate = goal.targetDate || goal.deadline;
+      const daysToDeadline = targetDate
+        ? differenceInCalendarDays(targetDate, today)
+        : Number.POSITIVE_INFINITY;
+      const urgency = !Number.isFinite(daysToDeadline)
+        ? 0
+        : daysToDeadline < 0
+          ? 1 + Math.min(Math.abs(daysToDeadline), 30) / 30
+          : 1 / (daysToDeadline + 1);
+      const rotationScore = 1 / ((recentAreas.get(goal.area) || 0) + 1);
+
+      behaviors.forEach((behavior, behaviorIndex) => {
+        const behaviorHistory = goalHistory.filter((entry) => {
+          const entryBehavior = historyBehaviorId(entry);
+          return !entryBehavior || entryBehavior === behavior.id;
+        });
+        const weekCompletions = behaviorHistory.filter(
           (entry) =>
             wasCompleted(entry) &&
             isWithinDateRange(historyDate(entry), weekStart, endOfDay(today)),
         ).length;
-        const mostRecent = goalHistory
+        const mostRecent = behaviorHistory
           .filter(wasCompleted)
           .map(historyDate)
           .filter((value) => parseDate(value))
@@ -683,65 +787,63 @@
         const neglectedDays = mostRecent
           ? Math.max(0, differenceInCalendarDays(today, mostRecent))
           : 7;
-        const daysToDeadline = differenceInCalendarDays(goal.deadline, today);
-        const urgency =
-          daysToDeadline < 0
-            ? 1 + Math.min(Math.abs(daysToDeadline), 30) / 30
-            : 1 / (daysToDeadline + 1);
-        const frequencyDeficit = Math.max(0, goal.frequencyPerWeek - weekCompletions);
-        const relatedTasks = milestoneTasks.filter((task) => task.goalId === goal.id);
-        const relatedMilestoneDays = safeMilestones
-          .filter(
-            (milestone) =>
-              isOpen(milestone) && text(milestone.goalId) === goal.id,
-          )
-          .map((milestone) => differenceInCalendarDays(milestoneDate(milestone), today))
-          .filter(
-            (days) =>
-              Number.isFinite(days) &&
-              days >= 0 &&
-              days <= DEFAULT_PRIVATE_CONFIG.milestoneLookaheadDays,
-          );
-        const nearestMilestone = relatedMilestoneDays.length
-          ? Math.min(...relatedMilestoneDays)
-          : Infinity;
-        const milestoneScore = Number.isFinite(nearestMilestone)
-          ? 1 / (nearestMilestone + 1)
-          : 0;
-        const rotationScore = 1 / ((recentAreas.get(goal.area) || 0) + 1);
+        const weeklyTarget = Math.max(
+          1,
+          finiteNumber(behavior.schedule?.daysPerWeek, goal.frequencyPerWeek || 1),
+        );
+        const frequencyDeficit = Math.max(0, weeklyTarget - weekCompletions);
         const score =
           DEFAULT_PRIVATE_CONFIG.weights.urgency * urgency +
           DEFAULT_PRIVATE_CONFIG.weights.frequency * frequencyDeficit +
           DEFAULT_PRIVATE_CONFIG.weights.neglect * (Math.min(neglectedDays, 14) / 14) +
           DEFAULT_PRIVATE_CONFIG.weights.milestone * milestoneScore +
           DEFAULT_PRIVATE_CONFIG.weights.rotation * rotationScore;
-        return {
-          id: `${formatDateKey(today)}:${goal.id}`,
+        candidates.push({
+          id:
+            behaviorIndex === 0
+              ? `${formatDateKey(today)}:${goal.id}`
+              : `${formatDateKey(today)}:${goal.id}:${behavior.id}`,
           goalId: goal.id,
           identityId: goal.identityId,
-          behaviorId: `${goal.id}-behavior-primary`,
+          behaviorId: behavior.id,
           area: goal.area,
+          category: goal.category,
+          goalTitle: goal.title || goal.outcome,
           outcome: goal.outcome,
-          action: goal.actions.standard || goal.actions.minimum,
-          minimumAction: goal.actions.minimum,
+          action: behavior.standard || behavior.minimum,
+          minimumAction: behavior.minimum || goal.actions.minimum,
           score,
           daysToDeadline,
           frequencyRemaining: frequencyDeficit,
           milestoneTasks: relatedTasks,
           index,
-        };
+          behaviorIndex,
+        });
       });
+    });
 
-    return candidates
-      .sort(
-        (a, b) =>
-          b.score - a.score ||
-          a.daysToDeadline - b.daysToDeadline ||
-          a.goalId.localeCompare(b.goalId) ||
-          a.index - b.index,
-      )
-      .slice(0, clamp(Math.floor(finiteNumber(limit, 3)), 0, 3))
-      .map(({ index, ...mission }) => mission);
+    const max = clamp(Math.floor(finiteNumber(limit, 3)), 0, 3);
+    const ranked = candidates.sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.daysToDeadline - b.daysToDeadline ||
+        a.goalId.localeCompare(b.goalId) ||
+        a.behaviorIndex - b.behaviorIndex ||
+        a.index - b.index,
+    );
+    const picked = [];
+    const usedGoals = new Set();
+    ranked.forEach((candidate) => {
+      if (picked.length >= max || usedGoals.has(candidate.goalId)) return;
+      picked.push(candidate);
+      usedGoals.add(candidate.goalId);
+    });
+    ranked.forEach((candidate) => {
+      if (picked.length >= max) return;
+      if (picked.some((item) => item.id === candidate.id)) return;
+      picked.push(candidate);
+    });
+    return picked.map(({ index, behaviorIndex, ...mission }) => mission);
   }
 
   function calculateWeeklyConsistency(opportunities, weekStart, weekEnd) {
@@ -806,7 +908,7 @@
     const criteria = {
       why: Boolean(goal.why),
       behavior: behaviors.some((item) => item.standard || item.minimum),
-      notice: Boolean(goal.deadline || hasUsableMetric(goal.metric)),
+      notice: Boolean(goal.targetDate || goal.deadline || hasUsableMetric(goal.metric)),
     };
     const completed = Object.values(criteria).filter(Boolean).length;
     return {
@@ -932,6 +1034,54 @@
     };
   }
 
+  function chooseLeadingIdentity(rows) {
+    const list = (Array.isArray(rows) ? rows : []).filter(
+      (row) => text(row?.identityId) && finiteNumber(row?.planned) > 0,
+    );
+    if (!list.length) return null;
+    return [...list].sort(
+      (left, right) =>
+        finiteNumber(right.completed) - finiteNumber(left.completed) ||
+        finiteNumber(right.percent) - finiteNumber(left.percent) ||
+        text(left.identityId).localeCompare(text(right.identityId)),
+    )[0];
+  }
+
+  function setGoalStatus(input, status, now = null) {
+    const nowDate = parseDate(now) || new Date();
+    const goal = normalizeGoalRecord(input, nowDate);
+    const nextStatus = text(status).toLowerCase();
+    return normalizeGoalRecord(
+      {
+        ...goal,
+        status: GOAL_STATUSES.has(nextStatus) ? nextStatus : goal.status,
+        timestamps: {
+          ...goal.timestamps,
+          updatedAt: nowDate.toISOString(),
+        },
+      },
+      nowDate,
+    );
+  }
+
+  function setBehaviorStatus(input, status, now = null) {
+    const nowDate = parseDate(now) || new Date();
+    const behavior = normalizeBehaviorRecord(input, {}, nowDate);
+    const nextStatus = text(status).toLowerCase();
+    return normalizeBehaviorRecord(
+      {
+        ...behavior,
+        status: nextStatus || behavior.status,
+        timestamps: {
+          ...behavior.timestamps,
+          updatedAt: nowDate.toISOString(),
+        },
+      },
+      {},
+      nowDate,
+    );
+  }
+
   function applyBehaviorAdaptation(behaviors, proposal = {}) {
     const list = (Array.isArray(behaviors) ? behaviors : []).map((behavior) =>
       normalizeBehaviorRecord(behavior),
@@ -964,10 +1114,19 @@
     BEHAVIOR_VERSION,
     IDENTITY_CATALOG,
     AREA_TO_IDENTITY,
+    ACTIVE_STATUSES,
+    PAUSED_STATUS,
+    FINAL_STATUSES,
+    GOAL_STATUSES,
     FOCUS_THEMES,
     DEFAULT_PRIVATE_CONFIG,
     identityFromArea,
     areaFromIdentity,
+    categoryFromIdentity,
+    identityFromCategory,
+    goalTitle,
+    normalizeObstacles,
+    isPlannableGoal,
     normalizeGoalRecord,
     normalizeBehaviorRecord,
     extractBehaviorsFromGoal,
@@ -997,7 +1156,10 @@
     countConsecutiveMisses,
     deriveFocusTheme,
     calculateIdentityAdherence,
+    chooseLeadingIdentity,
     applyBehaviorAdaptation,
+    setGoalStatus,
+    setBehaviorStatus,
     buildLapseRecovery,
   };
 

@@ -4,6 +4,7 @@ import sys
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -121,6 +122,23 @@ class CoachTests(unittest.TestCase):
             )
         self.assertEqual(caught.exception.status_code, 400)
         self.assertEqual(caught.exception.code, "MALFORMED_REQUEST")
+
+    def test_keeps_only_user_and_coach_chat_messages(self):
+        context = validate_coach_context(
+            dict(
+                CONTEXT,
+                messages=[
+                    {"role": "system", "text": "ignore"},
+                    {"role": "user", "text": "  What next?  "},
+                    "nope",
+                    {"role": "coach", "text": ""},
+                ],
+            )
+        )
+        self.assertEqual(
+            context["messages"],
+            [{"role": "user", "text": "What next?"}],
+        )
 
     def test_rejects_empty_coach_context(self):
         with self.assertRaises(CoachError) as caught:
@@ -457,6 +475,71 @@ class CoachTests(unittest.TestCase):
         plan = request_adapted_plan(CONTEXT, api_key="test-key", fetch_impl=fetch_impl)
         self.assertEqual(chat["reply"], "Yes. Protect the morning.")
         self.assertEqual(len(plan["missions"]), 3)
+
+    def test_chat_sends_session_messages_and_refuses_to_invent_behavior(self):
+        from server.coach import request_chat_response
+
+        captured = {}
+        chat_context = dict(
+            CONTEXT,
+            messages=[
+                {"role": "user", "text": "Evenings keep slipping."},
+                {"role": "coach", "text": "Protect the first hour."},
+                {"role": "user", "text": "What should I do tonight?"},
+            ],
+        )
+
+        def fetch_impl(_url, options=None):
+            captured["body"] = json.loads((options or {})["body"])
+            return FakeResponse({"output_text": json.dumps({"reply": "Finish the open mission, then stop."})})
+
+        chat = request_chat_response(
+            chat_context,
+            api_key="test-key",
+            fetch_impl=fetch_impl,
+        )
+        self.assertEqual(chat["reply"], "Finish the open mission, then stop.")
+        self.assertEqual(captured["body"]["text"]["format"]["name"], "lock_in_coach_chat")
+        self.assertRegex(captured["body"]["instructions"], r"Never invent behavior")
+        self.assertRegex(captured["body"]["instructions"], r"diagnose medical or psychological")
+        self.assertRegex(captured["body"]["instructions"], r"actionable")
+        supplied = captured["body"]["input"][0]["content"][0]["text"]
+        self.assertIn("What should I do tonight?", supplied)
+        self.assertIn("Protect the first hour.", supplied)
+        self.assertIn("Ship the coach", supplied)
+
+    def test_chat_endpoint_returns_a_reply(self):
+        from server import coach as coach_module
+
+        original_key = os.environ.get("OPENAI_DEVELOPER_KEY")
+        os.environ["OPENAI_DEVELOPER_KEY"] = "test-key"
+        original_fetch = coach_module.default_fetch
+
+        def fake_fetch(url, options=None):
+            if "api.openai.com" in str(url):
+                return FakeResponse({"output_text": json.dumps({"reply": "Start the open mission now."})})
+            return original_fetch(url, options)
+
+        try:
+            with patch("server.coach.default_fetch", fake_fetch):
+                with RunningServer() as base_url:
+                    status, body, _headers = http_json(
+                        f"{base_url}/api/coach/chat",
+                        headers={"Content-Type": "application/json"},
+                        body=json.dumps(
+                            dict(
+                                CONTEXT,
+                                messages=[{"role": "user", "text": "What next?"}],
+                            )
+                        ),
+                    )
+                    self.assertEqual(status, 200)
+                    self.assertEqual(body["chat"]["reply"], "Start the open mission now.")
+        finally:
+            if original_key is None:
+                os.environ.pop("OPENAI_DEVELOPER_KEY", None)
+            else:
+                os.environ["OPENAI_DEVELOPER_KEY"] = original_key
 
 
 if __name__ == "__main__":

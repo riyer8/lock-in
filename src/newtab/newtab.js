@@ -81,6 +81,7 @@ let experiments = [];
 let missionHistory = [];
 let coachInsight = null;
 let coachThread = [];
+let coachChatBusy = false;
 let selectedAuditDate = new Date();
 let focusMissionId = null;
 let renderedTodayDateKey = getDateKey();
@@ -141,6 +142,7 @@ const APP_SCREENS = new Set([
   "goals-screen",
   "arc-screen",
   "daily-audit-screen",
+  "coach-screen",
   "progress-screen",
 ]);
 const SCREEN_HASH = {
@@ -152,6 +154,7 @@ const SCREEN_HASH = {
   "goals-screen": "goals",
   "arc-screen": "arc",
   "daily-audit-screen": "audit",
+  "coach-screen": "coach",
   "progress-screen": "evidence",
 };
 const HASH_SCREEN = Object.fromEntries(
@@ -362,10 +365,71 @@ function areaLabels() {
   );
 }
 
-function goalForIdentity(identityId) {
-  return activeGoals.find(
-    (goal) => goal.identityId === identityId && goal.status === "active",
+function displayGoalTitle(goal) {
+  return LockInGoals.goalTitle(goal) || "Untitled goal";
+}
+
+function cleanActionLabel(value) {
+  const label = typeof value === "string" ? value.trim() : "";
+  if (!label || /^untitled goal$/i.test(label)) return "";
+  return label;
+}
+
+function missionActionLabel(entry, events = []) {
+  const related = events.filter(
+    (event) =>
+      (event.type === EventTypes.MISSION_COMPLETED ||
+        event.type === EventTypes.MISSION_UNCOMPLETED) &&
+      event.metadata?.missionId === entry?.missionId,
   );
+  const goal = entry?.goalId
+    ? activeGoals.find((item) => item.id === entry.goalId)
+    : null;
+  const behavior =
+    activeBehaviors.find((item) => item.id === entry?.behaviorId) ||
+    (entry?.goalId ? behaviorsForGoal(entry.goalId)[0] : null);
+  return (
+    cleanActionLabel(related.at(-1)?.metadata?.title) ||
+    cleanActionLabel(entry?.title) ||
+    cleanActionLabel(behavior?.standard) ||
+    cleanActionLabel(goal?.actions?.standard) ||
+    cleanActionLabel(LockInGoals.goalTitle(goal))
+  );
+}
+
+function completedActionLabels(dateKey, events) {
+  const labels = [];
+  const seen = new Set();
+  const add = (value) => {
+    const label = cleanActionLabel(value);
+    const key = label.toLowerCase();
+    if (!label || seen.has(key)) return;
+    seen.add(key);
+    labels.push(label);
+  };
+  events
+    .filter((event) => event.type === EventTypes.MISSION_COMPLETED)
+    .forEach((event) => add(event.metadata?.title));
+  missionHistory
+    .filter((entry) => entry.date === dateKey && entry.completed)
+    .forEach((entry) => add(missionActionLabel(entry, events)));
+  return labels;
+}
+
+function livingGoals() {
+  return activeGoals.filter(
+    (goal) =>
+      LockInGoals.ACTIVE_STATUSES.has(goal.status) ||
+      goal.status === LockInGoals.PAUSED_STATUS,
+  );
+}
+
+function goalForIdentity(identityId) {
+  return livingGoals().find((goal) => goal.identityId === identityId);
+}
+
+function closedGoals() {
+  return activeGoals.filter((goal) => LockInGoals.FINAL_STATUSES.has(goal.status));
 }
 
 function behaviorsForGoal(goalId) {
@@ -378,40 +442,99 @@ function formValue(id) {
   return ($(id)?.value ?? "").trim();
 }
 
+function populateCategorySelect(selectedId) {
+  const select = $("goal-category");
+  if (!select) return;
+  const current = selectedId || select.value;
+  select.replaceChildren(
+    ...Object.values(IDENTITY_CATALOG).map((meta) => {
+      const option = document.createElement("option");
+      option.value = meta.id;
+      option.textContent = meta.label;
+      return option;
+    }),
+  );
+  select.value =
+    current && IDENTITY_CATALOG[current]
+      ? current
+      : [...selectedIdentities][0] || "athlete";
+}
+
+function createBehaviorRow(behavior = {}) {
+  const row = document.createElement("div");
+  row.className = "goal-behavior-row";
+  if (behavior.id) row.dataset.behaviorId = behavior.id;
+  const input = document.createElement("input");
+  input.maxLength = 140;
+  input.placeholder = "Run 3x/week";
+  input.value = behavior.standard || "";
+  input.addEventListener("input", updateGoalReadiness);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "text-button";
+  remove.textContent = "Remove";
+  remove.addEventListener("click", () => {
+    const list = $("goal-behavior-list");
+    if (list && list.children.length > 1) row.remove();
+    else input.value = "";
+    updateGoalReadiness();
+  });
+  row.append(input, remove);
+  return row;
+}
+
+function setBehaviorRows(behaviors) {
+  const list = $("goal-behavior-list");
+  if (!list) return;
+  const rows = (Array.isArray(behaviors) ? behaviors : []).filter((item) => item?.standard);
+  list.replaceChildren(...(rows.length ? rows.map(createBehaviorRow) : [createBehaviorRow()]));
+}
+
+function behaviorsFromForm(goalId) {
+  return [...document.querySelectorAll("#goal-behavior-list .goal-behavior-row")]
+    .map((row, index) => ({
+      id: row.dataset.behaviorId || `${goalId}-behavior-${index}`,
+      goalId,
+      standard: row.querySelector("input")?.value.trim() || "",
+    }))
+    .filter((behavior) => behavior.standard);
+}
+
 function goalFromForm(existingGoal = null) {
   const now = new Date().toISOString();
-  const identityId = formValue("goal-identity") || existingGoal?.identityId || "builder";
-  const current = Number(formValue("metric-current"));
-  const target = Number(formValue("metric-target"));
-  const unit = formValue("metric-unit");
+  const identityId =
+    formValue("goal-category") ||
+    formValue("goal-identity") ||
+    existingGoal?.identityId ||
+    "builder";
+  const goalId =
+    existingGoal?.id ||
+    formValue("goal-id") ||
+    globalThis.crypto?.randomUUID?.() ||
+    `goal-${Date.now()}`;
+  const title = formValue("goal-title");
+  const outcome = formValue("goal-outcome") || title;
+  const behaviors = behaviorsFromForm(goalId);
   return LockInGoals.normalizeGoalRecord({
-    id: existingGoal?.id ?? globalThis.crypto?.randomUUID?.() ?? `goal-${Date.now()}`,
+    ...existingGoal,
+    id: goalId,
     identityId,
+    category: IDENTITY_CATALOG[identityId]?.label || identityId,
     area: LockInGoals.areaFromIdentity(identityId),
-    outcome: formValue("goal-outcome"),
+    title,
+    outcome,
     why: formValue("goal-why"),
-    metric: unit
-      ? {
-          baseline: existingGoal?.metric?.baseline ?? (Number.isFinite(current) ? current : 0),
-          current: Number.isFinite(current) ? current : 0,
-          target: Number.isFinite(target) ? target : 0,
-          unit,
-        }
-      : { baseline: 0, current: 0, target: 0, unit: "" },
+    targetDate: formValue("goal-deadline"),
     deadline: formValue("goal-deadline"),
-    frequencyPerWeek: Number(formValue("goal-frequency") || 3),
-    cue: {
-      trigger: formValue("cue-trigger"),
-      time: formValue("cue-time"),
-      place: formValue("cue-place"),
-    },
-    actions: {
-      minimum: formValue("action-minimum"),
-      standard: formValue("action-standard"),
-      stretch: existingGoal?.actions?.stretch || "",
-    },
+    obstacles: formValue("goal-obstacle") ? [formValue("goal-obstacle")] : [],
     obstacle: formValue("goal-obstacle"),
     recoveryPlan: formValue("goal-recovery"),
+    behaviors,
+    actions: {
+      minimum: existingGoal?.actions?.minimum || behaviors[0]?.standard || "",
+      standard: behaviors[0]?.standard || existingGoal?.actions?.standard || "",
+      stretch: existingGoal?.actions?.stretch || "",
+    },
     status: existingGoal?.status ?? "active",
     timestamps: {
       createdAt: existingGoal?.timestamps?.createdAt ?? now,
@@ -422,30 +545,194 @@ function goalFromForm(existingGoal = null) {
 
 function updateGoalReadiness() {
   if (!goalReadiness) return;
-  const readiness = LockInGoals.calculateGoalReadiness(goalFromForm());
+  const existing = activeGoals.find((goal) => goal.id === formValue("goal-id"));
+  const readiness = LockInGoals.calculateGoalReadiness(goalFromForm(existing));
   goalReadiness.textContent = readiness.summary;
 }
 
-function fillGoalForm(goal) {
-  const behavior = behaviorsForGoal(goal.id)[0];
+function closeGoalDetail() {
+  if (goalDetail) goalDetail.hidden = true;
+}
+
+function setGoalEditorMode(existing) {
+  const hasGoal = Boolean(existing);
+  if ($("release-goal")) $("release-goal").hidden = !hasGoal;
+  if ($("complete-goal")) $("complete-goal").hidden = !hasGoal;
+  if ($("pause-goal")) {
+    $("pause-goal").hidden = !hasGoal;
+    $("pause-goal").textContent =
+      existing?.status === LockInGoals.PAUSED_STATUS ? "Resume" : "Pause";
+  }
+}
+
+function goalDeadlineCopy(goal) {
+  const deadline = LockInGoals.parseDate(goal?.targetDate || goal?.deadline);
+  if (!deadline) return "";
+  const days = LockInGoals.differenceInCalendarDays(deadline, new Date());
+  if (!Number.isFinite(days)) return goal.targetDate || goal.deadline;
+  if (days < 0) return `${Math.abs(days)} days past target`;
+  if (days === 0) return "Target is today";
+  return `${days} days left`;
+}
+
+function goalCardMeta(goal) {
+  const behaviors = behaviorsForGoal(goal.id)
+    .map((behavior) => behavior.standard)
+    .filter(Boolean)
+    .slice(0, 3);
+  return [goal.why, behaviors.join(" · "), goalDeadlineCopy(goal)].filter(Boolean).join(" · ");
+}
+
+function closedGoalStatusLabel(status) {
+  if (status === "completed") return "Reached";
+  if (status === "archived") return "Archived";
+  if (status === LockInGoals.PAUSED_STATUS) return "Paused";
+  return "Released";
+}
+
+async function setGoalLifecycle(goal, status) {
+  const now = new Date().toISOString();
+  const nextGoal = LockInGoals.setGoalStatus(goal, status, now);
+  const isActive = LockInGoals.ACTIVE_STATUSES.has(nextGoal.status);
+  const isPaused = nextGoal.status === LockInGoals.PAUSED_STATUS;
+  activeGoals = activeGoals.map((item) => (item.id === goal.id ? nextGoal : item));
+  if (!isActive && !isPaused) {
+    activeBehaviors = activeBehaviors.map((behavior) =>
+      behavior.goalId === goal.id
+        ? LockInGoals.setBehaviorStatus(behavior, "archived", now)
+        : behavior,
+    );
+  } else if (isActive) {
+    activeBehaviors = activeBehaviors.map((behavior) =>
+      behavior.goalId === goal.id
+        ? LockInGoals.setBehaviorStatus(behavior, "active", now)
+        : behavior,
+    );
+  }
+  await persistGoals();
+  if (!isActive) {
+    const saved = await readAdaptivePlan();
+    if (Array.isArray(saved?.missions) && saved.missions.some((mission) => mission.goalId === goal.id)) {
+      await writeDaily(ADAPTIVE_PLAN_STORAGE_NAME, {
+        ...saved,
+        missions: saved.missions.filter((mission) => mission.goalId !== goal.id),
+      });
+    }
+  }
+  const eventType =
+    nextGoal.status === "completed"
+      ? EventTypes.GOAL_COMPLETED
+      : nextGoal.status === "archived" || nextGoal.status === "cancelled"
+        ? EventTypes.GOAL_ARCHIVED
+        : EventTypes.GOAL_UPDATED;
+  await eventApi.record(eventType, {
+    goalId: nextGoal.id,
+    identityId: nextGoal.identityId,
+    status: nextGoal.status,
+  });
+  return nextGoal;
+}
+
+async function confirmAndReleaseGoal(goal) {
+  if (!goal) return false;
+  const confirmed = window.confirm(
+    `Archive “${displayGoalTitle(goal)}”? It will leave Today. You can restore it later.`,
+  );
+  if (!confirmed) return false;
+  await setGoalLifecycle(goal, "archived");
+  closeGoalDetail();
+  await renderIdentityGoals();
+  celebrate("Archived.");
+  return true;
+}
+
+async function togglePauseGoal(goal) {
+  if (!goal) return;
+  const pausing = goal.status !== LockInGoals.PAUSED_STATUS;
+  await setGoalLifecycle(goal, pausing ? LockInGoals.PAUSED_STATUS : "active");
+  closeGoalDetail();
+  await renderIdentityGoals();
+  celebrate(pausing ? "Paused." : "Resumed.");
+}
+
+async function restoreGoal(goal) {
+  selectedIdentities.add(goal.identityId);
+  saveSet(IDENTITIES_STORAGE_KEY, selectedIdentities);
+  await setGoalLifecycle(goal, "active");
+  await renderIdentityGoals();
+  celebrate("Restored.");
+}
+
+function renderReleasedGoals() {
+  const section = $("released-goals");
+  const list = $("released-goal-list");
+  if (!section || !list) return;
+  const closed = closedGoals();
+  section.hidden = closed.length === 0;
+  if (!closed.length) {
+    list.replaceChildren();
+    return;
+  }
+  list.replaceChildren(
+    ...closed.map((goal) => {
+      const row = document.createElement("div");
+      row.className = "released-goal-row";
+      const copy = document.createElement("div");
+      copy.append(
+        createTextElement("strong", "", displayGoalTitle(goal)),
+        createTextElement(
+          "small",
+          "",
+          `${goal.category || IDENTITY_CATALOG[goal.identityId]?.label || goal.identityId} · ${closedGoalStatusLabel(goal.status)}`,
+        ),
+      );
+      const restore = document.createElement("button");
+      restore.type = "button";
+      restore.className = "ghost-button";
+      restore.textContent = "Restore";
+      restore.addEventListener("click", () => restoreGoal(goal));
+      row.append(copy, restore);
+      return row;
+    }),
+  );
+}
+
+async function renderGoalToday(goalId) {
+  const list = $("goal-today-list");
+  const copy = $("goal-today-copy");
+  if (!list || !copy) return;
+  if (!goalId) {
+    copy.textContent = "Save this goal to see today's missions.";
+    list.replaceChildren();
+    return;
+  }
+  const missions = (await buildTodayMissions()).filter((mission) => mission.goalId === goalId);
+  if (!missions.length) {
+    copy.textContent =
+      "No mission from this goal today. Today picks a few actions across your outcomes.";
+    list.replaceChildren();
+    return;
+  }
+  copy.textContent = "Today's missions that move this outcome.";
+  list.replaceChildren(...missions.map((mission) => createTextElement("li", "", mission.title)));
+}
+
+async function fillGoalForm(goal) {
+  const behaviors = behaviorsForGoal(goal.id);
   $("goal-id").value = goal.id;
   $("goal-identity").value = goal.identityId;
-  $("goal-outcome").value = goal.outcome;
+  populateCategorySelect(goal.identityId);
+  $("goal-title").value = displayGoalTitle(goal);
   $("goal-why").value = goal.why;
-  $("goal-deadline").value = goal.deadline || "";
-  $("metric-current").value = goal.metric?.unit ? goal.metric.current : "";
-  $("metric-target").value = goal.metric?.unit ? goal.metric.target : "";
-  $("metric-unit").value = goal.metric?.unit || "";
-  $("action-standard").value = behavior?.standard || goal.actions.standard;
-  $("action-minimum").value = behavior?.minimum || goal.actions.minimum;
-  $("cue-trigger").value = behavior?.cue.trigger || goal.cue.trigger;
-  $("cue-time").value = behavior?.cue.time || goal.cue.time;
-  $("cue-place").value = behavior?.cue.place || goal.cue.place;
-  $("goal-frequency").value = String(behavior?.schedule.daysPerWeek || goal.frequencyPerWeek || 3);
-  $("goal-obstacle").value = behavior?.friction.obstacle || goal.obstacle;
-  $("goal-recovery").value = behavior?.friction.recoveryPlan || goal.recoveryPlan;
-  $("goal-detail-identity").textContent = IDENTITY_CATALOG[goal.identityId]?.label || goal.identityId;
-  $("goal-detail-title").textContent = goal.outcome || "New goal";
+  $("goal-outcome").value = goal.outcome || "";
+  $("goal-deadline").value = goal.targetDate || goal.deadline || "";
+  setBehaviorRows(behaviors.length ? behaviors : [{ standard: goal.actions?.standard }]);
+  $("goal-obstacle").value = goal.obstacles?.[0] || goal.obstacle || "";
+  $("goal-recovery").value = goal.recoveryPlan || "";
+  $("goal-detail-identity").textContent =
+    goal.status === LockInGoals.PAUSED_STATUS
+      ? "Paused"
+      : goal.category || IDENTITY_CATALOG[goal.identityId]?.label || goal.identityId;
   const consistency = LockInGoals.calculateWeeklyConsistency(
     missionHistory.filter((entry) => entry.goalId === goal.id),
     LockInGoals.startOfWeek(new Date()),
@@ -453,7 +740,29 @@ function fillGoalForm(goal) {
   );
   $("goal-progress-copy").textContent = consistency.planned
     ? `${consistency.percent}% kept this week. ${consistency.completed}/${consistency.planned} done.`
-    : "No evidence yet. Complete one behavior.";
+    : "No evidence yet. Complete a mission that moves this goal.";
+  goalFormError.textContent = "";
+  setGoalEditorMode(goal);
+  updateGoalReadiness();
+  goalDetail.hidden = false;
+  await renderGoalToday(goal.id);
+  goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function openNewGoal() {
+  goalForm?.reset();
+  $("goal-id").value = "";
+  const identityId = [...selectedIdentities][0] || "athlete";
+  $("goal-identity").value = identityId;
+  populateCategorySelect(identityId);
+  $("goal-detail-identity").textContent = "New goal";
+  setBehaviorRows([]);
+  $("goal-progress-copy").textContent =
+    "No evidence yet. Complete a mission that moves this goal.";
+  $("goal-today-copy").textContent = "Save this goal to see today's missions.";
+  $("goal-today-list")?.replaceChildren();
+  goalFormError.textContent = "";
+  setGoalEditorMode(null);
   updateGoalReadiness();
   goalDetail.hidden = false;
   goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -465,18 +774,8 @@ function openGoalForIdentity(identityId) {
     fillGoalForm(existing);
     return;
   }
-  goalForm.reset();
-  $("goal-id").value = "";
-  $("goal-identity").value = identityId;
-  $("goal-frequency").value = "3";
-  $("goal-detail-identity").textContent = IDENTITY_CATALOG[identityId]?.label || identityId;
-  $("goal-detail-title").textContent = "New goal";
-  $("goal-progress-copy").textContent =
-    "No evidence yet. Complete one behavior.";
-  goalFormError.textContent = "";
-  goalDetail.hidden = false;
-  updateGoalReadiness();
-  goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+  openNewGoal();
+  populateCategorySelect(identityId);
 }
 
 function renderIdentityPicker() {
@@ -491,61 +790,80 @@ function renderIdentityPicker() {
       button.setAttribute("aria-pressed", String(selectedIdentities.has(meta.id)));
       button.textContent = `${meta.icon} ${meta.label}`;
       button.addEventListener("click", () => {
-        toggleSavedSelection(selectedIdentities, meta.id, IDENTITIES_STORAGE_KEY);
+        if (selectedIdentities.has(meta.id)) selectedIdentities.delete(meta.id);
+        else selectedIdentities.add(meta.id);
+        saveSet(IDENTITIES_STORAGE_KEY, selectedIdentities);
         renderIdentityPicker();
-        renderIdentityGoals();
       });
       return button;
     }),
   );
 }
 
-function renderIdentityGoals() {
+async function renderIdentityGoals() {
   renderIdentityPicker();
-  const identities = [...selectedIdentities].filter((id) => IDENTITY_CATALOG[id]);
-  const cards = identities.map((identityId) => {
-    const meta = IDENTITY_CATALOG[identityId];
-    const goal = goalForIdentity(identityId);
-    const card = document.createElement("button");
-    card.type = "button";
+  const missions = await buildTodayMissions();
+  const goals = livingGoals();
+  const cards = goals.map((goal) => {
+    const meta = IDENTITY_CATALOG[goal.identityId];
+    const todayMissions = missions.filter((mission) => mission.goalId === goal.id);
+    const card = document.createElement("article");
     card.className = "identity-goal-card";
+    if (goal.status === LockInGoals.PAUSED_STATUS) card.classList.add("is-paused");
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "identity-goal-card__main";
     const copy = document.createElement("div");
     copy.className = "identity-goal-card__copy";
+    const statusLabel = goal.status === LockInGoals.PAUSED_STATUS ? "Paused" : "Active";
     copy.append(
-      createTextElement("small", "", meta.label.toUpperCase()),
-      createTextElement("strong", "", goal?.outcome || "Add a goal"),
       createTextElement(
-        "p",
+        "small",
         "",
-        goal?.deadline
-          ? `Target ${
-              LockInGoals.parseDate(goal.deadline)?.toLocaleDateString([], {
-                month: "short",
-                day: "numeric",
-              }) || goal.deadline
-            }`
-          : meta.aspiration,
+        `${(goal.category || meta?.label || "Goal").toUpperCase()} · ${statusLabel}`,
       ),
+      createTextElement("strong", "", displayGoalTitle(goal)),
+      createTextElement("p", "", goalCardMeta(goal)),
     );
-    card.append(
-      createTextElement("span", "identity-goal-card__icon", meta.icon),
+    if (todayMissions.length) {
+      copy.append(
+        createTextElement(
+          "p",
+          "goal-card-today",
+          `Today: ${todayMissions.map((mission) => mission.title).join(" · ")}`,
+        ),
+      );
+    }
+    open.append(
+      createTextElement("span", "identity-goal-card__icon", meta?.icon || "◎"),
       copy,
-      createTextElement("span", "identity-goal-card__open", goal ? "Open" : "Write"),
+      createTextElement("span", "identity-goal-card__open", "Open"),
     );
-    card.addEventListener("click", () => openGoalForIdentity(identityId));
+    open.addEventListener("click", () => fillGoalForm(goal));
+    const actions = document.createElement("div");
+    actions.className = "identity-goal-card__actions";
+    const pause = document.createElement("button");
+    pause.type = "button";
+    pause.className = "text-button identity-goal-card__release";
+    pause.textContent = goal.status === LockInGoals.PAUSED_STATUS ? "Resume" : "Pause";
+    pause.addEventListener("click", () => togglePauseGoal(goal));
+    actions.append(pause);
+    card.append(open, actions);
     return card;
   });
   if (!cards.length) {
-    identityGoalGrid.replaceChildren(
+    identityGoalGrid?.replaceChildren(
       createTextElement(
         "p",
         "goal-detail__hint",
-        "Pick an identity to start. One goal each.",
+        "Create a goal. Start with the outcome you want, then the behaviors that actually move it.",
       ),
     );
+    renderReleasedGoals();
     return;
   }
   identityGoalGrid.replaceChildren(...cards);
+  renderReleasedGoals();
 }
 
 async function persistGoals() {
@@ -558,16 +876,23 @@ async function readAdaptivePlan(date = new Date()) {
 }
 
 function mapMission(mission, goal) {
-  const behavior = behaviorsForGoal(mission.goalId || goal?.id)[0];
+  const behavior =
+    activeBehaviors.find((item) => item.id === mission.behaviorId) ||
+    behaviorsForGoal(mission.goalId || goal?.id)[0];
   return {
     id: mission.id,
     goalId: mission.goalId || goal?.id,
     identityId: goal?.identityId || mission.identityId,
     behaviorId: mission.behaviorId || behavior?.id,
     area: mission.area || goal?.area,
-    category: AREA_BLUEPRINTS[goal?.area]?.label || mission.category || goal?.area,
+    category:
+      goal?.category ||
+      AREA_BLUEPRINTS[goal?.area]?.label ||
+      mission.category ||
+      goal?.area,
     title: behavior?.standard || mission.action || goal?.actions?.standard || mission.title,
     description: behavior?.standard || mission.action || mission.description,
+    goalTitle: mission.goalTitle || goal?.title || goal?.outcome,
     minimumAction: behavior?.minimum || goal?.actions?.minimum,
     cue: behavior?.cue || goal?.cue,
     source: mission.source || "plan",
@@ -578,7 +903,10 @@ function mapMission(mission, goal) {
 
 function buildDefaultMissions() {
   const selected = LockInGoals.selectDailyMissions(
-    activeGoals,
+    activeGoals.map((goal) => ({
+      ...goal,
+      behaviors: behaviorsForGoal(goal.id),
+    })),
     missionHistory,
     PERSONAL_CONFIG.milestones ?? [],
     new Date(),
@@ -622,7 +950,16 @@ function buildDefaultMissions() {
 async function buildTodayMissions(date = new Date()) {
   const saved = await readAdaptivePlan(date);
   if (Array.isArray(saved?.missions) && saved.missions.length) {
-    return saved.missions.slice(0, 3);
+    const kept = saved.missions.slice(0, 3).map((mission) => {
+      const goal = activeGoals.find((item) => item.id === mission.goalId);
+      if (goal && !LockInGoals.isPlannableGoal(goal)) return null;
+      return {
+        ...mission,
+        goalTitle: mission.goalTitle || goal?.title || goal?.outcome,
+        category: mission.category || goal?.category,
+      };
+    }).filter(Boolean);
+    if (kept.length) return kept;
   }
   return buildDefaultMissions();
 }
@@ -759,19 +1096,42 @@ async function renderToday() {
   commandArcInline.textContent = ` · ${getArcDayLabel(arcState)}`;
   if (!missions.length) {
     todayFocusList.replaceChildren(
-      createTextElement("li", "", "Add a goal to generate today’s focus."),
+      createTextElement("li", "today-focus-empty", "Add a goal to generate today’s focus."),
     );
+    startFocusButton.hidden = true;
     startFocusButton.disabled = true;
+    if ($("write-goal")) $("write-goal").hidden = false;
   } else {
+    startFocusButton.hidden = false;
     startFocusButton.disabled = false;
+    if ($("write-goal")) $("write-goal").hidden = true;
     todayFocusList.replaceChildren(
       ...missions.map((mission, index) => {
         const item = document.createElement("li");
-        if (completed.has(mission.id)) item.classList.add("is-complete");
-        item.append(
-          createTextElement("span", "focus-index", String(index + 1).padStart(2, "0")),
-          createTextElement("span", "focus-copy", mission.title),
+        const done = completed.has(mission.id);
+        if (done) item.classList.add("is-complete");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "today-focus-item";
+        button.dataset.missionId = mission.id;
+        button.dataset.missionAction = done ? "undo" : "start";
+        button.setAttribute(
+          "aria-label",
+          done ? `Undo ${mission.title}` : `Start ${mission.title}`,
         );
+        button.append(
+          createTextElement("span", "focus-index", String(index + 1).padStart(2, "0")),
+          (() => {
+            const copy = document.createElement("span");
+            copy.className = "focus-copy-wrap";
+            copy.append(createTextElement("span", "focus-copy", mission.title));
+            if (mission.goalTitle) {
+              copy.append(createTextElement("small", "focus-goal", mission.goalTitle));
+            }
+            return copy;
+          })(),
+        );
+        item.append(button);
         return item;
       }),
     );
@@ -804,6 +1164,7 @@ async function syncPlannedHistory(missions) {
         identityId: mission.identityId,
         experimentId: mission.experimentId,
         area: mission.area,
+        title: mission.title,
         date: today,
         planned: true,
         completed: completed.has(mission.id),
@@ -813,8 +1174,9 @@ async function syncPlannedHistory(missions) {
   await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
   await eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
     arcDay: calculateArcState(new Date()).currentDay,
-    plannedMissions: missions.map(({ id, title, category }) => ({
+    plannedMissions: missions.map(({ id, title, category, goalId }) => ({
       missionId: id,
+      goalId,
       category,
       title,
     })),
@@ -831,18 +1193,24 @@ function nextIncompleteMission(missions, completed) {
   return missions.find((mission) => !completed.has(mission.id)) || missions[0] || null;
 }
 
-async function openFocusMode() {
+async function openFocusMode(missionId = null) {
   const missions = await buildTodayMissions();
   const completed = await completedMissionIds();
-  const mission = nextIncompleteMission(missions, completed);
+  const requestedId = typeof missionId === "string" ? missionId : null;
+  const mission = requestedId
+    ? missions.find((item) => item.id === requestedId)
+    : nextIncompleteMission(missions, completed);
   if (!mission) return;
   focusMissionId = mission.id;
-  $("focus-identity").textContent = IDENTITY_CATALOG[mission.identityId]?.label || "Now";
+  $("focus-identity").textContent =
+    mission.category || IDENTITY_CATALOG[mission.identityId]?.label || "Now";
   $("focus-title").textContent = mission.title;
   const cue = mission.cue;
-  $("focus-cue").textContent = cue?.trigger
-    ? `${cue.trigger}${cue.place ? ` · ${cue.place}` : ""}`
-    : "Do this now.";
+  $("focus-cue").textContent = mission.goalTitle
+    ? `Moves “${mission.goalTitle}”`
+    : cue?.trigger
+      ? `${cue.trigger}${cue.place ? ` · ${cue.place}` : ""}`
+      : "Do this now.";
   $("focus-minimum").textContent = mission.minimumAction
     ? `Minimum: ${mission.minimumAction}`
     : "";
@@ -887,6 +1255,7 @@ async function completeMission(mission, { level = "standard", skipped = false, r
     completed: !skipped,
     level: skipped ? null : level,
     recovery: level === "minimum",
+    title: mission.title,
     reason,
   });
   await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
@@ -936,7 +1305,7 @@ async function collectCoachContext(date = new Date()) {
         end: LockInGoals.formatDateKey(ARC_END_DATE),
       },
     },
-    goals: activeGoals.filter(({ status }) => status === "active").slice(0, 10),
+    goals: activeGoals.filter(({ status }) => LockInGoals.ACTIVE_STATUSES.has(status)).slice(0, 10),
     todayAudit: audits[0],
     recentAudits: audits.slice(1),
     recentEvents,
@@ -948,6 +1317,7 @@ async function collectCoachContext(date = new Date()) {
     patterns,
     lastInsight: coachInsight,
     activeExperiment: experiments.find((item) => item.status === "active") || null,
+    messages: coachThread,
   });
 }
 
@@ -998,34 +1368,59 @@ function renderCoachInsight() {
   const noticing = $("coach-noticing");
   const offer = $("coach-offer");
   const fixIt = $("yes-fix-it");
+  const title = $("coach-insight-title");
   if (!noticing) return;
   noticing.textContent = noticingCopy(coachInsight);
+  if (title) {
+    title.textContent = coachInsight ? "I've noticed something." : "Ask what to do next.";
+  }
   const pending = Boolean(coachInsight && coachInsight.status !== "applied");
   if (offer) offer.hidden = !pending;
   if (fixIt) fixIt.hidden = !pending;
 }
 
+function setCoachChatBusy(busy) {
+  coachChatBusy = busy;
+  const input = $("coach-chat-input");
+  const send = $("coach-chat-send");
+  const loading = $("coach-chat-loading");
+  if (input) input.disabled = busy;
+  if (send) send.disabled = busy;
+  if (loading) loading.hidden = !busy;
+}
+
+function setCoachChatError(message) {
+  const error = $("coach-chat-error") || $("coach-error");
+  if (!error) return;
+  error.textContent = message || "";
+  error.hidden = !message;
+}
+
 function renderCoachThread() {
   const thread = $("coach-thread");
-  if (!coachThread.length) {
+  if (!thread) return;
+  if (!coachThread.length && !coachChatBusy) {
     thread.replaceChildren(
       createTextElement(
         "p",
         "coach-message",
-        "Use this when the plan feels wrong. Add context, push back, or ask for a sharper next move.",
+        "Ask about today, push back on the plan, or name what’s getting in the way. I’ll stay inside what you’ve actually been doing.",
       ),
     );
     return;
   }
-  thread.replaceChildren(
-    ...coachThread.map((message) =>
-      createTextElement(
-        "p",
-        `coach-message${message.role === "user" ? " coach-message--user" : ""}`,
-        message.text,
-      ),
+  const nodes = coachThread.map((message) =>
+    createTextElement(
+      "p",
+      `coach-message${message.role === "user" ? " coach-message--user" : ""}`,
+      message.text,
     ),
   );
+  if (coachChatBusy) {
+    nodes.push(createTextElement("p", "coach-message coach-message--pending", "Thinking…"));
+  }
+  thread.replaceChildren(...nodes);
+  thread.scrollTop = thread.scrollHeight;
 }
 
 async function refreshCoachInsight() {
@@ -1077,7 +1472,7 @@ async function applyAdaptation(proposal) {
   const tomorrow = LockInGoals.addDays(new Date(), 1);
   const missions = LockInPlanBuilder.applyAdaptationToPlan({
     proposed: result.plan?.missions || [],
-    goals: activeGoals.filter(({ status }) => status === "active"),
+    goals: activeGoals.filter(({ status }) => LockInGoals.ACTIVE_STATUSES.has(status)),
     date: tomorrow,
     recentOutcomes: context.recentMissionOutcomes,
     preserved: [],
@@ -1128,22 +1523,48 @@ async function applyAdaptation(proposal) {
   celebrate("Tomorrow’s plan changed.", { burst: true });
 }
 
-async function sendCoachChat(text) {
-  const message = { role: "user", text, asOf: new Date().toISOString() };
-  coachThread = [...coachThread, message].slice(-12);
-  const context = await collectCoachContext();
-  context.messages = coachThread;
-  await ensureCoachBackend();
-  const response = await fetch(CHAT_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(context),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "The coach could not reply.");
-  coachThread = [...coachThread, { role: "coach", text: result.chat.reply, asOf: new Date().toISOString() }];
+async function persistCoachThread() {
   await privateStorage.write(THREAD_STORAGE_KEY, coachThread);
+}
+
+async function sendCoachChat(text) {
+  if (coachChatBusy) return;
+  const message = { role: "user", text, asOf: new Date().toISOString() };
+  coachThread = [...coachThread, message].slice(-LockInCoachContext.MAX_CHAT_MESSAGES);
+  setCoachChatError("");
+  setCoachChatBusy(true);
   renderCoachThread();
+  await persistCoachThread();
+  try {
+    await ensureCoachBackend(() => {
+      const loading = $("coach-chat-loading");
+      if (loading) loading.textContent = "Starting the coach…";
+    });
+    const loading = $("coach-chat-loading");
+    if (loading) loading.textContent = "Reading your recent days…";
+    const response = await fetch(CHAT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(await collectCoachContext()),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "The coach could not reply.");
+    const reply = result.chat?.reply;
+    if (!reply) throw new Error("The coach could not reply.");
+    coachThread = [
+      ...coachThread,
+      { role: "coach", text: reply, asOf: new Date().toISOString() },
+    ].slice(-LockInCoachContext.MAX_CHAT_MESSAGES);
+    await persistCoachThread();
+  } catch (caught) {
+    setCoachChatError(caught?.message || coachOfflineCopy());
+    throw caught;
+  } finally {
+    const loading = $("coach-chat-loading");
+    if (loading) loading.textContent = "Reading your recent days…";
+    setCoachChatBusy(false);
+    renderCoachThread();
+  }
 }
 
 function defaultAuditDate() {
@@ -1182,18 +1603,7 @@ async function renderDailyAudit() {
   $("fitness-activity").value = fitness?.metadata?.activity ?? "";
   $("fitness-minutes").value = fitness?.metadata?.durationMin ?? "";
   const dateKey = getDateKey(date);
-  const completedTitles = missionHistory
-    .filter((entry) => entry.date === dateKey && entry.completed)
-    .map((entry) => {
-      const goal = activeGoals.find((item) => item.id === entry.goalId);
-      const behavior = behaviorsForGoal(entry.goalId)[0];
-      return (
-        behavior?.standard ||
-        goal?.actions?.standard ||
-        goal?.outcome ||
-        String(entry.missionId || "").split(":").at(-1).replaceAll("-", " ")
-      );
-    });
+  const completedTitles = completedActionLabels(dateKey, events);
   const happenedExtras = (audit.happened || []).filter((item) => item.evidence !== "missions");
   const happened = completedTitles.length
     ? [...completedTitles.map((label) => ({ label })), ...happenedExtras]
@@ -1327,7 +1737,12 @@ async function renderArcScreen() {
       ? "You’re early. Show up and create proof."
       : "Long view: evidence, not vibes.";
   $("arc-year-progress").style.width = `${arcProgress}%`;
-  $("arc-year-copy").textContent = `${arcProgress}% through. ${totalDays - currentDay} days left.`;
+  $("arc-year-copy").textContent = `${arcProgress}% through. ${Math.max(0, totalDays - currentDay)} days left.`;
+  const arcHero = document.querySelector(".arc-hero");
+  if (arcHero) {
+    arcHero.style.setProperty("--arc-progress", String(arcProgress));
+    arcHero.setAttribute("data-arc-progress", `${arcProgress}`);
+  }
   const identities = [...selectedIdentities].filter((id) => IDENTITY_CATALOG[id]);
   const rows = identities.map((identityId) => {
     const adherence = LockInGoals.calculateIdentityAdherence(
@@ -1355,7 +1770,8 @@ async function renderArcScreen() {
     bar.className = "arc-bar";
     bar.append(document.createElement("span"));
     bar.firstChild.style.width = `${adherence.percent}%`;
-    row.append(copy, bar, createTextElement("span", "arc-percent", `${adherence.percent}%`));
+    const percent = createTextElement("span", "arc-percent", `${adherence.percent}%`);
+    row.append(copy, bar, percent);
     return { row, adherence, identityId };
   });
   $("arc-identity-bars").replaceChildren(
@@ -1374,13 +1790,24 @@ async function renderArcScreen() {
   $("arc-consistency").textContent = overall.planned
     ? `${Math.round((overall.completed / overall.planned) * 100)}%`
     : "0%";
-  const best = [...rows].sort((left, right) => right.adherence.percent - left.adherence.percent)[0];
-  $("arc-transformation").textContent = best
-    ? `Your ${IDENTITY_CATALOG[best.identityId].label} self is showing up.`
-    : await currentTheme();
-  $("arc-transformation-copy").textContent = best
-    ? `${best.adherence.completed}/${best.adherence.planned} ${IDENTITY_CATALOG[best.identityId].label} actions happened. Make it repeatable.`
-    : "Evidence appears as behaviors happen.";
+  const leading = LockInGoals.chooseLeadingIdentity(
+    rows.map((item) => ({ identityId: item.identityId, ...item.adherence })),
+  );
+  const leadingGoal = leading ? goalForIdentity(leading.identityId) : null;
+  const leadingLabel = leading ? IDENTITY_CATALOG[leading.identityId]?.label : "";
+  if (leadingGoal) {
+    $("arc-transformation").textContent = leadingGoal.outcome;
+    $("arc-transformation-copy").textContent =
+      `${leading.completed}/${leading.planned} ${leadingLabel} actions happened. That identity has the most proof so far.`;
+  } else if (leading) {
+    $("arc-transformation").textContent = `${leadingLabel} is showing up.`;
+    $("arc-transformation-copy").textContent =
+      `${leading.completed}/${leading.planned} ${leadingLabel} actions happened. Write the goal this identity is becoming.`;
+  } else {
+    $("arc-transformation").textContent = "Not enough proof yet";
+    $("arc-transformation-copy").textContent =
+      "This names the goal whose identity has kept the most planned actions. Complete one to start.";
+  }
 }
 
 function weekdayTrendRows() {
@@ -1448,7 +1875,7 @@ async function renderProgress() {
   };
 
   activeGoals
-    .filter((goal) => goal.status === "active")
+    .filter((goal) => LockInGoals.ACTIVE_STATUSES.has(goal.status))
     .forEach((goal) => {
       const consistency = LockInGoals.calculateWeeklyConsistency(
         missionHistory.filter((entry) => entry.goalId === goal.id),
@@ -1466,7 +1893,8 @@ async function renderProgress() {
         [
           signalMeter(consistency.percent, `${consistency.percent}% kept this week`),
           signalList([
-            `Outcome: ${goal.outcome}`,
+            displayGoalTitle(goal),
+            goal.why ? `Why: ${goal.why}` : "",
             `${consistency.completed}/${consistency.planned} planned actions happened.`,
             interpretation,
           ]),
@@ -1512,11 +1940,9 @@ async function renderProgress() {
       [
         signalList(
           completed.map((entry) => {
-            const goal = activeGoals.find((item) => item.id === entry.goalId);
             const title =
-              goal?.actions?.standard ||
-              goal?.outcome ||
-              entry.missionId.split(":").at(-1).replaceAll("-", " ");
+              missionActionLabel(entry) ||
+              String(entry.missionId || "").split(":").at(-1).replaceAll("-", " ");
             return `${entry.date} · ${title}`;
           }),
         ),
@@ -1774,13 +2200,17 @@ function isOnboarded() {
 }
 
 async function loadAppScreen(screenId) {
-  if (screenId === "goals-screen") renderIdentityGoals();
+  if (screenId === "goals-screen") await renderIdentityGoals();
   if (screenId === "daily-audit-screen") {
     selectedAuditDate = defaultAuditDate();
     await renderDailyAudit();
   }
   if (screenId === "command-center-screen") await CommandCenter();
   if (screenId === "arc-screen") await renderArcScreen();
+  if (screenId === "coach-screen") {
+    renderCoachInsight();
+    renderCoachThread();
+  }
   if (screenId === "progress-screen") await renderProgress();
 }
 
@@ -1793,18 +2223,15 @@ goalForm?.addEventListener("input", updateGoalReadiness);
 goalForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const existing = activeGoals.find((goal) => goal.id === $("goal-id").value);
-  const identityId = formValue("goal-identity");
-  if (!existing && goalForIdentity(identityId)) {
-    goalFormError.textContent = "This identity already has a primary goal. Edit it instead.";
-    return;
-  }
   const draft = goalFromForm(existing);
   const validation = LockInGoals.validateGoalRecord(draft);
   if (!validation.valid) {
     goalFormError.textContent = validation.errors.join(" ");
     return;
   }
-  const behaviors = LockInGoals.extractBehaviorsFromGoal(validation.value);
+  const behaviors = validation.value.behaviors;
+  selectedIdentities.add(validation.value.identityId);
+  saveSet(IDENTITIES_STORAGE_KEY, selectedIdentities);
   if (existing) {
     activeGoals = activeGoals.map((goal) => (goal.id === existing.id ? validation.value : goal));
     activeBehaviors = [
@@ -1819,19 +2246,58 @@ goalForm?.addEventListener("submit", async (event) => {
   await eventApi.record(existing ? EventTypes.GOAL_UPDATED : EventTypes.GOAL_CREATED, {
     goalId: validation.value.id,
     identityId: validation.value.identityId,
+    title: validation.value.title,
+    status: validation.value.status,
   });
   goalDetail.hidden = true;
-  renderIdentityGoals();
+  await renderIdentityGoals();
   celebrate(existing ? "Goal updated." : "Goal locked in.", { burst: true });
 });
 
-$("cancel-goal")?.addEventListener("click", () => {
-  goalDetail.hidden = true;
+$("cancel-goal")?.addEventListener("click", closeGoalDetail);
+$("close-goal-detail")?.addEventListener("click", closeGoalDetail);
+$("create-goal")?.addEventListener("click", openNewGoal);
+$("add-goal-behavior")?.addEventListener("click", () => {
+  $("goal-behavior-list")?.append(createBehaviorRow());
 });
-$("close-goal-detail")?.addEventListener("click", () => {
-  goalDetail.hidden = true;
+$("pause-goal")?.addEventListener("click", async () => {
+  const existing = activeGoals.find((goal) => goal.id === $("goal-id").value);
+  await togglePauseGoal(existing);
 });
-startFocusButton?.addEventListener("click", openFocusMode);
+$("release-goal")?.addEventListener("click", async () => {
+  const existing = activeGoals.find((goal) => goal.id === $("goal-id").value);
+  await confirmAndReleaseGoal(existing);
+});
+$("complete-goal")?.addEventListener("click", async () => {
+  const existing = activeGoals.find((goal) => goal.id === $("goal-id").value);
+  if (!existing) return;
+  const confirmed = window.confirm(
+    `Mark “${displayGoalTitle(existing)}” as reached? It will leave Today.`,
+  );
+  if (!confirmed) return;
+  await setGoalLifecycle(existing, "completed");
+  closeGoalDetail();
+  await renderIdentityGoals();
+  celebrate("Reached.", { burst: true });
+});
+startFocusButton?.addEventListener("click", () => openFocusMode());
+$("write-goal")?.addEventListener("click", async () => {
+  await openAppScreen("goals-screen");
+  openNewGoal();
+});
+todayFocusList?.addEventListener("click", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  const action = event.target.closest("[data-mission-id]");
+  if (!action) return;
+  const missions = await buildTodayMissions();
+  const mission = missions.find((item) => item.id === action.dataset.missionId);
+  if (!mission) return;
+  if (action.dataset.missionAction === "undo") {
+    await completeMission(mission, { skipped: true, reason: "Undone" });
+    return;
+  }
+  await openFocusMode(mission.id);
+});
 todayTaskForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const title = todayTaskInput?.value.trim();
@@ -1973,14 +2439,15 @@ $("refresh-insight")?.addEventListener("click", refreshCoachInsight);
 $("coach-chat-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = $("coach-chat-input");
-  const text = input.value.trim();
-  if (!text) return;
+  const text = input?.value.trim();
+  if (!text || coachChatBusy) return;
   input.value = "";
   try {
     await sendCoachChat(text);
   } catch {
-    $("coach-error").textContent = coachOfflineCopy();
-    $("coach-error").hidden = false;
+    if (!$("coach-chat-error")?.textContent) {
+      setCoachChatError(coachOfflineCopy());
+    }
   }
 });
 
@@ -2106,8 +2573,18 @@ async function initializeApp() {
     ? storedExperiments.map((item) => LockInExperiments.normalizeExperiment(item))
     : [];
   coachInsight = storedInsight;
-  coachThread = Array.isArray(storedThread) ? storedThread : [];
+  coachThread = Array.isArray(storedThread)
+    ? storedThread
+        .map((message) => ({
+          role: message?.role === "coach" ? "coach" : message?.role === "user" ? "user" : "",
+          text: typeof message?.text === "string" ? message.text.trim() : "",
+          asOf: typeof message?.asOf === "string" ? message.asOf : "",
+        }))
+        .filter((message) => message.role && message.text)
+        .slice(-LockInCoachContext.MAX_CHAT_MESSAGES)
+    : [];
   await persistGoals();
+  populateCategorySelect([...selectedIdentities][0]);
 
   renderArcState();
   renderIdentitySelections();

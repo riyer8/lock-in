@@ -88,20 +88,27 @@
     return categories;
   }
 
+  function plannedMissionRef(mission) {
+    if (typeof mission === "string") {
+      return { id: mission, title: "", goalId: "" };
+    }
+    const id = mission?.missionId ?? mission?.id;
+    if (!id) return null;
+    return {
+      id,
+      title: typeof mission?.title === "string" ? mission.title.trim() : "",
+      goalId: typeof mission?.goalId === "string" ? mission.goalId : "",
+    };
+  }
+
   function analyzeMissions(missionEvents, commandCenterEvents, eventTypes) {
-    const plannedMissionIds = new Set();
-    commandCenterEvents.forEach((event) => {
-      const planned = event.metadata?.plannedMissions;
-      if (Array.isArray(planned)) {
-        planned.forEach((mission) => {
-          const missionId =
-            typeof mission === "string" ? mission : mission?.missionId ?? mission?.id;
-          if (missionId) {
-            plannedMissionIds.add(missionId);
-          }
-        });
-      }
-    });
+    const latestOpen = [...commandCenterEvents].sort(
+      (left, right) => new Date(left.timestamp) - new Date(right.timestamp),
+    ).at(-1);
+    const latestPlan = Array.isArray(latestOpen?.metadata?.plannedMissions)
+      ? latestOpen.metadata.plannedMissions.map(plannedMissionRef).filter(Boolean)
+      : [];
+    const plannedMissionIds = new Set(latestPlan.map((mission) => mission.id));
 
     const latestMissionState = new Map();
     missionEvents.forEach((event) => {
@@ -109,20 +116,48 @@
       if (!missionId) {
         return;
       }
-      plannedMissionIds.add(missionId);
       latestMissionState.set(missionId, {
         completed: event.type === eventTypes.MISSION_COMPLETED,
         goalId: event.metadata?.goalId ?? null,
+        title:
+          typeof event.metadata?.title === "string" ? event.metadata.title.trim() : "",
         level: event.metadata?.level ?? null,
         milestoneTaskId: event.metadata?.milestoneTaskId ?? null,
       });
+    });
+
+    if (!plannedMissionIds.size) {
+      latestMissionState.forEach((_, missionId) => plannedMissionIds.add(missionId));
+    }
+
+    const satisfied = new Set();
+    latestMissionState.forEach((state, missionId) => {
+      if (!state.completed) return;
+      if (plannedMissionIds.has(missionId)) {
+        satisfied.add(missionId);
+        return;
+      }
+      if (!latestPlan.length) {
+        satisfied.add(missionId);
+        return;
+      }
+      const titleKey = state.title.toLowerCase();
+      const byTitle = latestPlan.find((mission) => mission.title.toLowerCase() === titleKey);
+      if (titleKey && byTitle) {
+        satisfied.add(byTitle.id);
+        return;
+      }
+      const byGoal = latestPlan.find(
+        (mission) => mission.goalId && mission.goalId === state.goalId,
+      );
+      if (byGoal) satisfied.add(byGoal.id);
     });
 
     const total = plannedMissionIds.size;
     const completedStates = [...latestMissionState.values()].filter(
       ({ completed: isComplete }) => isComplete,
     );
-    const completed = completedStates.length;
+    const completed = latestPlan.length ? satisfied.size : completedStates.length;
     const levels = completedStates.reduce(
       (counts, state) => {
         const level = ["minimum", "standard", "stretch"].includes(state.level)
@@ -309,7 +344,7 @@
       );
       const activity = checkins.fitness[0].activity;
       happened.push({
-        label: minutes ? `${minutes}m ${activity}` : activity,
+        label: minutes ? `Fitness · ${minutes}m ${activity}` : `Fitness · ${activity}`,
         evidence: "fitness",
       });
     }

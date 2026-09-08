@@ -72,8 +72,9 @@ test("validates required goal fields and calculates SMART completeness", () => {
   };
   const invalid = Goals.validateGoalRecord(incomplete);
   assert.equal(invalid.valid, false);
-  assert.match(invalid.errors.join(" "), /deadline/);
-  assert.match(invalid.errors.join(" "), /frequencyPerWeek/);
+  assert.match(invalid.errors.join(" "), /why/);
+  assert.match(invalid.errors.join(" "), /targetDate/);
+  assert.match(invalid.errors.join(" "), /behavior/);
 
   assert.deepEqual(Goals.calculateSMARTCompleteness(complete), {
     score: 1,
@@ -417,8 +418,107 @@ test("follow-through survives a recovered minimum day and consecutive misses ask
   assert.equal(Goals.deriveFocusTheme({ consecutiveMisses: 3 }), "RECOVERY");
 });
 
+test("normalizes title, category, targetDate, obstacles, and supporting behaviors", () => {
+  const input = {
+    category: "Athlete",
+    title: "Run a half marathon",
+    why: "Become a stronger athlete.",
+    outcome: "Complete a half marathon.",
+    targetDate: "2030-06-30",
+    obstacles: ["Evenings get overloaded"],
+    behaviors: ["Run 3x/week", "Strength train 2x/week", "Recover properly"],
+  };
+  const normalized = Goals.normalizeGoalRecord(input, "2030-01-05T12:00:00Z");
+  assert.equal(normalized.title, "Run a half marathon");
+  assert.equal(normalized.category, "Athlete");
+  assert.equal(normalized.identityId, "athlete");
+  assert.equal(normalized.targetDate, "2030-06-30");
+  assert.equal(normalized.deadline, "2030-06-30");
+  assert.deepEqual(normalized.obstacles, ["Evenings get overloaded"]);
+  assert.deepEqual(
+    normalized.behaviors.map((behavior) => behavior.standard),
+    ["Run 3x/week", "Strength train 2x/week", "Recover properly"],
+  );
+  const validation = Goals.validateGoalRecord(input);
+  assert.equal(validation.valid, true);
+});
+
+test("paused goals leave daily planning and can be resumed", () => {
+  const source = goal({ id: "goal-keep", area: "Area A" });
+  const paused = Goals.setGoalStatus(source, "paused", "2030-06-03T12:00:00Z");
+  assert.equal(paused.status, "paused");
+  assert.equal(Goals.isPlannableGoal(paused), false);
+  const resumed = Goals.setGoalStatus(paused, "active", "2030-06-04T12:00:00Z");
+  assert.equal(resumed.status, "active");
+  const selected = Goals.selectDailyMissions([source, paused], [], [], "2030-06-03", 3);
+  assert.deepEqual(
+    selected.map((mission) => mission.goalId),
+    ["goal-keep"],
+  );
+});
+
+test("today's missions come from supporting behaviors and keep the goal connection", () => {
+  const marathon = goal({
+    id: "goal-half",
+    identityId: "athlete",
+    area: "fitness",
+    title: "Run a half marathon",
+    outcome: "Complete a half marathon.",
+    behaviors: [
+      { id: "run", standard: "Run 3x/week" },
+      { id: "strength", standard: "Strength train 2x/week" },
+      { id: "recover", standard: "Recover properly" },
+    ],
+  });
+  const selected = Goals.selectDailyMissions([marathon], [], [], "2030-06-03", 3);
+  assert.equal(selected.length, 3);
+  assert.deepEqual(
+    selected.map((mission) => mission.action),
+    ["Run 3x/week", "Strength train 2x/week", "Recover properly"],
+  );
+  assert.ok(selected.every((mission) => mission.goalId === "goal-half"));
+  assert.ok(selected.every((mission) => mission.goalTitle === "Run a half marathon"));
+  assert.ok(selected.every((mission) => mission.category === "Athlete"));
+});
+
+test("setGoalStatus archives a goal so it leaves daily planning", () => {
+  const source = goal({ id: "goal-keep", area: "Area A" });
+  const released = Goals.setGoalStatus(source, "cancelled", "2030-06-03T12:00:00Z");
+  assert.equal(released.status, "cancelled");
+  assert.equal(released.timestamps.updatedAt, "2030-06-03T12:00:00.000Z");
+  assert.equal(source.status, "active");
+
+  const selected = Goals.selectDailyMissions(
+    [source, released, Goals.setGoalStatus(goal({ id: "goal-done", area: "Area C" }), "completed")],
+    [],
+    [],
+    "2030-06-03",
+    3,
+  );
+  assert.deepEqual(
+    selected.map((mission) => mission.goalId),
+    ["goal-keep"],
+  );
+  assert.equal(Goals.setGoalStatus(source, "not-a-status").status, "active");
+});
+
+test("chooseLeadingIdentity prefers the identity with the most kept actions", () => {
+  assert.equal(Goals.chooseLeadingIdentity([]), null);
+  assert.equal(
+    Goals.chooseLeadingIdentity([{ identityId: "athlete", planned: 0, completed: 0, percent: 0 }]),
+    null,
+  );
+  const leading = Goals.chooseLeadingIdentity([
+    { identityId: "thinker", planned: 1, completed: 1, percent: 100 },
+    { identityId: "athlete", planned: 8, completed: 6, percent: 75 },
+    { identityId: "builder", planned: 4, completed: 0, percent: 0 },
+  ]);
+  assert.equal(leading.identityId, "athlete");
+});
+
 test("exposes the same dependency-free API to browsers and CommonJS", () => {
   assert.strictEqual(globalThis.LockInGoals, Goals);
   assert.equal(typeof Goals.selectDailyMissions, "function");
   assert.equal(typeof Goals.calculateWeeklyConsistency, "function");
+  assert.equal(typeof Goals.setGoalStatus, "function");
 });
