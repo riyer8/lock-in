@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "LOCK IN",
+  "version": "0.8.0",
+  "description": "A calm, focused start to every new tab.",
+  "permissions": ["storage", "tabs"],
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "chrome_url_overrides": {
+    "newtab": "src/newtab/newtab.html"
+  }
+}
