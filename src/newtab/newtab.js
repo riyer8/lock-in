@@ -99,15 +99,15 @@ const IDENTITY_LABELS = Object.fromEntries(
 );
 
 const AREA_BLUEPRINTS = {
-  "health-food": { label: "HEALTH & FOOD", description: "Meals, energy, and everyday care." },
-  fitness: { label: "FITNESS", description: "Movement, strength, and consistency." },
-  "energy-recovery": { label: "ENERGY & RECOVERY", description: "Rest, recovery, and sustainable energy." },
-  mind: { label: "MIND", description: "Focus, confidence, and mental clarity." },
-  career: { label: "CAREER", description: "Learning, building, and meaningful work." },
-  appearance: { label: "APPEARANCE", description: "Style, grooming, and self-expression." },
-  environment: { label: "ENVIRONMENT", description: "Home, organization, and surroundings." },
-  "social-life": { label: "SOCIAL & LIFE", description: "Friends, experiences, hobbies, and connection." },
-  "digital-life": { label: "DIGITAL LIFE", description: "Attention, screen time, and intentional use." },
+  "health-food": { label: "HEALTH & FOOD", description: "Meals and energy." },
+  fitness: { label: "FITNESS", description: "Movement and strength." },
+  "energy-recovery": { label: "ENERGY & RECOVERY", description: "Rest that works." },
+  mind: { label: "MIND", description: "Focus and clarity." },
+  career: { label: "CAREER", description: "Learning and work." },
+  appearance: { label: "APPEARANCE", description: "Style and grooming." },
+  environment: { label: "ENVIRONMENT", description: "Home and order." },
+  "social-life": { label: "SOCIAL & LIFE", description: "People and experiences." },
+  "digital-life": { label: "DIGITAL LIFE", description: "Attention and screens." },
 };
 
 const OBSTACLE_LABELS = {
@@ -444,8 +444,8 @@ function fillGoalForm(goal) {
     new Date(),
   );
   $("goal-progress-copy").textContent = consistency.planned
-    ? `${consistency.percent}% of planned opportunities this week. ${consistency.completed} of ${consistency.planned} happened.`
-    : "No planned days yet. The first completed behavior becomes evidence.";
+    ? `${consistency.percent}% kept this week. ${consistency.completed}/${consistency.planned} done.`
+    : "No evidence yet. Complete one behavior.";
   updateGoalReadiness();
   goalDetail.hidden = false;
   goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -464,7 +464,7 @@ function openGoalForIdentity(identityId) {
   $("goal-detail-identity").textContent = IDENTITY_CATALOG[identityId]?.label || identityId;
   $("goal-detail-title").textContent = "New goal";
   $("goal-progress-copy").textContent =
-    "No planned days yet. The first completed behavior becomes evidence.";
+    "No evidence yet. Complete one behavior.";
   goalFormError.textContent = "";
   goalDetail.hidden = false;
   updateGoalReadiness();
@@ -532,7 +532,7 @@ function renderIdentityGoals() {
       createTextElement(
         "p",
         "goal-detail__hint",
-        "Tap an identity above to start a card. One primary goal per identity.",
+        "Pick an identity to start. One goal each.",
       ),
     );
     return;
@@ -670,7 +670,7 @@ async function renderToday() {
   commandArcInline.textContent = ` · ${getArcDayLabel(arcState)}`;
   if (!missions.length) {
     todayFocusList.replaceChildren(
-      createTextElement("li", "", "Add a goal — today’s focus comes from your behaviors."),
+      createTextElement("li", "", "Add a goal to generate today’s focus."),
     );
     startFocusButton.disabled = true;
   } else {
@@ -744,7 +744,7 @@ async function openFocusMode() {
     ? `${cue.trigger}${cue.place ? ` · ${cue.place}` : ""}`
     : "Do this now.";
   $("focus-minimum").textContent = mission.minimumAction
-    ? `Hard-day version: ${mission.minimumAction}`
+    ? `Minimum: ${mission.minimumAction}`
     : "";
   $("focus-skip-wrap").hidden = true;
   $("focus-skip-reason").value = "";
@@ -1109,7 +1109,7 @@ async function renderDailyAudit() {
   $("audit-misses").replaceChildren(
     ...(missed.length
       ? missed.map((item) => createTextElement("p", "", item.label || item))
-      : [createTextElement("p", "", "Nothing important was left open.")]),
+      : [createTextElement("p", "", "Nothing slipped.")]),
   );
   $("audit-kept-count").textContent = audit.missions.total
     ? `${audit.missions.completed}/${audit.missions.total}`
@@ -1126,8 +1126,8 @@ async function renderDailyAudit() {
     audit.missions.total
       ? `${audit.missions.completed}/${audit.missions.total} important actions.`
       : happened.length
-        ? `${happened.length} things logged. No planned action score for this date.`
-        : "A quiet day, or the plan never started.";
+        ? `${happened.length} logs. No planned actions.`
+        : "Quiet day. No plan started.";
   if (usefulPattern?.type === "PLAN_UNREALISTIC") {
     const recovery = LockInGoals.buildLapseRecovery(
       activeGoals.find((goal) => goal.id === usefulPattern.goalId) || activeGoals[0] || {},
@@ -1140,7 +1140,7 @@ async function renderDailyAudit() {
   $("audit-coach-copy").textContent =
     coachInsight?.proposedAdaptation?.reason ||
     coachInsight?.nextAction ||
-    "Use Try this when the plan needs a small correction.";
+    "Use Try this to adjust the plan.";
   const finished = experiments.find(
     (experiment) =>
       experiment.status === "active" &&
@@ -1224,10 +1224,10 @@ async function renderArcScreen() {
   $("arc-overview-day").textContent = `Day ${currentDay}`;
   $("arc-overview-copy").textContent =
     currentDay <= 7
-      ? "You are still at the beginning. The win is proving that this version of you shows up."
-      : "This is the long view: not vibes, not streaks, just evidence that your life is bending in the right direction.";
+      ? "You’re early. Show up and create proof."
+      : "Long view: evidence, not vibes.";
   $("arc-year-progress").style.width = `${arcProgress}%`;
-  $("arc-year-copy").textContent = `${arcProgress}% through the arc. ${totalDays - currentDay} days left to make the rest of the year feel different.`;
+  $("arc-year-copy").textContent = `${arcProgress}% through. ${totalDays - currentDay} days left.`;
   const identities = [...selectedIdentities].filter((id) => IDENTITY_CATALOG[id]);
   const rows = identities.map((identityId) => {
     const adherence = LockInGoals.calculateIdentityAdherence(
@@ -1247,8 +1247,8 @@ async function renderArcScreen() {
         "small",
         "",
         adherence.planned
-          ? `${adherence.completed} of ${adherence.planned} promises kept`
-          : "No planned actions yet",
+          ? `${adherence.completed}/${adherence.planned} kept`
+          : "No actions planned",
       ),
     );
     const bar = document.createElement("div");
@@ -1261,7 +1261,7 @@ async function renderArcScreen() {
   $("arc-identity-bars").replaceChildren(
     ...(rows.length
       ? rows.map((item) => item.row)
-      : [createTextElement("p", "arc-caption", "Choose identities and lock goals to start seeing proof here.")]),
+      : [createTextElement("p", "arc-caption", "Choose identities and goals to start proof.")]),
   );
   const overall = rows.reduce(
     (sum, item) => {
@@ -1279,8 +1279,8 @@ async function renderArcScreen() {
     ? `Your ${IDENTITY_CATALOG[best.identityId].label} self is showing up.`
     : await currentTheme();
   $("arc-transformation-copy").textContent = best
-    ? `${best.adherence.completed} of ${best.adherence.planned} planned ${IDENTITY_CATALOG[best.identityId].label} actions happened. Keep making that identity easier to repeat.`
-    : "Evidence will appear here as you complete real behaviors.";
+    ? `${best.adherence.completed}/${best.adherence.planned} ${IDENTITY_CATALOG[best.identityId].label} actions happened. Make it repeatable.`
+    : "Evidence appears as behaviors happen.";
 }
 
 function weekdayTrendRows() {
@@ -1312,21 +1312,39 @@ async function renderProgress() {
   });
   const lens = patterns.find((pattern) => pattern.type !== "INSUFFICIENT_PATTERN_DATA");
   $("progress-lens").textContent =
-    lens?.copy || "This tab is for raw signals that help Audit make better decisions.";
+    lens?.copy || "Raw signals for better audits.";
   const sections = [];
-  const add = (title, body) => {
-    if (!body) return;
-    const card = document.createElement("section");
-    card.className = "progress-card surface-card";
-    card.append(createTextElement("h2", "", title), createTextElement("p", "", body));
-    sections.push(card);
+  const signalList = (items) => {
+    const list = document.createElement("ul");
+    list.className = "signal-list";
+    items.filter(Boolean).forEach((item) => {
+      list.append(createTextElement("li", "", item));
+    });
+    return list;
   };
-  const addCustom = (title, nodes) => {
+  const signalMeter = (percent, label) => {
+    const wrap = document.createElement("div");
+    wrap.className = "signal-meter";
+    const bar = document.createElement("span");
+    bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    wrap.append(bar, createTextElement("small", "", label));
+    return wrap;
+  };
+  const rankedSignal = (label, percent, value) => {
+    const row = document.createElement("div");
+    row.className = "signal-rank";
+    const bar = document.createElement("span");
+    bar.style.width = `${Math.min(100, Math.max(4, percent))}%`;
+    row.append(createTextElement("strong", "", label), bar, createTextElement("small", "", value));
+    return row;
+  };
+  const addCustom = (title, nodes, options = {}) => {
     if (!nodes.length) return;
     const card = document.createElement("section");
-    card.className = "progress-card surface-card";
+    const { tone = "quiet", wide = false, priority = 50 } = options;
+    card.className = `progress-card surface-card progress-card--${tone}${wide ? " progress-card--wide" : ""}`;
     card.append(createTextElement("h2", "", title), ...nodes);
-    sections.push(card);
+    sections.push({ node: card, priority });
   };
 
   activeGoals
@@ -1338,9 +1356,22 @@ async function renderProgress() {
         new Date(),
       );
       if (!consistency.planned) return;
-      add(
-        IDENTITY_CATALOG[goal.identityId]?.label || goal.outcome,
-        `${goal.outcome}. ${consistency.percent}% of planned opportunities this week (${consistency.completed} of ${consistency.planned}).`,
+      const interpretation = consistency.percent >= 80
+        ? "Plan is working. Protect it."
+        : consistency.percent >= 50
+          ? "Goal is alive. Tighten the cue."
+          : "Plan is too heavy. Shrink the next action.";
+      addCustom(
+        `${IDENTITY_CATALOG[goal.identityId]?.label || "Goal"} signal`,
+        [
+          signalMeter(consistency.percent, `${consistency.percent}% kept this week`),
+          signalList([
+            `Outcome: ${goal.outcome}`,
+            `${consistency.completed}/${consistency.planned} planned actions happened.`,
+            interpretation,
+          ]),
+        ],
+        { tone: "primary", wide: true, priority: 10 },
       );
     });
 
@@ -1348,34 +1379,50 @@ async function renderProgress() {
   if (weekdays.length) {
     addCustom(
       "Day patterns",
-      weekdays.map((row) => {
-        const percent = Math.round((row.completed / row.planned) * 100);
-        const line = document.createElement("div");
-        line.className = "weekday-row";
-        const bar = document.createElement("div");
-        bar.className = "arc-bar";
-        bar.append(document.createElement("span"));
-        bar.firstChild.style.width = `${percent}%`;
-        line.append(
-          createTextElement("span", "", row.label),
-          bar,
-          createTextElement("span", "", `${percent}%`),
-        );
-        return line;
-      }),
+      [
+        ...weekdays.map((row) => {
+          const percent = Math.round((row.completed / row.planned) * 100);
+          const line = document.createElement("div");
+          line.className = "weekday-row";
+          const bar = document.createElement("div");
+          bar.className = "arc-bar";
+          bar.append(document.createElement("span"));
+          bar.firstChild.style.width = `${percent}%`;
+          line.append(
+            createTextElement("span", "", row.label),
+            bar,
+            createTextElement("span", "", `${percent}%`),
+          );
+          return line;
+        }),
+        createTextElement(
+          "p",
+          "signal-note",
+          "Shows which days support follow-through.",
+        ),
+      ],
+      { tone: "chart", priority: 20 },
     );
   }
 
   const completed = missionHistory.filter((entry) => entry.completed).slice(-6);
   if (completed.length) {
-    add(
+    addCustom(
       "Recent proof",
-      completed
-        .map((entry) => {
-          const title = entry.missionId.split(":").at(-1).replaceAll("-", " ");
-          return `${entry.date} · ${title}`;
-        })
-        .join(" · "),
+      [
+        signalList(
+          completed.map((entry) => {
+            const goal = activeGoals.find((item) => item.id === entry.goalId);
+            const title =
+              goal?.actions?.standard ||
+              goal?.outcome ||
+              entry.missionId.split(":").at(-1).replaceAll("-", " ");
+            return `${entry.date} · ${title}`;
+          }),
+        ),
+        createTextElement("p", "signal-note", "These are receipts, not vibes."),
+      ],
+      { tone: "proof", priority: 30 },
     );
   }
 
@@ -1390,11 +1437,16 @@ async function renderProgress() {
     .sort((left, right) => right[1] - left[1])
     .slice(0, 5);
   if (attention.length) {
-    add(
+    const mostAttention = attention[0]?.[1] || 1;
+    addCustom(
       "Browser attention",
-      `Last 7 days in the browser: ${attention
-        .map(([domain, durationMs]) => `${domain} ${formatDuration(durationMs)}`)
-        .join(" · ")}`,
+      [
+        ...attention.map(([domain, durationMs]) =>
+          rankedSignal(domain, (durationMs / mostAttention) * 100, formatDuration(durationMs)),
+        ),
+        createTextElement("p", "signal-note", "Where browser attention went."),
+      ],
+      { tone: "attention", wide: true, priority: 40 },
     );
   }
 
@@ -1404,37 +1456,58 @@ async function renderProgress() {
       (sum, event) => sum + (Number(event.metadata?.durationMin) || 0),
       0,
     );
-    add(
+    addCustom(
       "Fitness",
-      `${fitness.length} check-ins · ${minutes} minutes. ${fitness
-        .slice(-4)
-        .map((event) => event.metadata?.activity || "session")
-        .join(" · ")}`,
+      [
+        signalList([
+          `${fitness.length} check-ins logged.`,
+          `${minutes} total minutes.`,
+          `Recent: ${fitness
+            .slice(-4)
+            .map((event) => event.metadata?.activity || "session")
+            .join(" · ")}`,
+        ]),
+      ],
+      { tone: "body", priority: 35 },
     );
   }
 
   if (experiments.length) {
-    add(
+    addCustom(
       "Experiments",
-      experiments.map((item) => `${item.hypothesis} (${item.status})`).join(" · "),
+      [
+        signalList(experiments.map((item) => `${item.hypothesis} · ${item.status}`)),
+        createTextElement("p", "signal-note", "Tests what works on you."),
+      ],
+      { tone: "experiment", priority: 45 },
     );
   }
 
   const milestones = PERSONAL_CONFIG.milestones ?? [];
   if (milestones.length) {
-    add(
+    addCustom(
       "Milestones",
-      milestones.map((item) => `${item.label} · ${item.date}`).join(" · "),
+      [signalList(milestones.map((item) => `${item.label} · ${item.date}`))],
+      { tone: "quiet", priority: 60 },
     );
   }
 
   if (!sections.length) {
-    add(
+    addCustom(
       "Waiting on evidence",
-      "Complete a behavior, log a check-in, or let a few browser days accumulate. Sections appear only when they have something to show.",
+      [
+        signalList([
+          "Complete a behavior.",
+          "Log sleep, energy, or fitness.",
+          "Let a few browser days accumulate.",
+        ]),
+      ],
+      { tone: "primary", wide: true, priority: 10 },
     );
   }
-  $("progress-sections").replaceChildren(...sections);
+  $("progress-sections").replaceChildren(
+    ...sections.sort((left, right) => left.priority - right.priority).map((item) => item.node),
+  );
 }
 
 function formatDuration(durationMs) {
@@ -1699,7 +1772,7 @@ $("audit-today")?.addEventListener("click", () => {
 });
 $("refresh-audit")?.addEventListener("click", renderDailyAudit);
 function coachOfflineCopy() {
-  return "The local coach isn’t running. Try again once it is.";
+  return "Local coach offline. Try again when it’s running.";
 }
 
 $("try-this")?.addEventListener("click", async () => {

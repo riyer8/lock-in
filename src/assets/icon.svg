@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">LOCK IN snowflake icon</title>
+  <desc id="desc">A soft lavender snowflake mark on a calm dark winter background.</desc>
+  <defs>
+    <radialGradient id="bgGlow" cx="34%" cy="24%" r="78%">
+      <stop offset="0" stop-color="#2a2838" />
+      <stop offset="0.58" stop-color="#14151f" />
+      <stop offset="1" stop-color="#090a0e" />
+    </radialGradient>
+    <linearGradient id="flake" x1="24" y1="22" x2="104" y2="108">
+      <stop offset="0" stop-color="#f6f5f2" />
+      <stop offset="0.46" stop-color="#d8d2ec" />
+      <stop offset="1" stop-color="#b8d8c3" />
+    </linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.34" />
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#d8d2ec" flood-opacity="0.22" />
+    </filter>
+  </defs>
+
+  <rect width="128" height="128" rx="32" fill="url(#bgGlow)" />
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#d8d2ec" stroke-opacity="0.14" />
+
+  <g fill="none" stroke="url(#flake)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" filter="url(#softShadow)">
+    <path d="M64 25v78" />
+    <path d="M30 44.5l68 39" />
+    <path d="M98 44.5l-68 39" />
+    <path d="M54 42l10 10 10-10" stroke-width="4.5" />
+    <path d="M54 86l10-10 10 10" stroke-width="4.5" />
+    <path d="M45 53l14 3-3-14" stroke-width="4.5" />
+    <path d="M83 75l-14-3 3 14" stroke-width="4.5" />
+    <path d="M83 53l-14 3 3-14" stroke-width="4.5" />
+    <path d="M45 75l14-3-3 14" stroke-width="4.5" />
+  </g>
+  <g fill="url(#flake)" opacity="0.96">
+    <circle cx="64" cy="64" r="5" fill="#f6f5f2" />
+    <circle cx="64" cy="25" r="3.4" />
+    <circle cx="64" cy="103" r="3.4" />
+    <circle cx="30" cy="44.5" r="3.2" />
+    <circle cx="98" cy="83.5" r="3.2" />
+    <circle cx="98" cy="44.5" r="3.2" />
+    <circle cx="30" cy="83.5" r="3.2" />
+  </g>
+</svg>
