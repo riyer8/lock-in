@@ -381,6 +381,42 @@ test("builds a supportive, actionable lapse recovery without changing the goal",
   assert.doesNotMatch(recovery.message, /failed|lazy|should have/i);
 });
 
+test("migrates SMART v1 goals onto identity-owned records with extracted behaviors", () => {
+  const migrated = Goals.migrateGoalCollection([goal()], "2030-01-05T12:00:00Z");
+  assert.equal(migrated.goals[0].version, 2);
+  assert.equal(migrated.goals[0].identityId, "builder");
+  assert.equal(migrated.behaviors.length, 1);
+  assert.equal(migrated.behaviors[0].standard, "Do the normal step");
+  assert.equal(migrated.behaviors[0].goalId, "goal-primary");
+});
+
+test("allows goals without a numeric metric and reports readiness instead of SMART scores", () => {
+  const qualitative = goal({
+    identityId: "explorer",
+    area: "social-life",
+    metric: { baseline: 0, target: 0, current: 0, unit: "" },
+    outcome: "Make SF feel like my city",
+  });
+  const validation = Goals.validateGoalRecord(qualitative);
+  assert.equal(validation.valid, true);
+  const readiness = Goals.calculateGoalReadiness(qualitative);
+  assert.equal(readiness.ready, true);
+  assert.match(readiness.summary, /why, a behavior/i);
+});
+
+test("follow-through survives a recovered minimum day and consecutive misses ask if the plan is unrealistic", () => {
+  const history = [
+    { goalId: "goal-primary", date: "2030-09-08", planned: true, completed: true },
+    { goalId: "goal-primary", date: "2030-09-09", planned: true, completed: true, level: "minimum" },
+    { goalId: "goal-primary", date: "2030-09-10", planned: true, completed: false },
+    { goalId: "goal-primary", date: "2030-09-11", planned: true, completed: false },
+    { goalId: "goal-primary", date: "2030-09-12", planned: true, completed: false },
+  ];
+  assert.equal(Goals.calculateFollowThrough(history.slice(0, 2), "2030-09-09").days, 2);
+  assert.equal(Goals.countConsecutiveMisses(history, "goal-primary", "2030-09-12"), 3);
+  assert.equal(Goals.deriveFocusTheme({ consecutiveMisses: 3 }), "RECOVERY");
+});
+
 test("exposes the same dependency-free API to browsers and CommonJS", () => {
   assert.strictEqual(globalThis.LockInGoals, Goals);
   assert.equal(typeof Goals.selectDailyMissions, "function");

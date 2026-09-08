@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if not sys.path or sys.path[0] != str(ROOT):
     sys.path.insert(0, str(ROOT))
 
-from server.coach import CoachError, request_coach_response, request_daily_plan
+from server.coach import CoachError, request_coach_response, request_daily_plan, request_chat_response, request_adapted_plan
 from server.envfile import load_env_file
 
 HOST = os.environ.get("COACH_HOST") or "127.0.0.1"
@@ -112,7 +112,12 @@ class CoachRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True, "service": "lock-in-coach"}, origin)
             return
 
-        if self.command == "OPTIONS" and self.path in ("/api/coach", "/api/plan"):
+        if self.command == "OPTIONS" and self.path in (
+            "/api/coach",
+            "/api/plan",
+            "/api/adapt",
+            "/api/coach/chat",
+        ):
             headers = response_headers(origin)
             headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
             headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -126,7 +131,9 @@ class CoachRequestHandler(BaseHTTPRequestHandler):
 
         is_coach_request = self.command == "POST" and self.path == "/api/coach"
         is_plan_request = self.command == "POST" and self.path == "/api/plan"
-        if not is_coach_request and not is_plan_request:
+        is_adapt_request = self.command == "POST" and self.path == "/api/adapt"
+        is_chat_request = self.command == "POST" and self.path == "/api/coach/chat"
+        if not is_coach_request and not is_plan_request and not is_adapt_request and not is_chat_request:
             self._send_json(404, {"error": "Not found."}, origin)
             return
 
@@ -144,6 +151,14 @@ class CoachRequestHandler(BaseHTTPRequestHandler):
             if is_plan_request:
                 plan = request_daily_plan(context)
                 self._send_json(200, {"plan": plan}, origin)
+                return
+            if is_adapt_request:
+                plan = request_adapted_plan(context)
+                self._send_json(200, {"plan": plan}, origin)
+                return
+            if is_chat_request:
+                chat = request_chat_response(context)
+                self._send_json(200, {"chat": chat}, origin)
                 return
             coaching = request_coach_response(context)
             self._send_json(200, {"coaching": coaching}, origin)

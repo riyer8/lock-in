@@ -63,9 +63,32 @@ def build_coach_context(value):
             MAX_RECENT_MISSION_OUTCOMES,
         ),
         "interventionOutcomes": require_array(
-            value.get("interventionOutcomes"),
+            value.get("interventionOutcomes")
+            if value.get("interventionOutcomes") is not None
+            else [],
             "interventionOutcomes",
             MAX_INTERVENTION_OUTCOMES,
+        ),
+        "experiments": require_array(
+            value.get("experiments") if value.get("experiments") is not None else [],
+            "experiments",
+            10,
+        ),
+        "patterns": require_array(
+            value.get("patterns") if value.get("patterns") is not None else [],
+            "patterns",
+            10,
+        ),
+        "lastInsight": value.get("lastInsight")
+        if isinstance(value.get("lastInsight"), dict)
+        else None,
+        "activeExperiment": value.get("activeExperiment")
+        if isinstance(value.get("activeExperiment"), dict)
+        else None,
+        "messages": require_array(
+            value.get("messages") if value.get("messages") is not None else [],
+            "messages",
+            12,
         ),
     }
 
@@ -78,6 +101,11 @@ def build_coach_context(value):
         or len(context["currentMissions"]) > 0
         or len(context["recentMissionOutcomes"]) > 0
         or len(context["interventionOutcomes"]) > 0
+        or len(context["experiments"]) > 0
+        or len(context["patterns"]) > 0
+        or context["lastInsight"] is not None
+        or context["activeExperiment"] is not None
+        or len(context["messages"]) > 0
     )
 
     if not has_context:

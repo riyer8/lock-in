@@ -37,10 +37,13 @@ test("records and retrieves multiple persistent events", async () => {
   await api.record(EventTypes.MOOD_SELECTED, { mood: "GOOD" });
   await api.record(EventTypes.MISSION_COMPLETED, { missionId: "build" });
 
+  await api.record(EventTypes.FITNESS_CHECKIN, { activity: "run", durationMin: 30 });
+  await api.record(EventTypes.SLEEP_CHECKIN, { hours: 7.2 });
+
   const refreshedStore = new EventStore(persistence);
   const events = await refreshedStore.getEvents();
 
-  assert.equal(events.length, 2);
+  assert.equal(events.length, 4);
   assert.equal(events[0].type, EventTypes.MOOD_SELECTED);
   assert.match(events[0].timestamp, /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(

@@ -44,6 +44,7 @@
       onboardingEvents: [],
       goalEvents: [],
       weeklyReviewEvents: [],
+      checkinEvents: [],
     };
 
     events.forEach((event) => {
@@ -72,6 +73,12 @@
           break;
         case eventTypes.WEEKLY_REVIEW_COMPLETED:
           categories.weeklyReviewEvents.push(event);
+          break;
+        case eventTypes.FITNESS_CHECKIN:
+        case eventTypes.SLEEP_CHECKIN:
+        case eventTypes.ENERGY_CHECKIN:
+        case eventTypes.EXPERIMENT_MEASURE:
+          categories.checkinEvents.push(event);
           break;
         default:
           break;
@@ -256,6 +263,80 @@
     return { highlights, misses };
   }
 
+  function analyzeCheckins(checkinEvents, eventTypes) {
+    const sleepEvents = checkinEvents.filter(
+      (event) => event.type === eventTypes.SLEEP_CHECKIN,
+    );
+    const energyEvents = checkinEvents.filter(
+      (event) => event.type === eventTypes.ENERGY_CHECKIN,
+    );
+    const fitnessEvents = checkinEvents.filter(
+      (event) => event.type === eventTypes.FITNESS_CHECKIN,
+    );
+    const latestSleep = sleepEvents.at(-1);
+    const latestEnergy = energyEvents.at(-1);
+    return {
+      sleepHours: latestSleep ? Number(latestSleep.metadata?.hours) || null : null,
+      energyScore: latestEnergy ? Number(latestEnergy.metadata?.score) || null : null,
+      energyAt: latestEnergy?.metadata?.at ?? null,
+      fitness: fitnessEvents.map((event) => ({
+        activity: event.metadata?.activity || "movement",
+        durationMin: Number(event.metadata?.durationMin) || 0,
+        source: event.source || "manual",
+      })),
+    };
+  }
+
+  function createNarrative({ missions, checkins, browser, plannedTitles = [] }) {
+    const happened = [];
+    const missed = [];
+    if (missions.total > 0) {
+      happened.push({
+        label: `${missions.completed}/${missions.total} important actions`,
+        evidence: "missions",
+      });
+    }
+    if (checkins.sleepHours) {
+      happened.push({
+        label: `${checkins.sleepHours}h sleep`,
+        evidence: "sleep",
+      });
+    }
+    if (checkins.fitness.length) {
+      const minutes = checkins.fitness.reduce(
+        (total, item) => total + (item.durationMin || 0),
+        0,
+      );
+      const activity = checkins.fitness[0].activity;
+      happened.push({
+        label: minutes ? `${minutes}m ${activity}` : activity,
+        evidence: "fitness",
+      });
+    }
+    const unfinished = Math.max(0, missions.total - missions.completed);
+    if (unfinished > 0) {
+      const titles = plannedTitles.filter(Boolean).slice(0, unfinished);
+      if (titles.length) {
+        titles.forEach((title) => missed.push({ label: title, evidence: "mission" }));
+      } else {
+        missed.push({
+          label: `${unfinished} important ${unfinished === 1 ? "action" : "actions"}`,
+          evidence: "mission",
+        });
+      }
+    }
+    if (
+      browser.totalObservedMs > 2 * 60 * 60 * 1000 &&
+      unfinished > 0
+    ) {
+      happened.push({
+        label: "A long browser day",
+        evidence: "browser",
+      });
+    }
+    return { happened, missed };
+  }
+
   function createGuidance({ missions, mood, browser }) {
     const unfinished = Math.max(0, missions.total - missions.completed);
     let focus;
@@ -328,6 +409,8 @@
     analyzeBrowser,
     detectPatterns,
     createSummaries,
+    analyzeCheckins,
+    createNarrative,
     createGuidance,
     determineVerdict,
   };

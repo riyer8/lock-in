@@ -209,7 +209,7 @@ test("reports goal action levels and milestone preparation", async () => {
 
   const audit = await auditService.generateDailyAudit(TEST_DATE);
 
-  assert.equal(audit.schemaVersion, 3);
+  assert.equal(audit.schemaVersion, 4);
   assert.deepEqual(audit.missions.levels, {
     minimum: 1,
     standard: 0,

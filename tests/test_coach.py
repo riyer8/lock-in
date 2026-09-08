@@ -41,6 +41,11 @@ COACHING = {
     "priority": "Protect the current build mission.",
     "nextAction": "Close extra tabs and build for 25 minutes.",
     "encouragement": "You already started; make the next block deliberate.",
+    "proposedAdaptation": {
+        "type": "protect-slot",
+        "changes": "Keep the build mission first and shrink the evening list.",
+        "reason": "Starts are stronger than finishes.",
+    },
 }
 
 
@@ -181,7 +186,7 @@ class CoachTests(unittest.TestCase):
         self.assertEqual(captured["body"]["max_output_tokens"], 1600)
         self.assertEqual(
             captured["body"]["text"]["format"]["schema"]["required"],
-            ["observation", "pattern", "priority", "nextAction", "encouragement"],
+            ["observation", "pattern", "priority", "nextAction", "encouragement", "proposedAdaptation"],
         )
         self.assertEqual(
             captured["options"]["headers"]["Authorization"],

@@ -13,8 +13,10 @@
       <div class="app-nav__links">
         <button type="button" data-nav="command-center-screen">Today</button>
         <button type="button" data-nav="goals-screen">Goals</button>
-        <button type="button" data-nav="weekly-review-screen">Week</button>
-        <button type="button" data-nav="daily-audit-screen">Review</button>
+        <button type="button" data-nav="arc-screen">Arc</button>
+        <button type="button" data-nav="daily-audit-screen">Audit</button>
+        <button type="button" data-nav="coach-screen">Coach</button>
+        <button type="button" data-nav="progress-screen">Progress</button>
       </div>
       <p id="command-arc-day">Day 1 of 116</p>
     </nav>
@@ -273,217 +275,146 @@
     </main>
 
     <main class="screen goals-screen" id="goals-screen" hidden>
-      <div class="goals-shell">
+      <div class="goals-shell identity-goals-shell">
         <section class="goals-hero surface-card" aria-labelledby="goals-title">
-          <p class="aside-kicker">Goals</p>
-          <h1 id="goals-title">What you’re building toward</h1>
-          <p>Up to three. They become today’s missions.</p>
+          <p class="aside-kicker">Who I'm becoming</p>
+          <h1 id="goals-title">Goals that produce a person</h1>
+          <p>One primary goal per identity. Behaviors are what you actually do.</p>
         </section>
-
-        <div class="goals-layout">
-          <section class="saved-goals surface-card" aria-labelledby="saved-goals-title">
-            <header>
-              <h2 id="saved-goals-title">Now</h2>
-              <span id="goal-count">0 / 3</span>
-            </header>
-            <div id="saved-goal-list" class="saved-goal-list"></div>
-            <button type="button" id="new-goal">Add a goal</button>
-          </section>
-
-          <form class="goal-builder surface-card" id="goal-form">
+        <div id="identity-goal-grid" class="identity-goal-grid"></div>
+        <article class="goal-detail surface-card" id="goal-detail" hidden>
+          <header class="goal-detail__header">
+            <p class="aside-kicker" id="goal-detail-identity">Athlete</p>
+            <h2 id="goal-detail-title">New goal</h2>
+            <button type="button" id="close-goal-detail">Close</button>
+          </header>
+          <form id="goal-form" class="goal-detail-form">
             <input type="hidden" id="goal-id" />
-            <header>
-              <h2 id="goal-form-title">New goal</h2>
-              <div class="smart-progress-wrap">
-                <p id="smart-summary">2 of 5 filled in</p>
-                <div class="smart-progress" id="smart-progress" role="progressbar" aria-label="Goal completeness" aria-valuemin="0" aria-valuemax="5" aria-valuenow="2">
-                  <span></span><span></span><span></span><span></span><span></span>
-                </div>
-              </div>
-            </header>
-
-            <fieldset>
-              <legend>What and why</legend>
-              <label>Life area
-                <select id="goal-area" required>
-                  <option value="">Choose an area</option>
-                  <option value="health-food">Health &amp; food</option>
-                  <option value="fitness">Fitness</option>
-                  <option value="energy-recovery">Energy &amp; recovery</option>
-                  <option value="mind">Mind</option>
-                  <option value="career">Career</option>
-                  <option value="appearance">Appearance</option>
-                  <option value="environment">Home &amp; environment</option>
-                  <option value="social-life">Relationships &amp; life</option>
-                  <option value="digital-life">Digital attention</option>
-                </select>
+            <input type="hidden" id="goal-identity" />
+            <section>
+              <h3>Why</h3>
+              <label>Why this matters
+                <textarea id="goal-why" required maxlength="300" placeholder="Who you become if this is true"></textarea>
               </label>
+            </section>
+            <section>
+              <h3>Outcome</h3>
               <label>What will be different?
-                <input id="goal-outcome" required maxlength="140" placeholder="Example: Build enough strength to complete 10 full push-ups" />
+                <input id="goal-outcome" required maxlength="140" placeholder="Run a half marathon" />
               </label>
-              <label>Why it matters
-                <textarea id="goal-why" required maxlength="300" placeholder="Why this deserves your time"></textarea>
-              </label>
-            </fieldset>
-
-            <fieldset>
-              <legend>Numbers and deadline</legend>
-              <div class="form-grid form-grid--metrics">
-                <label>Starting point<input id="metric-baseline" type="number" step="any" required /></label>
-                <label>Target<input id="metric-target" type="number" step="any" required /></label>
-                <label>Current<input id="metric-current" type="number" step="any" required /></label>
-                <label>Unit<input id="metric-unit" required maxlength="40" placeholder="push-ups, hours, dollars…" /></label>
-              </div>
               <div class="form-grid">
-                <label>Deadline<input id="goal-deadline" type="date" required /></label>
+                <label>Target date<input id="goal-deadline" type="date" required /></label>
+                <label>Optional metric
+                  <input id="metric-current" type="number" step="any" placeholder="Now" />
+                </label>
+                <label>Target
+                  <input id="metric-target" type="number" step="any" placeholder="Goal" />
+                </label>
+                <label>Unit<input id="metric-unit" maxlength="40" placeholder="miles, hours…" /></label>
+              </div>
+            </section>
+            <section>
+              <h3>Behaviors</h3>
+              <p class="goal-detail__hint">The action that produces the outcome.</p>
+              <label>Standard action<input id="action-standard" required maxlength="140" placeholder="Run 30 min" /></label>
+              <label>Hard-day minimum<input id="action-minimum" required maxlength="140" placeholder="Walk 10 min" /></label>
+              <div class="form-grid">
+                <label>After / when<input id="cue-trigger" required maxlength="100" placeholder="After morning coffee" /></label>
+                <label>Time<input id="cue-time" maxlength="40" placeholder="7:30 AM" /></label>
+                <label>Where<input id="cue-place" required maxlength="80" placeholder="The park" /></label>
                 <label>Days each week
                   <select id="goal-frequency" required>
-                    <option value="">Choose</option>
-                    <option value="1">1 day</option><option value="2">2 days</option>
-                    <option value="3">3 days</option><option value="4">4 days</option>
-                    <option value="5">5 days</option><option value="6">6 days</option>
+                    <option value="3">3 days</option>
+                    <option value="1">1 day</option>
+                    <option value="2">2 days</option>
+                    <option value="4">4 days</option>
+                    <option value="5">5 days</option>
+                    <option value="6">6 days</option>
                     <option value="7">Every day</option>
                   </select>
                 </label>
               </div>
-              <label class="check-label"><input id="goal-feasible" type="checkbox" required /> This fits my real time and energy.</label>
-            </fieldset>
-
-            <fieldset>
-              <legend>When and how</legend>
-              <div class="form-grid">
-                <label>After / when…<input id="cue-trigger" required maxlength="100" placeholder="After I make morning coffee" /></label>
-                <label>Time<input id="cue-time" maxlength="40" placeholder="7:30 AM or after work" /></label>
-                <label>Where<input id="cue-place" required maxlength="80" placeholder="At home, at the gym…" /></label>
-              </div>
-              <label>Hard-day minimum<input id="action-minimum" required maxlength="140" placeholder="Do one push-up" /></label>
-              <label>Standard action<input id="action-standard" required maxlength="140" placeholder="Complete the 20-minute strength session" /></label>
-              <label>Stretch<input id="action-stretch" maxlength="140" placeholder="Add one optional set" /></label>
-            </fieldset>
-
-            <fieldset>
-              <legend>If it gets hard</legend>
-              <label>Likely obstacle<input id="goal-obstacle" required maxlength="140" placeholder="I feel too tired after work" /></label>
-              <label>If that happens, then I will…<input id="goal-recovery" required maxlength="180" placeholder="Do the minimum version before deciding whether to continue" /></label>
-              <label>Make it nicer<input id="goal-reward" maxlength="140" placeholder="Save a favorite podcast for the session" /></label>
-            </fieldset>
-
+            </section>
+            <section id="goal-progress-section">
+              <h3>Progress</h3>
+              <p id="goal-progress-copy">No planned days yet. The first completed behavior becomes evidence.</p>
+            </section>
+            <section>
+              <h3>Obstacles</h3>
+              <label>What makes this hard<input id="goal-obstacle" required maxlength="140" placeholder="Evenings get overloaded" /></label>
+              <label>If that happens, then I will<input id="goal-recovery" required maxlength="180" placeholder="Do the minimum before deciding" /></label>
+            </section>
             <p class="form-error" id="goal-form-error" role="alert"></p>
+            <p id="goal-readiness" class="goal-readiness"></p>
             <div class="goal-form-actions">
               <button type="button" id="cancel-goal">Cancel</button>
               <button type="submit" class="continue-button">Save</button>
             </div>
           </form>
-        </div>
+        </article>
       </div>
     </main>
 
     <main class="screen command-center" id="command-center-screen" hidden>
-      <div class="command-shell">
-        <div
-          class="arc-progress-track"
-          role="progressbar"
-          aria-label="Arc progress"
-          aria-valuemin="0"
-          aria-valuemax="1"
-          aria-valuenow="0"
-          id="arc-progress"
-        >
-          <span id="arc-progress-fill"></span>
-        </div>
-
-        <div class="command-layout">
-          <section class="mission-section" aria-labelledby="command-greeting">
-            <header class="command-header">
-              <div class="command-header__copy">
-                <h1 id="command-greeting">Good morning</h1>
-                <p id="command-identities" class="command-identities" hidden></p>
-              </div>
-              <div class="command-header__meta">
-                <p id="mission-progress-summary">0 of 3 today</p>
-                <div class="mission-plan-bar">
-                  <button type="button" id="generate-plan">Plan today</button>
-                  <button type="button" id="regenerate-plan" hidden>New plan</button>
-                  <p id="plan-status" class="mission-plan-status" hidden></p>
-                  <p id="plan-error" class="mission-plan-error" role="alert" hidden></p>
-                </div>
-              </div>
-            </header>
-            <div class="mission-list" id="mission-list"></div>
-          </section>
-
-          <aside class="command-sidebar">
-            <section class="aside-note coach-card surface-card" aria-labelledby="coach-title">
-              <p class="aside-kicker">Coach</p>
-              <h2 id="coach-title">Next step</h2>
-              <button type="button" id="ask-coach">Ask Coach</button>
-              <p id="coach-loading" class="coach-card__status" role="status" hidden>
-                Reading today’s context…
-              </p>
-              <div id="coach-response" class="coach-response" aria-live="polite" hidden>
-                <section>
-                  <h3>Noticing</h3>
-                  <p id="coach-observation"></p>
-                </section>
-                <section>
-                  <h3>Pattern</h3>
-                  <p id="coach-pattern"></p>
-                </section>
-                <section>
-                  <h3>Priority</h3>
-                  <p id="coach-priority"></p>
-                </section>
-                <section>
-                  <h3>Next</h3>
-                  <p id="coach-next-action"></p>
-                </section>
-                <p id="coach-encouragement" class="coach-response__encouragement"></p>
-              </div>
-              <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
-            </section>
-          </aside>
-        </div>
+      <div class="command-shell today-shell">
+        <section class="today-hero" aria-labelledby="command-greeting">
+          <h1 id="command-greeting">Good morning</h1>
+          <p id="today-focus-kicker" class="aside-kicker">Today's focus</p>
+          <ol class="today-focus-list" id="today-focus-list"></ol>
+          <button type="button" class="continue-button today-start" id="start-focus">Start</button>
+          <p id="coach-teaser" class="coach-teaser" hidden>
+            <button type="button" id="open-coach-teaser">Coach noticed something →</button>
+          </p>
+        </section>
+        <footer class="today-meta">
+          <p>Today I'm optimizing for <strong id="today-theme">FOCUS</strong></p>
+          <p>
+            Follow-through: <strong id="today-follow-through">0 days</strong>
+            <span id="command-arc-inline"></span>
+          </p>
+        </footer>
       </div>
     </main>
 
-    <main class="screen weekly-review" id="weekly-review-screen" hidden>
-      <div class="goals-shell weekly-review-shell">
-        <section class="weekly-review-hero surface-card" aria-labelledby="weekly-review-title">
-          <p class="aside-kicker">Weekly review</p>
-          <h1 id="weekly-review-title">This week</h1>
-          <p>Keep what helped. Shrink what didn’t.</p>
+    <div id="focus-mode" class="focus-mode" hidden>
+      <article class="focus-mode__card surface-card">
+        <p class="aside-kicker" id="focus-identity">Now</p>
+        <h2 id="focus-title">Today's first action</h2>
+        <p id="focus-cue"></p>
+        <p id="focus-minimum"></p>
+        <div class="focus-mode__actions">
+          <button type="button" id="focus-skip">Skip with a reason</button>
+          <button type="button" class="continue-button" id="focus-done">Done</button>
+        </div>
+        <label id="focus-skip-wrap" hidden>What got in the way?
+          <input id="focus-skip-reason" maxlength="140" placeholder="Plan was too late / energy was low" />
+        </label>
+        <button type="button" id="close-focus">Back to today</button>
+      </article>
+    </div>
+
+    <main class="screen arc-screen" id="arc-screen" hidden>
+      <div class="arc-shell">
+        <section class="arc-hero surface-card">
+          <p class="aside-kicker" id="arc-overview-name">Winter Arc</p>
+          <p id="arc-overview-range" class="date-range"></p>
+          <h1 id="arc-overview-day">Day 1</h1>
         </section>
-        <form id="weekly-review-form" class="goal-builder weekly-review-form">
-          <label class="weekly-review-goal">Goal
-            <select id="review-goal" required></select>
-          </label>
-          <div class="weekly-review-grid">
-            <section class="surface-card surface-card--positive">
-              <h2>What supported you?</h2>
-              <label>What helped?<textarea id="review-helped" required maxlength="400"></textarea></label>
-              <label>What will you change?<textarea id="review-adjustment" required maxlength="400" placeholder="Smaller minimum, different time, clearer cue"></textarea></label>
-            </section>
-            <section class="surface-card surface-card--warm">
-              <h2>What got in the way?</h2>
-              <label>What blocked you?<textarea id="review-blocked" required maxlength="400"></textarea></label>
-              <label>Next week’s minimum<input id="review-minimum" required maxlength="180" /></label>
-            </section>
-          </div>
-          <div class="weekly-review-actions">
-            <button type="button" id="review-create-goal" hidden>Create a goal first</button>
-            <button type="submit" class="continue-button" id="save-weekly-review">Save</button>
-          </div>
-          <p id="weekly-review-status" class="form-status" hidden></p>
-        </form>
+        <section class="arc-identities surface-card" id="arc-identity-bars"></section>
+        <section class="arc-summary surface-card">
+          <p>Consistency <strong id="arc-consistency">0%</strong></p>
+          <p>Biggest transformation <strong id="arc-transformation">—</strong></p>
+          <p id="arc-transformation-copy" class="arc-caption"></p>
+        </section>
       </div>
     </main>
 
     <main class="screen daily-audit" id="daily-audit-screen" hidden>
-      <div class="audit-shell">
+      <div class="audit-shell audit-reflection">
         <nav class="audit-date-nav" aria-label="Reflection date">
           <button type="button" id="audit-previous" aria-label="View previous day">Previous</button>
           <div class="audit-date-nav__current">
-            <p id="audit-date-label">Today</p>
+            <p id="audit-date-label">Yesterday</p>
             <time id="audit-date"></time>
           </div>
           <div class="audit-date-nav__forward">
@@ -492,14 +423,26 @@
           </div>
         </nav>
 
-        <section class="audit-mood-check" aria-labelledby="mood-title">
-          <h2 id="mood-title">How do you feel?</h2>
-          <div class="mood-options" id="mood-options">
-            <button type="button" data-mood="low" aria-pressed="false">😴 Low</button>
-            <button type="button" data-mood="meh" aria-pressed="false">😐 Meh</button>
-            <button type="button" data-mood="good" aria-pressed="false">🙂 Good</button>
-            <button type="button" data-mood="locked-in" aria-pressed="false">🔥 Locked in</button>
+        <section class="audit-checkins surface-card" aria-labelledby="checkin-title">
+          <h2 id="checkin-title">What actually happened</h2>
+          <div class="checkin-grid">
+            <label>Sleep (hours)
+              <input id="sleep-hours" type="number" min="0" max="14" step="0.1" />
+            </label>
+            <label>Energy (1–5)
+              <input id="energy-score" type="number" min="1" max="5" step="1" />
+            </label>
+            <label>Energy at
+              <input id="energy-at" placeholder="6 PM" />
+            </label>
+            <label>Fitness
+              <input id="fitness-activity" placeholder="Run" />
+            </label>
+            <label>Minutes
+              <input id="fitness-minutes" type="number" min="0" step="1" />
+            </label>
           </div>
+          <button type="button" id="save-checkins">Save check-ins</button>
         </section>
 
         <section class="audit-empty" id="audit-empty" hidden>
@@ -507,81 +450,77 @@
           <p>Come back once the day has started.</p>
         </section>
 
-        <article class="audit-content" id="audit-content" aria-live="polite">
+        <article class="audit-content" id="audit-content">
           <header class="audit-hero audit-card">
             <div>
-              <p class="aside-kicker" id="audit-view-title">Today</p>
-              <h1 id="audit-verdict">Your day</h1>
+              <p class="aside-kicker" id="audit-view-title">Yesterday</p>
+              <h1 id="audit-verdict">What happened?</h1>
               <p class="audit-verdict-copy" id="audit-verdict-copy"></p>
             </div>
             <button type="button" id="refresh-audit">Refresh</button>
           </header>
-
-          <section class="audit-metrics audit-card" aria-label="Daily summary">
-            <article>
-              <span class="audit-metric__label">Missions</span>
-              <strong id="audit-missions">0 / 0</strong>
-            </article>
-            <article>
-              <span class="audit-metric__label">Mood</span>
-              <strong id="audit-mood">—</strong>
-            </article>
-            <article>
-              <span class="audit-metric__label">Browser</span>
-              <strong id="audit-browser-total">0m</strong>
-            </article>
+          <section class="audit-card" aria-labelledby="audit-happened-title">
+            <h2 id="audit-happened-title">Happened</h2>
+            <div class="audit-list" id="audit-happened" role="list"></div>
           </section>
-
-          <section class="audit-next audit-card" aria-labelledby="audit-next-title">
-            <div class="audit-next__lead">
-              <h2 id="audit-next-title">Next step</h2>
-              <p id="audit-focus"></p>
-            </div>
-            <div class="audit-guidance-list">
-              <article>
-                <span aria-hidden="true">＋</span>
-                <div>
-                  <h3>Build on it</h3>
-                  <p id="audit-add-more"></p>
-                </div>
-              </article>
-              <article>
-                <span aria-hidden="true">✦</span>
-                <div>
-                  <h3>Make it inviting</h3>
-                  <p id="audit-make-interesting"></p>
-                </div>
-              </article>
-            </div>
+          <section class="audit-card audit-card--warm" aria-labelledby="audit-missed-title">
+            <h2 id="audit-missed-title">Missed</h2>
+            <div class="audit-list" id="audit-misses" role="list"></div>
           </section>
-
-          <section class="audit-goals audit-card" aria-labelledby="audit-goals-title">
-            <h2 id="audit-goals-title">Goals</h2>
-            <div class="audit-list" id="audit-goal-progress" role="list"></div>
+          <section class="audit-card" aria-labelledby="audit-pattern-title">
+            <h2 id="audit-pattern-title">Pattern</h2>
+            <p id="audit-pattern-copy"></p>
           </section>
-
-          <div class="audit-reflection-grid">
-            <section class="audit-card audit-card--positive" aria-labelledby="audit-highlights-title">
-              <h2 id="audit-highlights-title">What worked</h2>
-              <div class="audit-list" id="audit-highlights" role="list"></div>
-            </section>
-            <section class="audit-card audit-card--warm" aria-labelledby="audit-misses-title">
-              <h2 id="audit-misses-title">Still open</h2>
-              <div class="audit-list" id="audit-misses" role="list"></div>
-            </section>
-          </div>
-
-          <div class="audit-bottom">
-            <section class="audit-browser audit-card" aria-labelledby="audit-browser-title">
-              <h2 id="audit-browser-title">Browser</h2>
-              <div class="audit-domain-list" id="audit-domains" role="list"></div>
-            </section>
-            <section class="audit-patterns audit-card" aria-labelledby="audit-patterns-title">
-              <h2 id="audit-patterns-title">Patterns</h2>
-              <div class="audit-pattern-list" id="audit-pattern-list" role="list"></div>
-            </section>
-          </div>
+          <section class="audit-card coach-take" aria-labelledby="audit-coach-title">
+            <h2 id="audit-coach-title">Coach's take</h2>
+            <p id="audit-coach-copy"></p>
+            <button type="button" class="continue-button" id="try-this">Try this</button>
+          </section>
+          <section class="audit-card" id="experiment-result-card" hidden>
+            <h2>Experiment result</h2>
+            <p id="experiment-result-copy"></p>
+            <button type="button" id="keep-experiment">Keep this behavior</button>
+            <button type="button" id="discard-experiment">Let it go</button>
+          </section>
         </article>
+      </div>
+    </main>
+
+    <main class="screen coach-screen" id="coach-screen" hidden>
+      <div class="coach-shell">
+        <section class="coach-insight surface-card" aria-labelledby="coach-insight-title">
+          <p class="aside-kicker">Your coach</p>
+          <h1 id="coach-insight-title">I've noticed something.</h1>
+          <p id="coach-observation"></p>
+          <p id="coach-pattern"></p>
+          <p id="coach-priority"></p>
+          <p id="coach-next-action"></p>
+          <p id="coach-encouragement" class="coach-response__encouragement"></p>
+          <p id="coach-adapt-reason"></p>
+          <button type="button" class="continue-button" id="yes-fix-it">Yes, fix it</button>
+          <button type="button" id="refresh-insight">Look again</button>
+          <p id="coach-loading" class="coach-card__status" role="status" hidden>Reading today’s context…</p>
+          <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
+        </section>
+        <section class="coach-chat surface-card">
+          <div id="coach-thread" class="coach-thread"></div>
+          <form id="coach-chat-form" class="coach-chat-form">
+            <label class="visually-hidden" for="coach-chat-input">Message</label>
+            <input id="coach-chat-input" maxlength="400" placeholder="Tell me what you want to change" />
+            <button type="submit">Send</button>
+          </form>
+        </section>
+      </div>
+    </main>
+
+    <main class="screen progress-screen" id="progress-screen" hidden>
+      <div class="progress-shell">
+        <section class="goals-hero surface-card">
+          <p class="aside-kicker">Evidence</p>
+          <h1>Measure what helps you decide</h1>
+          <p id="progress-lens">The useful signal will appear here as days accumulate.</p>
+        </section>
+        <div id="progress-sections" class="progress-sections"></div>
       </div>
     </main>
 
@@ -631,9 +570,11 @@
     <script src="../config/personal.js"></script>
     <script src="../core/event-engine.js"></script>
     <script src="../core/goal-engine.js"></script>
+    <script src="../core/experiment-engine.js"></script>
     <script src="../observer/browser-observer.js"></script>
     <script src="../audit/auditUtils.js"></script>
     <script src="../audit/auditService.js"></script>
+    <script src="../audit/pattern-engine.js"></script>
     <script src="../coach/context-builder.js"></script>
     <script src="../coach/plan-builder.js"></script>
     <script src="newtab.js"></script>

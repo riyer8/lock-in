@@ -201,9 +201,41 @@
     return [...kept, ...generated].slice(0, Math.max(kept.length, limit));
   }
 
+  function applyAdaptationToPlan({
+    proposed = [],
+    goals = [],
+    date = new Date(),
+    recentOutcomes = [],
+    preserved = [],
+    areaLabels = {},
+    proposal = null,
+  } = {}) {
+    const reason = text(proposal?.changes) || text(proposal?.reason);
+    const adapted = (Array.isArray(proposed) ? proposed : []).map((mission) => ({
+      ...mission,
+      reason: reason
+        ? `${text(mission.reason)} ${reason}`.trim()
+        : text(mission.reason),
+    }));
+    const missions = buildAdaptiveMissions({
+      proposed: adapted.length ? adapted : proposed,
+      goals,
+      date,
+      recentOutcomes,
+      preserved,
+      areaLabels,
+    });
+    return missions.map((mission) => ({
+      ...mission,
+      source: "adapted-plan",
+      adaptedFrom: text(proposal?.type) || "coach",
+    }));
+  }
+
   const planBuilder = {
     PRIORITY_RANK,
     buildAdaptiveMissions,
+    applyAdaptationToPlan,
     choosePlanDifficulty,
     planSize,
   };

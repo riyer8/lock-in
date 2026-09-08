@@ -1,10 +1,64 @@
 (function initializeGoalEngine(globalScope) {
   "use strict";
 
-  const GOAL_VERSION = 1;
+  const GOAL_VERSION = 2;
+  const BEHAVIOR_VERSION = 1;
   const DAY_MS = 24 * 60 * 60 * 1000;
   const ACTIVE_STATUSES = new Set(["active", "in-progress"]);
   const FINAL_STATUSES = new Set(["completed", "cancelled", "archived"]);
+
+  const IDENTITY_CATALOG = Object.freeze({
+    athlete: Object.freeze({
+      id: "athlete",
+      label: "Athlete",
+      icon: "🏃",
+      aspiration: "Move and care for your body",
+    }),
+    thinker: Object.freeze({
+      id: "thinker",
+      label: "Thinker",
+      icon: "🧠",
+      aspiration: "Learn, reflect, and stay curious",
+    }),
+    builder: Object.freeze({
+      id: "builder",
+      label: "Builder",
+      icon: "💻",
+      aspiration: "Make things that matter",
+    }),
+    "glow-up": Object.freeze({
+      id: "glow-up",
+      label: "Glow up",
+      icon: "✨",
+      aspiration: "How you feel and present",
+    }),
+    explorer: Object.freeze({
+      id: "explorer",
+      label: "Explorer",
+      icon: "🌎",
+      aspiration: "New places, ideas, experiences",
+    }),
+    connected: Object.freeze({
+      id: "connected",
+      label: "Connected",
+      icon: "🫶",
+      aspiration: "Invest in people and community",
+    }),
+  });
+
+  const AREA_TO_IDENTITY = Object.freeze({
+    fitness: "athlete",
+    "health-food": "athlete",
+    "energy-recovery": "athlete",
+    mind: "thinker",
+    career: "builder",
+    appearance: "glow-up",
+    environment: "explorer",
+    "social-life": "connected",
+    "digital-life": "thinker",
+  });
+
+  const FOCUS_THEMES = Object.freeze(["ENERGY", "FOCUS", "RECOVERY", "CONSISTENCY"]);
 
   const DEFAULT_PRIVATE_CONFIG = Object.freeze({
     version: 1,
@@ -125,15 +179,147 @@
     };
   }
 
+  function identityFromArea(area) {
+    const key = text(area).toLowerCase();
+    return AREA_TO_IDENTITY[key] || (IDENTITY_CATALOG[key] ? key : "builder");
+  }
+
+  function areaFromIdentity(identityId) {
+    const reverse = {
+      athlete: "fitness",
+      thinker: "mind",
+      builder: "career",
+      "glow-up": "appearance",
+      explorer: "environment",
+      connected: "social-life",
+    };
+    return reverse[identityId] || "";
+  }
+
+  function resolveIdentityId(source, area) {
+    const explicit = text(source?.identityId).toLowerCase();
+    if (IDENTITY_CATALOG[explicit]) return explicit;
+    return identityFromArea(area);
+  }
+
+  function hasUsableMetric(metric) {
+    return Boolean(metric && text(metric.unit) && metric.target !== metric.baseline);
+  }
+
+  function normalizeMetric(metricInput) {
+    const metric = isObject(metricInput) ? metricInput : {};
+    return {
+      baseline: finiteNumber(metric.baseline),
+      target: finiteNumber(metric.target),
+      current: finiteNumber(metric.current, finiteNumber(metric.baseline)),
+      unit: text(metric.unit),
+    };
+  }
+
+  function normalizeBehaviorRecord(input, fallback = {}, now = null) {
+    const source = isObject(input) ? input : {};
+    const cueSource = isObject(source.cue)
+      ? source.cue
+      : isObject(fallback.cue)
+        ? fallback.cue
+        : {};
+    const friction = isObject(source.friction) ? source.friction : {};
+    const schedule = isObject(source.schedule) ? source.schedule : {};
+    const nowDate = parseDate(now) || new Date(0);
+    const goalId = text(source.goalId) || text(fallback.goalId);
+    const standard = text(source.standard) || text(fallback.standard);
+    const generatedId = `${goalId}-${standard}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    return {
+      version: BEHAVIOR_VERSION,
+      id: text(source.id) || `behavior-${generatedId || "untitled"}`,
+      goalId,
+      standard,
+      minimum: text(source.minimum) || text(fallback.minimum),
+      stretch: text(source.stretch) || text(fallback.stretch),
+      cue: {
+        trigger: text(cueSource.trigger),
+        time: text(cueSource.time),
+        place: text(cueSource.place),
+      },
+      schedule: {
+        daysPerWeek: clamp(
+          Math.round(finiteNumber(schedule.daysPerWeek, fallback.daysPerWeek)),
+          0,
+          7,
+        ),
+      },
+      friction: {
+        obstacle: text(friction.obstacle) || text(fallback.obstacle),
+        recoveryPlan: text(friction.recoveryPlan) || text(fallback.recoveryPlan),
+      },
+      status: text(source.status).toLowerCase() || "active",
+      timestamps: {
+        createdAt:
+          parseDate(source.timestamps?.createdAt)?.toISOString() || nowDate.toISOString(),
+        updatedAt:
+          parseDate(source.timestamps?.updatedAt)?.toISOString() || nowDate.toISOString(),
+      },
+    };
+  }
+
+  function extractBehaviorsFromGoal(input, now = null) {
+    const source = isObject(input) ? input : {};
+    const listed = Array.isArray(source.behaviors) ? source.behaviors : [];
+    const area = text(source.area);
+    const identityId = resolveIdentityId(source, area);
+    const outcome = text(source.outcome);
+    const generatedId = `${identityId || area}-${outcome}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const goalId = text(source.id) || `goal-${generatedId || "untitled"}`;
+    const actions = isObject(source.actions) ? source.actions : {};
+    const cue = isObject(source.cue) ? source.cue : {};
+    const fallback = {
+      goalId,
+      standard: text(actions.standard),
+      minimum: text(actions.minimum),
+      stretch: text(actions.stretch),
+      cue,
+      daysPerWeek: finiteNumber(source.frequencyPerWeek),
+      obstacle: text(source.obstacle),
+      recoveryPlan: text(source.recoveryPlan),
+    };
+    if (listed.length) {
+      return listed.map((behavior, index) =>
+        normalizeBehaviorRecord(
+          {
+            ...behavior,
+            id: text(behavior?.id) || `${goalId}-behavior-${index}`,
+            goalId,
+          },
+          fallback,
+          now,
+        ),
+      );
+    }
+    if (!fallback.standard && !fallback.minimum) return [];
+    return [
+      normalizeBehaviorRecord(
+        { id: `${goalId}-behavior-primary`, goalId },
+        fallback,
+        now,
+      ),
+    ];
+  }
+
   function normalizeGoalRecord(input, now = null) {
     const source = isObject(input) ? input : {};
-    const metric = isObject(source.metric) ? source.metric : {};
     const cue = isObject(source.cue) ? source.cue : {};
     const actions = isObject(source.actions) ? source.actions : {};
     const timestamps = isObject(source.timestamps) ? source.timestamps : {};
     const area = text(source.area);
+    const identityId = resolveIdentityId(source, area);
     const outcome = text(source.outcome);
-    const generatedId = `${area}-${outcome}`
+    const generatedId = `${identityId || area}-${outcome}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
@@ -145,33 +331,37 @@
     const nowIso = nowDate.toISOString();
     const deadline = formatDateKey(source.deadline);
     const status = text(source.status).toLowerCase() || "active";
+    const behaviors = extractBehaviorsFromGoal(source, nowDate);
+    const primary = behaviors[0];
 
     return {
-      version: Number.isInteger(source.version) ? source.version : GOAL_VERSION,
+      version: GOAL_VERSION,
       id: text(source.id) || `goal-${generatedId || "untitled"}`,
-      area,
+      identityId,
+      area: area || areaFromIdentity(identityId),
       outcome,
       why: text(source.why),
-      metric: {
-        baseline: finiteNumber(metric.baseline),
-        target: finiteNumber(metric.target),
-        current: finiteNumber(metric.current, finiteNumber(metric.baseline)),
-        unit: text(metric.unit),
-      },
+      metric: normalizeMetric(source.metric),
       deadline,
-      frequencyPerWeek: clamp(Math.round(finiteNumber(source.frequencyPerWeek)), 0, 7),
+      frequencyPerWeek: clamp(
+        Math.round(
+          finiteNumber(source.frequencyPerWeek, primary?.schedule?.daysPerWeek || 0),
+        ),
+        0,
+        7,
+      ),
       cue: {
-        trigger: text(cue.trigger),
-        time: text(cue.time),
-        place: text(cue.place),
+        trigger: text(cue.trigger) || text(primary?.cue?.trigger),
+        time: text(cue.time) || text(primary?.cue?.time),
+        place: text(cue.place) || text(primary?.cue?.place),
       },
       actions: {
-        minimum: text(actions.minimum),
-        standard: text(actions.standard),
-        stretch: text(actions.stretch),
+        minimum: text(actions.minimum) || text(primary?.minimum),
+        standard: text(actions.standard) || text(primary?.standard),
+        stretch: text(actions.stretch) || text(primary?.stretch),
       },
-      obstacle: text(source.obstacle),
-      recoveryPlan: text(source.recoveryPlan),
+      obstacle: text(source.obstacle) || text(primary?.friction?.obstacle),
+      recoveryPlan: text(source.recoveryPlan) || text(primary?.friction?.recoveryPlan),
       reward: text(source.reward),
       status: status || "active",
       timestamps: {
@@ -186,11 +376,13 @@
     const errors = [];
     if (!isObject(input)) errors.push("Goal must be an object.");
     if (goal.version !== GOAL_VERSION) errors.push(`Unsupported goal version: ${goal.version}.`);
+    if (!goal.identityId || !IDENTITY_CATALOG[goal.identityId]) {
+      errors.push("identityId is required.");
+    }
     if (!goal.area) errors.push("area is required.");
     if (!goal.outcome) errors.push("outcome is required.");
     if (!goal.why) errors.push("why is required.");
-    if (!goal.metric.unit) errors.push("metric.unit is required.");
-    if (goal.metric.target === goal.metric.baseline) {
+    if (goal.metric.unit && goal.metric.target === goal.metric.baseline) {
       errors.push("metric.target must differ from metric.baseline.");
     }
     if (!goal.deadline) errors.push("deadline must be a valid date.");
@@ -273,7 +465,7 @@
       return {
         valid: false,
         errors: ["Personal config must be an object."],
-        config: { schemaVersion: 1, arc: null, milestones: [], attentionDomains: [] },
+        config: { schemaVersion: 1, displayName: "", arc: null, milestones: [], attentionDomains: [] },
       };
     }
     if (input.schemaVersion !== 1) {
@@ -307,9 +499,10 @@
       ? input.attentionDomains.filter((domain) => text(domain))
       : [];
     const config = errors.length
-      ? { schemaVersion: 1, arc: null, milestones: [], attentionDomains: [] }
+      ? { schemaVersion: 1, displayName: "", arc: null, milestones: [], attentionDomains: [] }
       : {
           schemaVersion: 1,
+          displayName: text(input.displayName),
           arc,
           milestones,
           attentionDomains,
@@ -525,6 +718,8 @@
         return {
           id: `${formatDateKey(today)}:${goal.id}`,
           goalId: goal.id,
+          identityId: goal.identityId,
+          behaviorId: `${goal.id}-behavior-primary`,
           area: goal.area,
           outcome: goal.outcome,
           action: goal.actions.standard || goal.actions.minimum,
@@ -591,13 +786,197 @@
     };
   }
 
+  function migrateGoalCollection(goals, now = null) {
+    const list = Array.isArray(goals) ? goals : [];
+    const normalizedGoals = [];
+    const behaviors = [];
+    list.forEach((input) => {
+      const goal = normalizeGoalRecord(input, now);
+      normalizedGoals.push(goal);
+      extractBehaviorsFromGoal({ ...input, ...goal, id: goal.id }, now).forEach(
+        (behavior) => behaviors.push(behavior),
+      );
+    });
+    return { goals: normalizedGoals, behaviors };
+  }
+
+  function calculateGoalReadiness(input) {
+    const goal = normalizeGoalRecord(input, new Date(0));
+    const behaviors = extractBehaviorsFromGoal(input, new Date(0));
+    const criteria = {
+      why: Boolean(goal.why),
+      behavior: behaviors.some((item) => item.standard || item.minimum),
+      notice: Boolean(goal.deadline || hasUsableMetric(goal.metric)),
+    };
+    const completed = Object.values(criteria).filter(Boolean).length;
+    return {
+      ready: completed === 3,
+      completed,
+      total: 3,
+      criteria,
+      summary: criteria.why && criteria.behavior && criteria.notice
+        ? "This goal has a why, a behavior, and a way to notice if it worked."
+        : "Add a why, a behavior, and a way to notice progress.",
+    };
+  }
+
+  function wasPlannedOpportunity(entry) {
+    return entry?.planned !== false;
+  }
+
+  function wasRecoveryOrComplete(entry) {
+    const level = text(entry?.level).toLowerCase();
+    return (
+      wasCompleted(entry) ||
+      level === "minimum" ||
+      entry?.recovery === true
+    );
+  }
+
+  function calculateFollowThrough(history, date = new Date()) {
+    const today = startOfDay(date);
+    if (!today) return { days: 0, ended: false };
+    const entries = Array.isArray(history) ? history : [];
+    let days = 0;
+    for (let offset = 0; offset < 120; offset += 1) {
+      const cursor = addDays(today, -offset);
+      const key = formatDateKey(cursor);
+      const dayEntries = entries.filter(
+        (entry) => formatDateKey(historyDate(entry)) === key && wasPlannedOpportunity(entry),
+      );
+      if (!dayEntries.length) {
+        if (offset === 0) continue;
+        break;
+      }
+      if (dayEntries.some(wasRecoveryOrComplete)) {
+        days += 1;
+        continue;
+      }
+      break;
+    }
+    return { days, ended: false };
+  }
+
+  function countConsecutiveMisses(history, goalId, date = new Date()) {
+    const today = startOfDay(date);
+    if (!today) return 0;
+    const entries = (Array.isArray(history) ? history : []).filter(
+      (entry) => historyGoalId(entry) === goalId && wasPlannedOpportunity(entry),
+    );
+    let missed = 0;
+    for (let offset = 0; offset < 21; offset += 1) {
+      const key = formatDateKey(addDays(today, -offset));
+      const dayEntries = entries.filter((entry) => formatDateKey(historyDate(entry)) === key);
+      if (!dayEntries.length) {
+        if (offset === 0) continue;
+        break;
+      }
+      if (dayEntries.some(wasCompleted)) break;
+      missed += 1;
+    }
+    return missed;
+  }
+
+  function deriveFocusTheme({
+    recentEnergy = [],
+    recentSleep = [],
+    consecutiveMisses = 0,
+    activeExperiment = null,
+  } = {}) {
+    if (activeExperiment?.hypothesis) {
+      const hypothesis = text(activeExperiment.hypothesis).toUpperCase();
+      if (hypothesis.includes("ENERGY")) return "ENERGY";
+      if (hypothesis.includes("FOCUS") || hypothesis.includes("DEEP")) return "FOCUS";
+      if (hypothesis.includes("RECOVER") || hypothesis.includes("SLEEP")) return "RECOVERY";
+    }
+    if (consecutiveMisses >= 3) return "RECOVERY";
+    const energyScores = (Array.isArray(recentEnergy) ? recentEnergy : [])
+      .map((item) => finiteNumber(item?.score ?? item?.value, NaN))
+      .filter((value) => Number.isFinite(value));
+    const sleepHours = (Array.isArray(recentSleep) ? recentSleep : [])
+      .map((item) => finiteNumber(item?.hours ?? item?.value, NaN))
+      .filter((value) => Number.isFinite(value));
+    const averageEnergy =
+      energyScores.reduce((sum, value) => sum + value, 0) / (energyScores.length || 1);
+    const averageSleep =
+      sleepHours.reduce((sum, value) => sum + value, 0) / (sleepHours.length || 1);
+    if (energyScores.length && averageEnergy <= 2) return "ENERGY";
+    if (sleepHours.length && averageSleep < 7) return "RECOVERY";
+    if (consecutiveMisses >= 1) return "CONSISTENCY";
+    return "FOCUS";
+  }
+
+  function calculateIdentityAdherence(history, goals, identityId, start, end) {
+    const goalIds = new Set(
+      (Array.isArray(goals) ? goals : [])
+        .filter((goal) => normalizeGoalRecord(goal).identityId === identityId)
+        .map((goal) => normalizeGoalRecord(goal).id),
+    );
+    const relevant = (Array.isArray(history) ? history : []).filter((entry) => {
+      if (!wasPlannedOpportunity(entry)) return false;
+      const belongs =
+        goalIds.has(historyGoalId(entry)) || text(entry.identityId) === identityId;
+      if (!belongs) return false;
+      if (!start || !end) return true;
+      return isWithinDateRange(historyDate(entry), start, end);
+    });
+    const completed = relevant.filter(wasCompleted).length;
+    const planned = relevant.length;
+    return {
+      identityId,
+      completed,
+      planned,
+      missed: planned - completed,
+      rate: planned ? completed / planned : 0,
+      percent: planned ? Math.round((completed / planned) * 100) : 0,
+    };
+  }
+
+  function applyBehaviorAdaptation(behaviors, proposal = {}) {
+    const list = (Array.isArray(behaviors) ? behaviors : []).map((behavior) =>
+      normalizeBehaviorRecord(behavior),
+    );
+    const changes = Array.isArray(proposal.changes) ? proposal.changes : [];
+    return list.map((behavior) => {
+      const change = changes.find((item) => text(item?.behaviorId) === behavior.id);
+      if (!change) return behavior;
+      const cue = isObject(change.cue) ? change.cue : {};
+      return normalizeBehaviorRecord({
+        ...behavior,
+        minimum: text(change.minimum) || behavior.minimum,
+        standard: text(change.standard) || behavior.standard,
+        cue: {
+          ...behavior.cue,
+          trigger: text(cue.trigger) || behavior.cue.trigger,
+          time: text(cue.time) || behavior.cue.time,
+          place: text(cue.place) || behavior.cue.place,
+        },
+        timestamps: {
+          ...behavior.timestamps,
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    });
+  }
+
   const goalEngine = {
     GOAL_VERSION,
+    BEHAVIOR_VERSION,
+    IDENTITY_CATALOG,
+    AREA_TO_IDENTITY,
+    FOCUS_THEMES,
     DEFAULT_PRIVATE_CONFIG,
+    identityFromArea,
+    areaFromIdentity,
     normalizeGoalRecord,
+    normalizeBehaviorRecord,
+    extractBehaviorsFromGoal,
+    migrateGoalCollection,
     validateGoalRecord,
     calculateSMARTCompleteness,
     calculateSmartCompleteness: calculateSMARTCompleteness,
+    calculateGoalReadiness,
+    hasUsableMetric,
     parseDate,
     formatDateKey,
     startOfDay,
@@ -614,6 +993,11 @@
     chooseMilestoneTasks,
     selectDailyMissions,
     calculateWeeklyConsistency,
+    calculateFollowThrough,
+    countConsecutiveMisses,
+    deriveFocusTheme,
+    calculateIdentityAdherence,
+    applyBehaviorAdaptation,
     buildLapseRecovery,
   };
 

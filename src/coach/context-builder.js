@@ -13,6 +13,11 @@
     "GOAL_PROGRESS_UPDATED",
     "MILESTONE_TASK_COMPLETED",
     "WEEKLY_REVIEW_COMPLETED",
+    "FITNESS_CHECKIN",
+    "SLEEP_CHECKIN",
+    "ENERGY_CHECKIN",
+    "EXPERIMENT_MEASURE",
+    "PLAN_ADAPTED",
   ]);
 
   function eventTime(event) {
@@ -45,6 +50,10 @@
     recentEvents = [],
     currentMissions = [],
     recentMissionOutcomes = [],
+    experiments = [],
+    patterns = [],
+    lastInsight = null,
+    activeExperiment = null,
   } = {}) {
     const sortedEvents = [...recentEvents].sort(
       (first, second) => eventTime(second) - eventTime(first),
@@ -75,6 +84,13 @@
         MAX_RECENT_MISSION_OUTCOMES,
       ),
       interventionOutcomes,
+      experiments: (Array.isArray(experiments) ? experiments : []).slice(0, 10),
+      patterns: (Array.isArray(patterns) ? patterns : []).slice(0, 10),
+      lastInsight: lastInsight && typeof lastInsight === "object" ? lastInsight : null,
+      activeExperiment:
+        activeExperiment && typeof activeExperiment === "object"
+          ? activeExperiment
+          : null,
     };
   }
 

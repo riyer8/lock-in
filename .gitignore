@@ -5,3 +5,4 @@
 node_modules/
 src/config/personal.js
 server/.generated/
+.tmp-ui/

@@ -63,12 +63,21 @@
       );
       const mood = auditUtils.analyzeMood(categories.moodEvents);
       const browser = auditUtils.analyzeBrowser(categories.browserEvents);
+      const checkins = auditUtils.analyzeCheckins(
+        categories.checkinEvents,
+        this.eventTypes,
+      );
       const patterns = auditUtils.detectPatterns({
         missions: missionAnalysis,
         browser,
       });
       const summaries = auditUtils.createSummaries({
         missions: missionAnalysis,
+      });
+      const narrative = auditUtils.createNarrative({
+        missions: missionAnalysis,
+        checkins,
+        browser,
       });
       const guidance = auditUtils.createGuidance({
         missions: missionAnalysis,
@@ -77,7 +86,7 @@
       });
 
       const audit = {
-        schemaVersion: 3,
+        schemaVersion: 4,
         date: dateKey,
         missions: {
           total: missionAnalysis.total,
@@ -89,12 +98,15 @@
         },
         mood,
         browser,
+        checkins,
         behavior: {
           commandCenterOpened: categories.commandCenterEvents.length > 0,
           onboardingCompleted: categories.onboardingEvents.length > 0,
           weeklyReviewCompleted: categories.weeklyReviewEvents.length > 0,
           goalActivityCount: categories.goalEvents.length,
         },
+        happened: narrative.happened,
+        missed: narrative.missed,
         highlights: summaries.highlights,
         misses: summaries.misses,
         patterns,
