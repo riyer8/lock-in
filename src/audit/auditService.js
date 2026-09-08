@@ -77,18 +77,23 @@
       });
 
       const audit = {
-        schemaVersion: 2,
+        schemaVersion: 3,
         date: dateKey,
         missions: {
           total: missionAnalysis.total,
           completed: missionAnalysis.completed,
           completionRate: missionAnalysis.completionRate,
+          levels: missionAnalysis.levels,
+          byGoal: missionAnalysis.byGoal,
+          milestoneTasksCompleted: missionAnalysis.milestoneTasksCompleted,
         },
         mood,
         browser,
         behavior: {
           commandCenterOpened: categories.commandCenterEvents.length > 0,
           onboardingCompleted: categories.onboardingEvents.length > 0,
+          weeklyReviewCompleted: categories.weeklyReviewEvents.length > 0,
+          goalActivityCount: categories.goalEvents.length,
         },
         highlights: summaries.highlights,
         misses: summaries.misses,

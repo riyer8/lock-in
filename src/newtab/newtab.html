@@ -20,8 +20,8 @@
         </p>
 
         <div class="title-group">
-          <h1 id="arc-title">The <span>Winter</span> Arc</h1>
-          <p class="date-range">September 7 to December 31, 2026</p>
+          <h1 id="arc-title">Your <span>Growth</span> Arc</h1>
+          <p class="date-range" id="arc-date-range">September 7 to December 31, 2026</p>
         </div>
 
         <div class="countdown" aria-live="polite">
@@ -252,12 +252,128 @@
       </article>
     </main>
 
+    <main class="screen goals-screen" id="goals-screen" hidden>
+      <div class="goals-shell">
+        <header class="goals-topbar">
+          <div>
+            <p class="step-label">YOUR SYSTEM</p>
+            <h1>Goals that <span>move.</span></h1>
+            <p>Choose one to three outcomes. LOCK IN will turn them into small, repeatable actions.</p>
+          </div>
+          <button type="button" id="close-goals">BACK TO TODAY</button>
+        </header>
+
+        <div class="goals-layout">
+          <section class="saved-goals" aria-labelledby="saved-goals-title">
+            <header>
+              <p class="command-section-label">ACTIVE GOALS</p>
+              <h2 id="saved-goals-title">Your priorities</h2>
+              <span id="goal-count">0 / 3 active</span>
+            </header>
+            <div id="saved-goal-list" class="saved-goal-list"></div>
+            <button type="button" id="new-goal">+ ADD ANOTHER GOAL</button>
+          </section>
+
+          <form class="goal-builder" id="goal-form">
+            <input type="hidden" id="goal-id" />
+            <header>
+              <p class="command-section-label">GUIDED SMART BUILDER</p>
+              <h2 id="goal-form-title">Define one clear outcome</h2>
+              <p id="smart-summary">Complete each section. Clear beats perfect.</p>
+            </header>
+
+            <div class="smart-progress" aria-label="SMART goal completeness">
+              <span data-smart="specific">S</span>
+              <span data-smart="measurable">M</span>
+              <span data-smart="achievable">A</span>
+              <span data-smart="relevant">R</span>
+              <span data-smart="timeBound">T</span>
+            </div>
+
+            <fieldset>
+              <legend>Specific and relevant</legend>
+              <label>Life area
+                <select id="goal-area" required>
+                  <option value="">Choose an area</option>
+                  <option value="health-food">Health &amp; food</option>
+                  <option value="fitness">Fitness</option>
+                  <option value="energy-recovery">Energy &amp; recovery</option>
+                  <option value="mind">Mind</option>
+                  <option value="career">Career</option>
+                  <option value="appearance">Appearance</option>
+                  <option value="environment">Home &amp; environment</option>
+                  <option value="social-life">Relationships &amp; life</option>
+                  <option value="digital-life">Digital attention</option>
+                </select>
+              </label>
+              <label>What will be different?
+                <input id="goal-outcome" required maxlength="140" placeholder="Example: Build enough strength to complete 10 full push-ups" />
+              </label>
+              <label>Why does this matter to your life?
+                <textarea id="goal-why" required maxlength="300" placeholder="The deeper reason this deserves your time"></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Measurable and time-bound</legend>
+              <div class="form-grid form-grid--metrics">
+                <label>Starting point<input id="metric-baseline" type="number" step="any" required /></label>
+                <label>Target<input id="metric-target" type="number" step="any" required /></label>
+                <label>Current<input id="metric-current" type="number" step="any" required /></label>
+                <label>Unit<input id="metric-unit" required maxlength="40" placeholder="push-ups, hours, dollars…" /></label>
+              </div>
+              <div class="form-grid">
+                <label>Deadline<input id="goal-deadline" type="date" required /></label>
+                <label>Planned days each week
+                  <select id="goal-frequency" required>
+                    <option value="">Choose</option>
+                    <option value="1">1 day</option><option value="2">2 days</option>
+                    <option value="3">3 days</option><option value="4">4 days</option>
+                    <option value="5">5 days</option><option value="6">6 days</option>
+                    <option value="7">Every day</option>
+                  </select>
+                </label>
+              </div>
+              <label class="check-label"><input id="goal-feasible" type="checkbox" required /> This target challenges me and fits my current time, skills, health, and resources.</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Turn intention into action</legend>
+              <div class="form-grid">
+                <label>After / when…<input id="cue-trigger" required maxlength="100" placeholder="After I make morning coffee" /></label>
+                <label>Time<input id="cue-time" maxlength="40" placeholder="7:30 AM or after work" /></label>
+                <label>Where<input id="cue-place" required maxlength="80" placeholder="At home, at the gym…" /></label>
+              </div>
+              <label>Minimum version — counts on hard days<input id="action-minimum" required maxlength="140" placeholder="Do one push-up" /></label>
+              <label>Standard action<input id="action-standard" required maxlength="140" placeholder="Complete the 20-minute strength session" /></label>
+              <label>Stretch version — only when energy is there<input id="action-stretch" maxlength="140" placeholder="Add one optional set" /></label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Plan for friction</legend>
+              <label>Likely obstacle<input id="goal-obstacle" required maxlength="140" placeholder="I feel too tired after work" /></label>
+              <label>If that happens, then I will…<input id="goal-recovery" required maxlength="180" placeholder="Do the minimum version before deciding whether to continue" /></label>
+              <label>Optional enjoyment or reward pairing<input id="goal-reward" maxlength="140" placeholder="Listen to my favorite podcast only during the session" /></label>
+            </fieldset>
+
+            <p class="form-error" id="goal-form-error" role="alert"></p>
+            <div class="goal-form-actions">
+              <button type="button" id="cancel-goal">CANCEL</button>
+              <button type="submit" class="continue-button">SAVE GOAL</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
     <main class="screen command-center" id="command-center-screen" hidden>
       <div class="command-shell">
         <header class="command-topbar">
           <p class="command-brand">❄️&nbsp; LOCK IN</p>
           <div class="command-topbar__actions">
             <p id="command-arc-day">DAY 1 OF 116</p>
+            <button type="button" id="open-goals">🎯 Goals</button>
+            <button type="button" id="open-weekly-review">↻ Weekly review</button>
             <button type="button" id="open-audit">🌙 Today's reflection</button>
           </div>
         </header>
@@ -307,6 +423,20 @@
               </div>
             </section>
 
+            <section class="milestone-card" id="milestone-card" aria-labelledby="milestone-title" hidden>
+              <p class="command-section-label">📍 NEXT MILESTONE</p>
+              <h2 id="milestone-title"></h2>
+              <strong id="milestone-countdown"></strong>
+              <p id="milestone-task"></p>
+            </section>
+
+            <section class="consistency-card" aria-labelledby="consistency-title">
+              <p class="command-section-label">↻ THIS WEEK</p>
+              <h2 id="consistency-title">Consistency, not perfection</h2>
+              <strong id="weekly-consistency">No planned opportunities yet</strong>
+              <p id="recovery-message">Every planned opportunity is a fresh chance.</p>
+            </section>
+
             <section class="mood-card" aria-labelledby="mood-title">
               <p class="command-section-label">🌤️ CHECK IN</p>
               <h2 id="mood-title">How are you feeling?</h2>
@@ -329,6 +459,30 @@
             </section>
           </aside>
         </div>
+      </div>
+    </main>
+
+    <main class="screen weekly-review" id="weekly-review-screen" hidden>
+      <div class="goals-shell weekly-review-shell">
+        <header class="goals-topbar">
+          <div>
+            <p class="step-label">WEEKLY RESET</p>
+            <h1>Learn, then <span>adjust.</span></h1>
+            <p>A missed plan is information. Keep what worked and make the next week easier to enter.</p>
+          </div>
+          <button type="button" id="close-weekly-review">BACK TO TODAY</button>
+        </header>
+        <form id="weekly-review-form" class="goal-builder weekly-review-form">
+          <label>Goal to adjust
+            <select id="review-goal" required></select>
+          </label>
+          <label>What helped you follow through?<textarea id="review-helped" required maxlength="400"></textarea></label>
+          <label>What got in the way?<textarea id="review-blocked" required maxlength="400"></textarea></label>
+          <label>What will you change next week?<textarea id="review-adjustment" required maxlength="400" placeholder="Shrink a minimum, move a cue, or protect a better time"></textarea></label>
+          <label>Your next-week minimum promise<input id="review-minimum" required maxlength="180" /></label>
+          <button type="submit" class="continue-button">SAVE WEEKLY REVIEW</button>
+          <p id="weekly-review-status" class="mood-response" hidden></p>
+        </form>
       </div>
     </main>
 
@@ -414,6 +568,12 @@
             </div>
           </section>
 
+          <section class="audit-section audit-goals" aria-labelledby="audit-goals-title">
+            <p class="command-section-label">🎯 GOAL MOMENTUM</p>
+            <h2 id="audit-goals-title">How you practiced</h2>
+            <div class="audit-list" id="audit-goal-progress"></div>
+          </section>
+
           <div class="audit-reflection-grid">
             <section class="audit-section" aria-labelledby="audit-highlights-title">
               <p class="command-section-label">🌟 WHAT HELPED</p>
@@ -479,7 +639,9 @@
       </section>
     </main>
 
+    <script src="../config/personal.js"></script>
     <script src="../core/event-engine.js"></script>
+    <script src="../core/goal-engine.js"></script>
     <script src="../observer/browser-observer.js"></script>
     <script src="../audit/auditUtils.js"></script>
     <script src="../audit/auditService.js"></script>

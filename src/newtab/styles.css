@@ -2167,6 +2167,354 @@ blockquote {
   }
 }
 
+.goals-screen,
+.weekly-review {
+  position: relative;
+  z-index: 3;
+  padding: 32px 36px 72px;
+  animation: screen-in 500ms var(--ease-out) both;
+}
+
+.goals-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.goals-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.goals-topbar > div {
+  max-width: 760px;
+}
+
+.goals-topbar h1 {
+  font-size: clamp(46px, 6vw, 82px);
+}
+
+.goals-topbar p:last-child {
+  margin: 18px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.goals-topbar > button,
+.saved-goals button,
+.goal-form-actions > button,
+#close-weekly-review {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--lavender-dark);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.goals-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(520px, 1.45fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.saved-goals,
+.goal-builder,
+.milestone-card,
+.consistency-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.saved-goals {
+  padding: 24px;
+}
+
+.saved-goals header {
+  display: grid;
+  gap: 8px;
+}
+
+.saved-goals h2,
+.goal-builder h2,
+.milestone-card h2,
+.consistency-card h2 {
+  margin: 0;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+
+.saved-goals header span,
+.goal-builder header > p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.saved-goal-list {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.saved-goal-card {
+  padding: 16px;
+  border: 1px solid rgba(238, 237, 244, 0.11);
+  border-radius: 9px;
+  background: rgba(8, 9, 13, 0.2);
+}
+
+.saved-goal-card h3 {
+  margin: 7px 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.saved-goal-card p,
+.saved-goal-card small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.saved-goal-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.saved-goal-actions button {
+  padding: 6px 9px;
+  font-size: 9px;
+}
+
+.goal-builder {
+  display: grid;
+  gap: 18px;
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.goal-builder[hidden] {
+  display: none;
+}
+
+.goal-builder header {
+  display: grid;
+  gap: 10px;
+}
+
+.smart-progress {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+
+.smart-progress span {
+  display: grid;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: #777582;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.smart-progress span.is-complete {
+  border-color: rgba(216, 210, 236, 0.65);
+  color: #171722;
+  background: var(--lavender-dark);
+}
+
+.goal-builder fieldset {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid rgba(238, 237, 244, 0.12);
+  border-radius: 9px;
+}
+
+.goal-builder legend {
+  padding: 0 8px;
+  color: var(--lavender-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-builder label {
+  display: grid;
+  gap: 7px;
+  color: #c5c2cf;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.goal-builder input,
+.goal-builder select,
+.goal-builder textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid rgba(238, 237, 244, 0.18);
+  border-radius: 7px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(5, 6, 9, 0.48);
+  font: inherit;
+  font-weight: 400;
+}
+
+.goal-builder textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.goal-builder input:focus,
+.goal-builder select:focus,
+.goal-builder textarea:focus {
+  border-color: var(--lavender);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.form-grid--metrics {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.goal-builder .check-label {
+  display: flex;
+  align-items: flex-start;
+  grid-template-columns: none;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.check-label input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.goal-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.goal-form-actions .continue-button,
+.weekly-review-form .continue-button {
+  width: auto;
+  min-width: 160px;
+  margin: 0;
+}
+
+.form-error {
+  min-height: 18px;
+  margin: 0;
+  color: #efaaa5;
+  font-size: 12px;
+}
+
+.milestone-card,
+.consistency-card {
+  padding: 21px;
+}
+
+.milestone-card h2,
+.consistency-card h2 {
+  margin-top: 11px;
+}
+
+.milestone-card > strong,
+.consistency-card > strong {
+  display: block;
+  margin-top: 13px;
+  color: var(--lavender-dark);
+  font-size: 13px;
+}
+
+.milestone-card > p:last-child,
+.consistency-card > p:last-child {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.completion-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.completion-levels button {
+  padding: 7px 10px;
+  border: 1px solid rgba(216, 210, 236, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  color: #bbb7ca;
+  background: transparent;
+  font-size: 10px;
+}
+
+.completion-levels button:hover {
+  color: #171722;
+  background: var(--lavender-dark);
+}
+
+.weekly-review-shell {
+  width: min(900px, 100%);
+}
+
+.weekly-review-form {
+  margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+  .goals-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid,
+  .form-grid--metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .goals-screen,
+  .weekly-review {
+    padding: 22px 18px 52px;
+  }
+
+  .goals-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .form-grid,
+  .form-grid--metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

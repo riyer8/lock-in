@@ -8,7 +8,7 @@ const {
 } = require("../src/core/event-engine.js");
 const { AuditService } = require("../src/audit/auditService.js");
 
-const TEST_DATE = "2026-09-08";
+const TEST_DATE = "2026-09-10";
 
 class MemoryStorage {
   constructor() {
@@ -35,13 +35,13 @@ function createHarness() {
   const auditService = new AuditService({
     eventStore,
     persistence,
-    now: () => new Date("2026-09-08T23:00:00.000Z"),
+    now: () => new Date("2026-09-10T23:00:00.000Z"),
   });
   return { persistence, eventApi, auditService };
 }
 
 async function record(eventApi, type, metadata, minute) {
-  const timestamp = new Date(2026, 8, 8, 12, minute, 0, 0).toISOString();
+  const timestamp = new Date(2026, 8, 10, 12, minute, 0, 0).toISOString();
   return eventApi.record(
     type,
     metadata,
@@ -146,6 +146,46 @@ test("reports no mission activity when a plan exists without toggles", async () 
   assert.ok(
     audit.patterns.some(({ type }) => type === "NO_MISSION_ACTIVITY"),
   );
+});
+
+test("reports goal action levels and milestone preparation", async () => {
+  const { eventApi, auditService } = createHarness();
+  await record(
+    eventApi,
+    EventTypes.MISSION_COMPLETED,
+    {
+      missionId: "goal-action",
+      goalId: "goal-health",
+      milestoneTaskId: "move-window",
+      level: "minimum",
+    },
+    0,
+  );
+  await record(
+    eventApi,
+    EventTypes.MILESTONE_TASK_COMPLETED,
+    { milestoneTaskId: "move-window" },
+    1,
+  );
+  await record(
+    eventApi,
+    EventTypes.WEEKLY_REVIEW_COMPLETED,
+    { goalId: "goal-health" },
+    2,
+  );
+
+  const audit = await auditService.generateDailyAudit(TEST_DATE);
+
+  assert.equal(audit.schemaVersion, 3);
+  assert.deepEqual(audit.missions.levels, {
+    minimum: 1,
+    standard: 0,
+    stretch: 0,
+  });
+  assert.deepEqual(audit.missions.byGoal, { "goal-health": 1 });
+  assert.equal(audit.missions.milestoneTasksCompleted, 1);
+  assert.equal(audit.behavior.weeklyReviewCompleted, true);
+  assert.ok(audit.highlights.some((item) => item.includes("minimum-version")));
 });
 
 test("is reproducible from the same event stream and persists the result", async () => {

@@ -1,10 +1,31 @@
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-const ARC_START = Date.UTC(2026, 8, 7);
-const ARC_END = Date.UTC(2026, 11, 31);
+const PERSONAL_CONFIG = LockInGoals.validatePersonalConfig(
+  globalThis.LOCK_IN_PERSONAL_CONFIG ?? {
+    schemaVersion: 1,
+    milestones: [],
+    attentionDomains: [],
+  },
+).config;
+const ARC_CONFIG = PERSONAL_CONFIG.arc ?? {};
+const ARC_START_DATE = LockInGoals.parseDate(ARC_CONFIG.start) ?? new Date(2026, 8, 7);
+const ARC_END_DATE = LockInGoals.parseDate(ARC_CONFIG.end) ?? new Date(2026, 11, 31);
+const ARC_START = Date.UTC(
+  ARC_START_DATE.getFullYear(),
+  ARC_START_DATE.getMonth(),
+  ARC_START_DATE.getDate(),
+);
+const ARC_END = Date.UTC(
+  ARC_END_DATE.getFullYear(),
+  ARC_END_DATE.getMonth(),
+  ARC_END_DATE.getDate(),
+);
 const IDENTITIES_STORAGE_KEY = "lock-in-identities";
 const ATTENTION_AREAS_STORAGE_KEY = "lock-in-attention-areas";
 const OBSTACLES_STORAGE_KEY = "lock-in-obstacles";
 const ONBOARDING_COMPLETE_STORAGE_KEY = "lock-in-onboarding-complete";
+const GOALS_STORAGE_KEY = "lock-in-goals-v1";
+const MISSION_HISTORY_STORAGE_KEY = "lock-in-mission-history-v1";
+const WEEKLY_REVIEWS_STORAGE_KEY = "lock-in-weekly-reviews-v1";
 
 const storage = {
   readJson(key, fallback) {
@@ -25,6 +46,31 @@ const storage = {
     localStorage.setItem(key, value);
   },
 };
+
+const privateStorage = {
+  async read(key, fallback) {
+    try {
+      if (globalThis.chrome?.storage?.local) {
+        const values = await chrome.storage.local.get(key);
+        return values[key] ?? fallback;
+      }
+      return storage.readJson(key, fallback);
+    } catch {
+      return fallback;
+    }
+  },
+  async write(key, value) {
+    if (globalThis.chrome?.storage?.local) {
+      await chrome.storage.local.set({ [key]: value });
+      return;
+    }
+    storage.writeJson(key, value);
+  },
+};
+
+let activeGoals = [];
+let missionHistory = [];
+let weeklyReviews = [];
 
 const eventPersistence = globalThis.chrome?.storage?.local
   ? new LockInEvents.ChromeStorageEventAdapter(chrome.storage.local)
@@ -223,6 +269,8 @@ const MOOD_LABELS = {
 
 const daysRemainingElement = document.querySelector("#days-remaining");
 const arcDayElement = document.querySelector("#arc-day");
+const arcTitleElement = document.querySelector("#arc-title");
+const arcDateRangeElement = document.querySelector("#arc-date-range");
 const screens = document.querySelectorAll(".screen");
 const enterArcButton = document.querySelector("#enter-arc");
 const identityCards = [...document.querySelectorAll(".identity-card")];
@@ -260,6 +308,27 @@ const observerDuration = document.querySelector("#observer-duration");
 const observerTotal = document.querySelector("#observer-total");
 const observerDomains = document.querySelector("#observer-domains");
 const openAuditButton = document.querySelector("#open-audit");
+const openGoalsButton = document.querySelector("#open-goals");
+const closeGoalsButton = document.querySelector("#close-goals");
+const openWeeklyReviewButton = document.querySelector("#open-weekly-review");
+const closeWeeklyReviewButton = document.querySelector("#close-weekly-review");
+const goalForm = document.querySelector("#goal-form");
+const goalFormTitle = document.querySelector("#goal-form-title");
+const goalFormError = document.querySelector("#goal-form-error");
+const goalCount = document.querySelector("#goal-count");
+const savedGoalList = document.querySelector("#saved-goal-list");
+const newGoalButton = document.querySelector("#new-goal");
+const cancelGoalButton = document.querySelector("#cancel-goal");
+const smartSummary = document.querySelector("#smart-summary");
+const smartIndicators = [...document.querySelectorAll("[data-smart]")];
+const milestoneCard = document.querySelector("#milestone-card");
+const milestoneTitle = document.querySelector("#milestone-title");
+const milestoneCountdown = document.querySelector("#milestone-countdown");
+const milestoneTask = document.querySelector("#milestone-task");
+const weeklyConsistency = document.querySelector("#weekly-consistency");
+const recoveryMessage = document.querySelector("#recovery-message");
+const weeklyReviewForm = document.querySelector("#weekly-review-form");
+const weeklyReviewStatus = document.querySelector("#weekly-review-status");
 const closeAuditButton = document.querySelector("#close-audit");
 const auditPreviousButton = document.querySelector("#audit-previous");
 const auditTodayButton = document.querySelector("#audit-today");
@@ -278,6 +347,7 @@ const auditBrowserTotal = document.querySelector("#audit-browser-total");
 const auditFocus = document.querySelector("#audit-focus");
 const auditAddMore = document.querySelector("#audit-add-more");
 const auditMakeInteresting = document.querySelector("#audit-make-interesting");
+const auditGoalProgress = document.querySelector("#audit-goal-progress");
 const auditHighlights = document.querySelector("#audit-highlights");
 const auditMisses = document.querySelector("#audit-misses");
 const auditDomains = document.querySelector("#audit-domains");
@@ -319,6 +389,17 @@ function renderArcState() {
 
   daysRemainingElement.textContent = arcState.daysRemaining;
   arcDayElement.textContent = getArcDayLabel(arcState);
+  if (ARC_CONFIG.name) {
+    arcTitleElement.textContent = ARC_CONFIG.name;
+  }
+  arcDateRangeElement.textContent = `${ARC_START_DATE.toLocaleDateString([], {
+    month: "long",
+    day: "numeric",
+  })} to ${ARC_END_DATE.toLocaleDateString([], {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })}`;
 }
 
 function loadSavedSet(storageKey) {
@@ -449,7 +530,262 @@ function getCommandArcState() {
   return { ...arcState, day };
 }
 
+function getGoalFormValue(id) {
+  return document.querySelector(`#${id}`).value.trim();
+}
+
+function goalFromForm(existingGoal = null) {
+  const now = new Date().toISOString();
+  return LockInGoals.normalizeGoalRecord({
+    version: 1,
+    id:
+      existingGoal?.id ??
+      globalThis.crypto?.randomUUID?.() ??
+      `goal-${Date.now()}`,
+    area: getGoalFormValue("goal-area"),
+    outcome: getGoalFormValue("goal-outcome"),
+    why: getGoalFormValue("goal-why"),
+    metric: {
+      baseline: Number(getGoalFormValue("metric-baseline")),
+      target: Number(getGoalFormValue("metric-target")),
+      current: Number(getGoalFormValue("metric-current")),
+      unit: getGoalFormValue("metric-unit"),
+    },
+    deadline: getGoalFormValue("goal-deadline"),
+    frequencyPerWeek: Number(getGoalFormValue("goal-frequency")),
+    cue: {
+      trigger: getGoalFormValue("cue-trigger"),
+      time: getGoalFormValue("cue-time"),
+      place: getGoalFormValue("cue-place"),
+    },
+    actions: {
+      minimum: getGoalFormValue("action-minimum"),
+      standard: getGoalFormValue("action-standard"),
+      stretch: getGoalFormValue("action-stretch"),
+    },
+    obstacle: getGoalFormValue("goal-obstacle"),
+    recoveryPlan: getGoalFormValue("goal-recovery"),
+    reward: getGoalFormValue("goal-reward"),
+    status: existingGoal?.status ?? "active",
+    timestamps: {
+      createdAt: existingGoal?.timestamps?.createdAt ?? now,
+      updatedAt: now,
+    },
+  });
+}
+
+function renderSmartProgress() {
+  const draft = goalFromForm(
+    activeGoals.find(({ id }) => id === document.querySelector("#goal-id").value),
+  );
+  const { criteria, completed } = LockInGoals.calculateSMARTCompleteness(draft);
+  smartIndicators.forEach((indicator) => {
+    indicator.classList.toggle("is-complete", Boolean(criteria[indicator.dataset.smart]));
+  });
+  smartSummary.textContent =
+    completed === 5
+      ? "SMART foundation complete. Now make the first action easy to enter."
+      : `${completed} of 5 SMART checks complete. Clear beats perfect.`;
+}
+
+function resetGoalForm() {
+  goalForm.reset();
+  document.querySelector("#goal-id").value = "";
+  document.querySelector("#metric-current").value = "";
+  goalFormTitle.textContent = "Define one clear outcome";
+  goalFormError.textContent = "";
+  goalForm.hidden = false;
+  renderSmartProgress();
+}
+
+function fillGoalForm(goal) {
+  const values = {
+    "goal-id": goal.id,
+    "goal-area": goal.area,
+    "goal-outcome": goal.outcome,
+    "goal-why": goal.why,
+    "metric-baseline": goal.metric.baseline,
+    "metric-target": goal.metric.target,
+    "metric-current": goal.metric.current,
+    "metric-unit": goal.metric.unit,
+    "goal-deadline": goal.deadline,
+    "goal-frequency": goal.frequencyPerWeek,
+    "cue-trigger": goal.cue.trigger,
+    "cue-time": goal.cue.time,
+    "cue-place": goal.cue.place,
+    "action-minimum": goal.actions.minimum,
+    "action-standard": goal.actions.standard,
+    "action-stretch": goal.actions.stretch,
+    "goal-obstacle": goal.obstacle,
+    "goal-recovery": goal.recoveryPlan,
+    "goal-reward": goal.reward,
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    document.querySelector(`#${id}`).value = value ?? "";
+  });
+  document.querySelector("#goal-feasible").checked = true;
+  goalFormTitle.textContent = "Refine this goal";
+  goalFormError.textContent = "";
+  goalForm.hidden = false;
+  renderSmartProgress();
+}
+
+async function updateGoalStatus(goal, status) {
+  const updated = {
+    ...goal,
+    status,
+    timestamps: { ...goal.timestamps, updatedAt: new Date().toISOString() },
+  };
+  activeGoals = activeGoals.map((item) => (item.id === goal.id ? updated : item));
+  await privateStorage.write(GOALS_STORAGE_KEY, activeGoals);
+  await eventApi.record(EventTypes.GOAL_UPDATED, { goalId: goal.id, status });
+  renderGoalList();
+  await CommandCenter();
+}
+
+function renderGoalList() {
+  const activeCount = activeGoals.filter(({ status }) => status === "active").length;
+  goalCount.textContent = `${activeCount} / 3 active`;
+  newGoalButton.disabled = activeCount >= 3;
+
+  if (activeGoals.length === 0) {
+    savedGoalList.replaceChildren(
+      createTextElement("p", "event-list-empty", "No goals yet. Start with one."),
+    );
+    return;
+  }
+
+  savedGoalList.replaceChildren(
+    ...activeGoals
+      .filter(({ status }) => status !== "archived")
+      .map((goal) => {
+        const card = document.createElement("article");
+        card.className = "saved-goal-card";
+        const area = AREA_BLUEPRINTS[goal.area]?.label ?? goal.area;
+        const edit = createTextElement("button", "", "EDIT");
+        const pause = createTextElement(
+          "button",
+          "",
+          goal.status === "active" ? "PAUSE" : "RESUME",
+        );
+        const archive = createTextElement("button", "", "ARCHIVE");
+        edit.type = pause.type = archive.type = "button";
+        edit.addEventListener("click", () => fillGoalForm(goal));
+        pause.addEventListener("click", () =>
+          updateGoalStatus(goal, goal.status === "active" ? "paused" : "active"),
+        );
+        archive.addEventListener("click", () => updateGoalStatus(goal, "archived"));
+        const actions = document.createElement("div");
+        actions.className = "saved-goal-actions";
+        actions.append(edit, pause, archive);
+        card.append(
+          createTextElement("small", "command-section-label", area),
+          createTextElement("h3", "", goal.outcome),
+          createTextElement(
+            "p",
+            "",
+            `${goal.metric.current} / ${goal.metric.target} ${goal.metric.unit} · by ${goal.deadline}`,
+          ),
+          actions,
+        );
+        return card;
+      }),
+  );
+}
+
+function getMilestoneState(date = new Date()) {
+  const milestones = Array.isArray(PERSONAL_CONFIG.milestones)
+    ? PERSONAL_CONFIG.milestones
+    : [];
+  const upcoming = milestones
+    .map((milestone) => ({
+      ...milestone,
+      daysUntil: LockInGoals.differenceInCalendarDays(milestone.date, date),
+    }))
+    .filter(({ daysUntil }) => Number.isFinite(daysUntil) && daysUntil >= 0)
+    .sort((first, second) => first.daysUntil - second.daysUntil);
+  const next = upcoming[0] ?? null;
+  if (!next) {
+    return { next: null, task: null };
+  }
+  const windows = Array.isArray(next.preparationWindows)
+    ? [...next.preparationWindows].sort(
+        (first, second) => Number(first.daysBefore) - Number(second.daysBefore),
+      )
+    : [];
+  const activeWindow = windows.find(
+    ({ daysBefore }) => next.daysUntil <= Number(daysBefore),
+  );
+  const taskText = activeWindow?.tasks?.find((task) => {
+    const text = typeof task === "string" ? task : task?.title ?? task?.action;
+    const taskId = `${next.id}:${Number(activeWindow.daysBefore)}:${text}`;
+    return (
+      text &&
+      !missionHistory.some(
+        (entry) => entry.milestoneTaskId === taskId && entry.completed,
+      )
+    );
+  });
+  const text =
+    typeof taskText === "string" ? taskText : taskText?.title ?? taskText?.action;
+  return {
+    next,
+    task: text
+      ? {
+          id: `${next.id}:${Number(activeWindow.daysBefore)}:${text}`,
+          milestoneId: next.id,
+          title: text,
+          daysUntil: next.daysUntil,
+        }
+      : null,
+  };
+}
+
 function buildTodayMissions() {
+  const adaptiveMissions = LockInGoals.selectDailyMissions(
+    activeGoals,
+    missionHistory,
+    PERSONAL_CONFIG.milestones ?? [],
+    new Date(),
+    3,
+  ).map((mission) => {
+    const goal = activeGoals.find(({ id }) => id === mission.goalId);
+    return {
+      id: mission.id,
+      goalId: mission.goalId,
+      area: mission.area,
+      category: AREA_BLUEPRINTS[mission.area]?.label ?? mission.area,
+      title: goal?.outcome ?? mission.outcome,
+      description: mission.action,
+      target: goal?.cue?.trigger
+        ? `When ${goal.cue.trigger}, at ${goal.cue.place}`
+        : "TODAY",
+      minimumAction: goal?.actions?.minimum,
+      standardAction: goal?.actions?.standard,
+      stretchAction: goal?.actions?.stretch,
+    };
+  });
+  const milestone = getMilestoneState().task;
+  if (milestone) {
+    adaptiveMissions.unshift({
+      id: `milestone:${milestone.id}`,
+      milestoneTaskId: milestone.id,
+      area: "milestone",
+      category: "MILESTONE",
+      title: milestone.title,
+      description: "A timely step for an upcoming date that matters.",
+      target:
+        milestone.daysUntil === 0
+          ? "TODAY"
+          : `${milestone.daysUntil} DAYS TO GO`,
+      minimumAction: milestone.title,
+      standardAction: milestone.title,
+    });
+  }
+  if (adaptiveMissions.length > 0) {
+    return adaptiveMissions.slice(0, 3);
+  }
+
   const context = {
     identities: selectedIdentities,
     areas: selectedAttentionAreas,
@@ -514,7 +850,7 @@ function MissionCard(mission, completedMissions, isNextMission) {
   );
   completeButton.type = "button";
   completeButton.setAttribute("aria-pressed", String(isComplete));
-  completeButton.addEventListener("click", () => {
+  completeButton.addEventListener("click", async () => {
     const wasComplete = completedMissions.has(mission.id);
 
     if (wasComplete) {
@@ -533,14 +869,97 @@ function MissionCard(mission, completedMissions, isNextMission) {
         : EventTypes.MISSION_COMPLETED,
       {
         missionId: mission.id,
+        goalId: mission.goalId,
+        milestoneTaskId: mission.milestoneTaskId,
+        level: wasComplete ? null : "standard",
         category: mission.category,
         title: mission.title,
       },
     );
+    if (!wasComplete && mission.milestoneTaskId) {
+      eventApi.record(EventTypes.MILESTONE_TASK_COMPLETED, {
+        milestoneTaskId: mission.milestoneTaskId,
+        title: mission.title,
+      });
+    }
+    missionHistory = missionHistory.filter(
+      (entry) => !(entry.missionId === mission.id && entry.date === getDateKey()),
+    );
+    missionHistory.push({
+      missionId: mission.id,
+      goalId: mission.goalId,
+      milestoneTaskId: mission.milestoneTaskId,
+      area: mission.area ?? mission.category,
+      date: getDateKey(),
+      planned: true,
+      completed: !wasComplete,
+      level: wasComplete ? null : "standard",
+    });
+    await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
     TodayMission();
+    renderWeeklyConsistency();
   });
 
-  footer.append(completeButton);
+  if (!isComplete && mission.minimumAction) {
+    const levels = document.createElement("div");
+    levels.className = "completion-levels";
+    [
+      ["minimum", `Minimum: ${mission.minimumAction}`],
+      ["standard", "Standard"],
+      ...(mission.stretchAction ? [["stretch", "Stretch"]] : []),
+    ].forEach(([level, label]) => {
+      const button = createTextElement("button", "", label);
+      button.type = "button";
+      button.title =
+        level === "standard"
+          ? mission.standardAction ?? mission.description
+          : level === "stretch"
+            ? mission.stretchAction
+            : mission.minimumAction;
+      button.addEventListener("click", async () => {
+        completedMissions.add(mission.id);
+        storage.writeJson(
+          getDailyStorageKey("completed-missions"),
+          [...completedMissions],
+        );
+        await eventApi.record(EventTypes.MISSION_COMPLETED, {
+          missionId: mission.id,
+          goalId: mission.goalId,
+          milestoneTaskId: mission.milestoneTaskId,
+          level,
+          category: mission.category,
+          title: mission.title,
+        });
+        if (mission.milestoneTaskId) {
+          await eventApi.record(EventTypes.MILESTONE_TASK_COMPLETED, {
+            milestoneTaskId: mission.milestoneTaskId,
+            title: mission.title,
+          });
+        }
+        missionHistory = missionHistory.filter(
+          (entry) =>
+            !(entry.missionId === mission.id && entry.date === getDateKey()),
+        );
+        missionHistory.push({
+          missionId: mission.id,
+          goalId: mission.goalId,
+          milestoneTaskId: mission.milestoneTaskId,
+          area: mission.area ?? mission.category,
+          date: getDateKey(),
+          planned: true,
+          completed: true,
+          level,
+        });
+        await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
+        TodayMission();
+        renderWeeklyConsistency();
+      });
+      levels.append(button);
+    });
+    footer.append(levels);
+  } else {
+    footer.append(completeButton);
+  }
   card.append(category, title, description);
   if (tinyStart) {
     card.append(tinyStart);
@@ -640,6 +1059,44 @@ function QuickView() {
   showSelectedDirection(lifeState, lifeAreas);
 }
 
+function renderMilestone() {
+  const { next, task } = getMilestoneState();
+  milestoneCard.hidden = !next;
+  if (!next) {
+    return;
+  }
+  milestoneTitle.textContent = next.label ?? "Upcoming milestone";
+  milestoneCountdown.textContent =
+    next.daysUntil === 0
+      ? "Today"
+      : `${next.daysUntil} ${next.daysUntil === 1 ? "day" : "days"} away`;
+  milestoneTask.textContent =
+    task?.title ?? "The important preparation is handled. Be present for it.";
+}
+
+function renderWeeklyConsistency() {
+  const weekStart = LockInGoals.startOfWeek(new Date());
+  const consistency = LockInGoals.calculateWeeklyConsistency(
+    missionHistory,
+    weekStart,
+    new Date(),
+  );
+  weeklyConsistency.textContent = consistency.planned
+    ? `${consistency.completed} of ${consistency.planned} planned opportunities · ${consistency.percent}%`
+    : "No planned opportunities yet";
+
+  const recentMiss = [...missionHistory]
+    .reverse()
+    .find((entry) => entry.planned && !entry.completed && entry.goalId);
+  const goal = activeGoals.find(({ id }) => id === recentMiss?.goalId);
+  recoveryMessage.textContent = goal
+    ? LockInGoals.buildLapseRecovery(goal, {
+        date: recentMiss.date,
+        nextDate: new Date(),
+      }).message
+    : "Every planned opportunity is a fresh chance.";
+}
+
 function getTimeBasedGreeting(date = new Date()) {
   const hour = date.getHours();
   if (hour >= 5 && hour < 8) {
@@ -665,14 +1122,36 @@ function renderCommandGreeting(date = new Date()) {
   commandGreeting.textContent = `${greeting.text} ${greeting.emoji}`;
 }
 
-function CommandCenter() {
+async function CommandCenter() {
   const arcState = getCommandArcState();
   const missions = buildTodayMissions();
+  const completedToday = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
+  );
+  missions.forEach((mission) => {
+    const exists = missionHistory.some(
+      (entry) => entry.missionId === mission.id && entry.date === getDateKey(),
+    );
+    if (!exists) {
+      missionHistory.push({
+        missionId: mission.id,
+        goalId: mission.goalId,
+        milestoneTaskId: mission.milestoneTaskId,
+        area: mission.area ?? mission.category,
+        date: getDateKey(),
+        planned: true,
+        completed: completedToday.has(mission.id),
+      });
+    }
+  });
+  await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
   renderCommandGreeting();
   TodayMission(missions);
   ArcProgress(arcState);
   MoodCheckIn();
   QuickView();
+  renderMilestone();
+  renderWeeklyConsistency();
   eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
     arcDay: arcState.day,
     plannedMissions: missions.map(({ id, category, title }) => ({
@@ -820,6 +1299,13 @@ let selectedAuditDate = new Date();
 
 async function renderDailyAudit() {
   const audit = await auditService.generateDailyAudit(selectedAuditDate);
+  const milestoneOnDate = (PERSONAL_CONFIG.milestones ?? []).find(
+    ({ date }) => date === audit.date,
+  );
+  const milestoneYesterday = (PERSONAL_CONFIG.milestones ?? []).find(
+    ({ date }) =>
+      LockInGoals.differenceInCalendarDays(audit.date, date) === 1,
+  );
   const todayKey = getDateKey(new Date());
   const isToday = audit.date === todayKey;
   const isFuture = audit.date > todayKey;
@@ -865,6 +1351,32 @@ async function renderDailyAudit() {
   auditFocus.textContent = audit.guidance.focus;
   auditAddMore.textContent = audit.guidance.addMore;
   auditMakeInteresting.textContent = audit.guidance.makeItInteresting;
+  const levelSummary = audit.missions.levels
+    ? `${audit.missions.levels.minimum} minimum · ${audit.missions.levels.standard} standard · ${audit.missions.levels.stretch} stretch`
+    : "No completion levels recorded";
+  const goalRows = Object.entries(audit.missions.byGoal ?? {}).map(
+    ([goalId, count]) => {
+      const goal = activeGoals.find(({ id }) => id === goalId);
+      return `${goal?.outcome ?? "Goal"}: ${count} completed ${
+        count === 1 ? "action" : "actions"
+      }`;
+    },
+  );
+  if (milestoneOnDate) {
+    goalRows.unshift(
+      `${milestoneOnDate.label}: be present; the preparation was there to support the day.`,
+    );
+  } else if (milestoneYesterday) {
+    goalRows.unshift(
+      `After ${milestoneYesterday.label}: keep what mattered and release what did not.`,
+    );
+  }
+  renderAuditList(
+    auditGoalProgress,
+    [levelSummary, ...goalRows],
+    "↗",
+    "No goal actions recorded yet.",
+  );
 
   renderAuditList(
     auditHighlights,
@@ -1087,6 +1599,140 @@ function showScreen(screenId) {
   window.scrollTo(0, 0);
 }
 
+goalForm.addEventListener("input", renderSmartProgress);
+goalForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const goalId = document.querySelector("#goal-id").value;
+  const existingGoal = activeGoals.find(({ id }) => id === goalId);
+  const activeCount = activeGoals.filter(({ status }) => status === "active").length;
+  if (!existingGoal && activeCount >= 3) {
+    goalFormError.textContent =
+      "Pause or archive a goal before adding another active priority.";
+    return;
+  }
+  const draft = goalFromForm(existingGoal);
+  const validation = LockInGoals.validateGoalRecord(draft);
+  if (!validation.valid) {
+    goalFormError.textContent = validation.errors.join(" ");
+    return;
+  }
+
+  if (existingGoal) {
+    activeGoals = activeGoals.map((goal) =>
+      goal.id === existingGoal.id ? validation.value : goal,
+    );
+  } else {
+    activeGoals.push(validation.value);
+  }
+  await privateStorage.write(GOALS_STORAGE_KEY, activeGoals);
+  await eventApi.record(
+    existingGoal ? EventTypes.GOAL_UPDATED : EventTypes.GOAL_CREATED,
+    {
+      goalId: validation.value.id,
+      area: validation.value.area,
+      deadline: validation.value.deadline,
+    },
+  );
+  if (
+    existingGoal &&
+    existingGoal.metric.current !== validation.value.metric.current
+  ) {
+    await eventApi.record(EventTypes.GOAL_PROGRESS_UPDATED, {
+      goalId: validation.value.id,
+      previous: existingGoal.metric.current,
+      current: validation.value.metric.current,
+      unit: validation.value.metric.unit,
+    });
+  }
+  renderGoalList();
+  goalForm.hidden = true;
+  await CommandCenter();
+});
+
+newGoalButton.addEventListener("click", resetGoalForm);
+cancelGoalButton.addEventListener("click", () => {
+  goalForm.hidden = true;
+  goalFormError.textContent = "";
+});
+openGoalsButton.addEventListener("click", () => {
+  renderGoalList();
+  if (activeGoals.length === 0) {
+    resetGoalForm();
+  } else {
+    goalForm.hidden = true;
+  }
+  showScreen("goals-screen");
+});
+closeGoalsButton.addEventListener("click", async () => {
+  await CommandCenter();
+  showScreen("command-center-screen");
+});
+
+openWeeklyReviewButton.addEventListener("click", () => {
+  const reviewGoal = document.querySelector("#review-goal");
+  const options = activeGoals
+    .filter(({ status }) => status === "active")
+    .map((goal) => {
+      const option = document.createElement("option");
+      option.value = goal.id;
+      option.textContent = goal.outcome;
+      return option;
+    });
+  if (options.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Create an active goal first";
+    options.push(option);
+  }
+  reviewGoal.replaceChildren(...options);
+  weeklyReviewStatus.hidden = true;
+  showScreen("weekly-review-screen");
+});
+closeWeeklyReviewButton.addEventListener("click", () => {
+  showScreen("command-center-screen");
+});
+weeklyReviewForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const review = {
+    id: globalThis.crypto?.randomUUID?.() ?? `review-${Date.now()}`,
+    date: getDateKey(),
+    goalId: getGoalFormValue("review-goal"),
+    helped: getGoalFormValue("review-helped"),
+    blocked: getGoalFormValue("review-blocked"),
+    adjustment: getGoalFormValue("review-adjustment"),
+    minimumPromise: getGoalFormValue("review-minimum"),
+  };
+  weeklyReviews = weeklyReviews.filter(({ date }) => date !== review.date);
+  weeklyReviews.push(review);
+  const reviewedGoal = activeGoals.find(({ id }) => id === review.goalId);
+  if (reviewedGoal) {
+    activeGoals = activeGoals.map((goal) =>
+      goal.id === review.goalId
+        ? {
+            ...goal,
+            actions: { ...goal.actions, minimum: review.minimumPromise },
+            timestamps: {
+              ...goal.timestamps,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : goal,
+    );
+    await privateStorage.write(GOALS_STORAGE_KEY, activeGoals);
+    await eventApi.record(EventTypes.GOAL_UPDATED, {
+      goalId: review.goalId,
+      source: "weekly-review",
+      minimumAction: review.minimumPromise,
+    });
+  }
+  await privateStorage.write(WEEKLY_REVIEWS_STORAGE_KEY, weeklyReviews);
+  await eventApi.record(EventTypes.WEEKLY_REVIEW_COMPLETED, review);
+  weeklyReviewStatus.textContent =
+    "Saved. Your next week begins with the smallest promise you chose.";
+  weeklyReviewStatus.hidden = false;
+  weeklyReviewForm.reset();
+});
+
 enterArcButton.addEventListener("click", () => {
   showScreen("identity-screen");
 });
@@ -1137,15 +1783,21 @@ fixingContinueButton.addEventListener("click", () => {
   }
 });
 
-startArcButton.addEventListener("click", () => {
+startArcButton.addEventListener("click", async () => {
   storage.writeJson(ONBOARDING_COMPLETE_STORAGE_KEY, true);
   eventApi.record(EventTypes.ONBOARDING_COMPLETED, {
     identities: [...selectedIdentities],
     attentionAreas: [...selectedAttentionAreas],
     obstacles: [...selectedObstacles],
   });
-  CommandCenter();
-  showScreen("command-center-screen");
+  if (activeGoals.length === 0) {
+    renderGoalList();
+    resetGoalForm();
+    showScreen("goals-screen");
+  } else {
+    await CommandCenter();
+    showScreen("command-center-screen");
+  }
 });
 
 moodButtons.forEach((button) => {
@@ -1204,18 +1856,34 @@ window.addEventListener("hashchange", () => {
   }
 });
 
-renderArcState();
-renderIdentitySelections();
-renderStartingPoint();
-renderBlueprint();
+async function initializeApp() {
+  const [storedGoals, storedHistory, storedReviews] = await Promise.all([
+    privateStorage.read(GOALS_STORAGE_KEY, []),
+    privateStorage.read(MISSION_HISTORY_STORAGE_KEY, []),
+    privateStorage.read(WEEKLY_REVIEWS_STORAGE_KEY, []),
+  ]);
+  activeGoals = Array.isArray(storedGoals)
+    ? storedGoals.map((goal) => LockInGoals.normalizeGoalRecord(goal))
+    : [];
+  missionHistory = Array.isArray(storedHistory) ? storedHistory : [];
+  weeklyReviews = Array.isArray(storedReviews) ? storedReviews : [];
 
-if (storage.readJson(ONBOARDING_COMPLETE_STORAGE_KEY, false)) {
-  CommandCenter();
-  showScreen("command-center-screen");
+  renderArcState();
+  renderIdentitySelections();
+  renderStartingPoint();
+  renderBlueprint();
+  renderGoalList();
+
+  if (storage.readJson(ONBOARDING_COMPLETE_STORAGE_KEY, false)) {
+    await CommandCenter();
+    showScreen("command-center-screen");
+  }
+
+  if (location.hash === "#events") {
+    openEventDebug();
+  }
 }
 
-if (location.hash === "#events") {
-  openEventDebug();
-}
+initializeApp();
 
 setInterval(renderArcState, 60 * 60 * 1000);

@@ -61,14 +61,14 @@ test("filters events by time, date, arc, and type count", () => {
     {
       id: "two",
       type: EventTypes.MISSION_COMPLETED,
-      timestamp: "2026-09-08T10:00:00.000Z",
+      timestamp: "2026-09-10T10:00:00.000Z",
       metadata: {},
       source: "lock-in",
     },
   ];
 
   assert.equal(getEventsForDate(events, new Date("2026-09-07T12:00:00")).length, 1);
-  assert.equal(getTodayEvents(events, new Date("2026-09-08T12:00:00")).length, 1);
+  assert.equal(getTodayEvents(events, new Date("2026-09-10T12:00:00")).length, 1);
   assert.equal(
     getEventsForArc(
       events,

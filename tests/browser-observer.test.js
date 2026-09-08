@@ -53,7 +53,7 @@ test("aggregates requested-date browser time by domain", () => {
     },
     {
       type: "BROWSER_SITE_SESSION",
-      timestamp: "2026-09-08T10:00:00.000Z",
+      timestamp: "2026-09-10T10:00:00.000Z",
       metadata: { domain: "reddit.com", durationMs: 9000000 },
     },
   ];

@@ -14,6 +14,9 @@
     "twitch.tv",
     "x.com",
     "youtube.com",
+    ...(
+      globalScope.LOCK_IN_PERSONAL_CONFIG?.attentionDomains ?? []
+    ).filter((domain) => typeof domain === "string"),
   ]);
 
   function toDateKey(date = new Date()) {
@@ -43,6 +46,8 @@
       browserEvents: [],
       commandCenterEvents: [],
       onboardingEvents: [],
+      goalEvents: [],
+      weeklyReviewEvents: [],
     };
 
     events.forEach((event) => {
@@ -62,6 +67,15 @@
           break;
         case eventTypes.ONBOARDING_COMPLETED:
           categories.onboardingEvents.push(event);
+          break;
+        case eventTypes.GOAL_CREATED:
+        case eventTypes.GOAL_UPDATED:
+        case eventTypes.GOAL_PROGRESS_UPDATED:
+        case eventTypes.MILESTONE_TASK_COMPLETED:
+          categories.goalEvents.push(event);
+          break;
+        case eventTypes.WEEKLY_REVIEW_COMPLETED:
+          categories.weeklyReviewEvents.push(event);
           break;
         default:
           break;
@@ -93,19 +107,45 @@
         return;
       }
       plannedMissionIds.add(missionId);
-      latestMissionState.set(
-        missionId,
-        event.type === eventTypes.MISSION_COMPLETED,
-      );
+      latestMissionState.set(missionId, {
+        completed: event.type === eventTypes.MISSION_COMPLETED,
+        goalId: event.metadata?.goalId ?? null,
+        level: event.metadata?.level ?? null,
+        milestoneTaskId: event.metadata?.milestoneTaskId ?? null,
+      });
     });
 
     const total = plannedMissionIds.size;
-    const completed = [...latestMissionState.values()].filter(Boolean).length;
+    const completedStates = [...latestMissionState.values()].filter(
+      ({ completed: isComplete }) => isComplete,
+    );
+    const completed = completedStates.length;
+    const levels = completedStates.reduce(
+      (counts, state) => {
+        const level = ["minimum", "standard", "stretch"].includes(state.level)
+          ? state.level
+          : "standard";
+        counts[level] += 1;
+        return counts;
+      },
+      { minimum: 0, standard: 0, stretch: 0 },
+    );
+    const byGoal = completedStates.reduce((counts, state) => {
+      if (state.goalId) {
+        counts[state.goalId] = (counts[state.goalId] ?? 0) + 1;
+      }
+      return counts;
+    }, {});
     return {
       total,
       completed,
       completionRate: total === 0 ? 0 : Number((completed / total).toFixed(2)),
       activityCount: missionEvents.length,
+      levels,
+      byGoal,
+      milestoneTasksCompleted: completedStates.filter(
+        ({ milestoneTaskId }) => milestoneTaskId,
+      ).length,
     };
   }
 
@@ -198,6 +238,16 @@
       highlights.push(
         `You completed ${missions.completed} of ${missions.total} missions.`,
       );
+    }
+    if (missions.levels?.minimum > 0) {
+      highlights.push(
+        `${missions.levels.minimum} minimum-version ${
+          missions.levels.minimum === 1 ? "action kept" : "actions kept"
+        } momentum alive.`,
+      );
+    }
+    if (missions.milestoneTasksCompleted > 0) {
+      highlights.push("You prepared for a milestone that matters to you.");
     }
 
     const unfinished = Math.max(0, missions.total - missions.completed);
