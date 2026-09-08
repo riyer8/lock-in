@@ -439,6 +439,38 @@
               <p id="recovery-message"></p>
             </section>
 
+            <section class="aside-note coach-card surface-card" aria-labelledby="coach-title">
+              <p class="aside-kicker">AI coach</p>
+              <h2 id="coach-title">One clear next step</h2>
+              <p class="coach-card__intro">
+                Get concise coaching based on today's goals, activity, and reflection.
+              </p>
+              <button type="button" id="ask-coach">Ask Coach</button>
+              <p id="coach-loading" class="coach-card__status" role="status" hidden>
+                Looking for the useful signal…
+              </p>
+              <div id="coach-response" class="coach-response" aria-live="polite" hidden>
+                <section>
+                  <h3>What I'm noticing</h3>
+                  <p id="coach-observation"></p>
+                </section>
+                <section>
+                  <h3>The pattern</h3>
+                  <p id="coach-pattern"></p>
+                </section>
+                <section>
+                  <h3>What matters most</h3>
+                  <p id="coach-priority"></p>
+                </section>
+                <section>
+                  <h3>Your next move</h3>
+                  <p id="coach-next-action"></p>
+                </section>
+                <p id="coach-encouragement" class="coach-response__encouragement"></p>
+              </div>
+              <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
+            </section>
+
             <section class="aside-note mood-card surface-card" aria-labelledby="mood-title">
               <h2 id="mood-title">How are you feeling?</h2>
               <div class="mood-options" id="mood-options">
@@ -651,6 +683,7 @@
     <script src="../observer/browser-observer.js"></script>
     <script src="../audit/auditUtils.js"></script>
     <script src="../audit/auditService.js"></script>
+    <script src="../coach/context-builder.js"></script>
     <script src="newtab.js"></script>
   </body>
 </html>

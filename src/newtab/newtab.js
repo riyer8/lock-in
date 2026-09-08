@@ -26,6 +26,9 @@ const ONBOARDING_COMPLETE_STORAGE_KEY = "lock-in-onboarding-complete";
 const GOALS_STORAGE_KEY = "lock-in-goals-v1";
 const MISSION_HISTORY_STORAGE_KEY = "lock-in-mission-history-v1";
 const WEEKLY_REVIEWS_STORAGE_KEY = "lock-in-weekly-reviews-v1";
+const COACH_API_URL = "http://127.0.0.1:8787/api/coach";
+const COACH_HEALTH_URL = "http://127.0.0.1:8787/health";
+const COACH_LOADING_MESSAGE = "Looking for the useful signal…";
 
 const storage = {
   readJson(key, fallback) {
@@ -348,6 +351,15 @@ const auditHighlights = document.querySelector("#audit-highlights");
 const auditMisses = document.querySelector("#audit-misses");
 const auditDomains = document.querySelector("#audit-domains");
 const auditPatternList = document.querySelector("#audit-pattern-list");
+const askCoachButton = document.querySelector("#ask-coach");
+const coachLoading = document.querySelector("#coach-loading");
+const coachResponse = document.querySelector("#coach-response");
+const coachError = document.querySelector("#coach-error");
+const coachObservation = document.querySelector("#coach-observation");
+const coachPattern = document.querySelector("#coach-pattern");
+const coachPriority = document.querySelector("#coach-priority");
+const coachNextAction = document.querySelector("#coach-next-action");
+const coachEncouragement = document.querySelector("#coach-encouragement");
 
 function toUtcDate(date) {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1495,6 +1507,191 @@ async function renderDailyAudit() {
   auditPatternList.replaceChildren(...patternRows);
 }
 
+async function collectCoachContext(date = new Date()) {
+  const auditDates = Array.from(
+    { length: LockInCoachContext.RECENT_WINDOW_DAYS },
+    (_, dayOffset) => {
+      const auditDate = new Date(date);
+      auditDate.setDate(auditDate.getDate() - dayOffset);
+      return auditDate;
+    },
+  );
+  const start = new Date(auditDates.at(-1));
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  const [recentEvents, audits] = await Promise.all([
+    eventApi.getEventsBetween(start, end),
+    Promise.all(
+      auditDates.map((auditDate) =>
+        auditService.generateDailyAudit(auditDate),
+      ),
+    ),
+  ]);
+
+  const goals = activeGoals
+    .filter(({ status }) => status === "active")
+    .map((goal) => ({
+      id: goal.id,
+      area: goal.area,
+      outcome: goal.outcome,
+      why: goal.why,
+      metric: goal.metric,
+      deadline: goal.deadline,
+      frequencyPerWeek: goal.frequencyPerWeek,
+      cue: goal.cue,
+      actions: goal.actions,
+      obstacle: goal.obstacle,
+      recoveryPlan: goal.recoveryPlan,
+    }));
+  const completedMissions = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
+  );
+  const currentMissions = buildTodayMissions().map((mission) => {
+    const history = missionHistory.find(
+      (entry) =>
+        entry.date === getDateKey(date) && entry.missionId === mission.id,
+    );
+    return {
+      id: mission.id,
+      goalId: mission.goalId,
+      category: mission.category,
+      title: mission.title,
+      description: mission.description,
+      target: mission.target,
+      completed: completedMissions.has(mission.id),
+      completionLevel: history?.level ?? null,
+    };
+  });
+  const upcomingMilestones = (PERSONAL_CONFIG.milestones ?? [])
+    .filter(
+      ({ date: milestoneDate }) =>
+        LockInGoals.differenceInCalendarDays(milestoneDate, date) >= 0,
+    )
+    .slice(0, 3)
+    .map(({ id, label, date: milestoneDate }) => ({
+      id,
+      label,
+      date: milestoneDate,
+    }));
+
+  return LockInCoachContext.buildCoachContext({
+    asOf: date.toISOString(),
+    blueprint: {
+      identities: [...selectedIdentities],
+      attentionAreas: [...selectedAttentionAreas],
+      obstacles: [...selectedObstacles],
+      arc: {
+        name: ARC_CONFIG.name ?? "",
+        start: LockInGoals.formatDateKey(ARC_START_DATE),
+        end: LockInGoals.formatDateKey(ARC_END_DATE),
+      },
+      upcomingMilestones,
+    },
+    goals,
+    todayAudit: audits[0],
+    recentAudits: audits.slice(1),
+    recentEvents,
+    currentMissions,
+  });
+}
+
+async function isCoachReachable() {
+  try {
+    const response = await fetch(COACH_HEALTH_URL, { method: "GET" });
+    const body = await response.json().catch(() => ({}));
+    return response.ok && body?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureCoachBackend() {
+  if (await isCoachReachable()) {
+    return;
+  }
+
+  coachLoading.textContent = "Starting the local coach…";
+
+  if (!globalThis.chrome?.runtime?.sendMessage) {
+    throw new Error(
+      "Run npm run setup-coach once, reload LOCK IN, then click Ask Coach again.",
+    );
+  }
+
+  let result;
+  try {
+    result = await chrome.runtime.sendMessage({ type: "ENSURE_COACH_BACKEND" });
+  } catch {
+    throw new Error(
+      "Reload LOCK IN on chrome://extensions after running npm run setup-coach, then try Ask Coach again.",
+    );
+  }
+
+  if (result?.ok) {
+    return;
+  }
+
+  if (!result || result?.code === "NATIVE_HOST_UNAVAILABLE") {
+    throw new Error(
+      "Run npm run setup-coach once in the LOCK IN folder, reload the extension, then click Ask Coach again.",
+    );
+  }
+
+  throw new Error(result?.error || "Could not start the local coach.");
+}
+
+async function askCoach() {
+  askCoachButton.disabled = true;
+  coachLoading.textContent = COACH_LOADING_MESSAGE;
+  coachLoading.hidden = false;
+  coachResponse.hidden = true;
+  coachError.hidden = true;
+
+  try {
+    await ensureCoachBackend();
+    coachLoading.textContent = COACH_LOADING_MESSAGE;
+    const response = await fetch(COACH_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(await collectCoachContext()),
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || "The coach could not respond right now.");
+    }
+    const coaching = result.coaching;
+    const fields = [
+      coaching?.observation,
+      coaching?.pattern,
+      coaching?.priority,
+      coaching?.nextAction,
+      coaching?.encouragement,
+    ];
+    if (fields.some((field) => typeof field !== "string" || !field.trim())) {
+      throw new Error("The coach returned an incomplete response.");
+    }
+
+    coachObservation.textContent = coaching.observation.trim();
+    coachPattern.textContent = coaching.pattern.trim();
+    coachPriority.textContent = coaching.priority.trim();
+    coachNextAction.textContent = coaching.nextAction.trim();
+    coachEncouragement.textContent = coaching.encouragement.trim();
+    coachResponse.hidden = false;
+  } catch (error) {
+    coachError.textContent =
+      error instanceof TypeError
+        ? "Could not reach the coach. Reload LOCK IN after running npm run setup-coach."
+        : error.message;
+    coachError.hidden = false;
+  } finally {
+    coachLoading.textContent = COACH_LOADING_MESSAGE;
+    coachLoading.hidden = true;
+    askCoachButton.disabled = false;
+  }
+}
+
 async function openDailyAudit() {
   selectedAuditDate = new Date();
   showScreen("daily-audit-screen");
@@ -1935,6 +2132,7 @@ moodButtons.forEach((button) => {
   });
 });
 
+askCoachButton.addEventListener("click", askCoach);
 clearEventsButton.addEventListener("click", async () => {
   if (window.confirm("Clear all stored events? This cannot be undone.")) {
     await eventApi.clearEvents();

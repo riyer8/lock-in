@@ -1,5 +1,7 @@
 importScripts("../core/event-engine.js", "../observer/browser-observer.js");
 
+const NATIVE_HOST_NAME = "com.lockin.coach";
+
 const eventPersistence = new LockInEvents.ChromeStorageEventAdapter(
   chrome.storage.local,
 );
@@ -34,6 +36,30 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
   browserObserver.handleWindowFocusChanged(windowId);
 });
 
+function ensureCoachBackend() {
+  return chrome.runtime
+    .sendNativeMessage(NATIVE_HOST_NAME, { action: "ensureRunning" })
+    .catch((error) => ({
+      ok: false,
+      code: "NATIVE_HOST_UNAVAILABLE",
+      error: error?.message || "Native host unavailable.",
+    }));
+}
+
 chrome.runtime.onStartup.addListener(() => {
   browserObserver.initialize({ discardPersisted: true });
+  ensureCoachBackend();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureCoachBackend();
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "ENSURE_COACH_BACKEND") {
+    return undefined;
+  }
+
+  ensureCoachBackend().then(sendResponse);
+  return true;
 });

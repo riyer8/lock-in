@@ -1018,6 +1018,89 @@ blockquote {
   gap: 16px;
 }
 
+.coach-card h2 {
+  margin: 10px 0 0;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.coach-card__intro {
+  margin: 9px 0 16px;
+  color: #aaa8b4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#ask-coach {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(216, 210, 236, 0.45);
+  border-radius: 999px;
+  color: #171722;
+  background: var(--lavender-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#ask-coach:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.coach-card__status,
+.coach-card__error,
+.coach-response {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(238, 237, 244, 0.09);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.coach-card__status {
+  color: #aaa8b4;
+}
+
+.coach-card__error {
+  color: #e7aaa8;
+}
+
+.coach-response {
+  display: grid;
+  gap: 14px;
+  color: #d1cedb;
+}
+
+.coach-response[hidden] {
+  display: none;
+}
+
+.coach-response section {
+  display: grid;
+  gap: 4px;
+}
+
+.coach-response h3 {
+  margin: 0;
+  color: var(--lavender-dark);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coach-response p {
+  margin: 0;
+}
+
+.coach-response__encouragement {
+  padding-top: 12px;
+  border-top: 1px solid rgba(238, 237, 244, 0.09);
+  color: #aaa8b4;
+  font-style: italic;
+}
+
 .arc-progress-card,
 .mood-card,
 .quick-view {

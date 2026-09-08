@@ -1,0 +1,14 @@
+{
+  "name": "lock-in",
+  "version": "1.2.0",
+  "private": true,
+  "description": "A local-first daily focus and reflection system.",
+  "scripts": {
+    "start": "node --env-file=.env server/server.js",
+    "setup-coach": "node server/setup-coach.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.6"
+  }
+}

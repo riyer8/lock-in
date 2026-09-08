@@ -7,11 +7,7 @@
   // This conservative list is only used to surface attention signals. It does
   // not assign value or intent to a domain, and can be made user-configurable.
   const ATTENTION_HEAVY_DOMAINS = new Set([
-    "facebook.com",
     "instagram.com",
-    "reddit.com",
-    "tiktok.com",
-    "twitch.tv",
     "x.com",
     "youtube.com",
     ...(
@@ -241,8 +237,7 @@
     }
     if (missions.levels?.minimum > 0) {
       highlights.push(
-        `${missions.levels.minimum} minimum-version ${
-          missions.levels.minimum === 1 ? "action kept" : "actions kept"
+        `${missions.levels.minimum} minimum-version ${missions.levels.minimum === 1 ? "action kept" : "actions kept"
         } momentum alive.`,
       );
     }
@@ -253,8 +248,7 @@
     const unfinished = Math.max(0, missions.total - missions.completed);
     if (unfinished > 0 && missions.activityCount > 0) {
       misses.push(
-        `${unfinished} ${pluralize(unfinished, "mission")} ${
-          unfinished === 1 ? "was" : "were"
+        `${unfinished} ${pluralize(unfinished, "mission")} ${unfinished === 1 ? "was" : "were"
         } left unfinished.`,
       );
     }

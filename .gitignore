@@ -1,2 +1,7 @@
 .cursor/
+.env
+.env.*
+!.env.example
+node_modules/
 src/config/personal.js
+server/.generated/
