@@ -30,6 +30,7 @@ const EXPERIMENTS_STORAGE_KEY = "lock-in-experiments-v1";
 const MISSION_HISTORY_STORAGE_KEY = "lock-in-mission-history-v1";
 const INSIGHT_STORAGE_KEY = "lock-in-coach-insight";
 const THREAD_STORAGE_KEY = "lock-in-coach-thread";
+const CUSTOM_TASKS_STORAGE_NAME = "custom-tasks";
 const COACH_API_URL = "http://127.0.0.1:8787/api/coach";
 const PLAN_API_URL = "http://127.0.0.1:8787/api/plan";
 const ADAPT_API_URL = "http://127.0.0.1:8787/api/adapt";
@@ -82,6 +83,7 @@ let coachInsight = null;
 let coachThread = [];
 let selectedAuditDate = new Date();
 let focusMissionId = null;
+let renderedTodayDateKey = getDateKey();
 
 const eventPersistence = globalThis.chrome?.storage?.local
   ? new LockInEvents.ChromeStorageEventAdapter(chrome.storage.local)
@@ -184,6 +186,12 @@ const startFocusButton = document.querySelector("#start-focus");
 const todayTheme = document.querySelector("#today-theme");
 const todayFollowThrough = document.querySelector("#today-follow-through");
 const commandArcInline = document.querySelector("#command-arc-inline");
+const todayDayPercent = document.querySelector("#today-day-percent");
+const todayDayProgress = document.querySelector("#today-day-progress");
+const todayDayCopy = document.querySelector("#today-day-copy");
+const todayTaskForm = document.querySelector("#today-task-form");
+const todayTaskInput = document.querySelector("#today-task-input");
+const todayTaskList = document.querySelector("#today-task-list");
 const focusMode = document.querySelector("#focus-mode");
 const identityGoalGrid = document.querySelector("#identity-goal-grid");
 const goalDetail = document.querySelector("#goal-detail");
@@ -660,10 +668,91 @@ async function completedMissionIds(date = new Date()) {
   return new Set(Array.isArray(saved) ? saved : []);
 }
 
+function getDayProgressState(date = new Date()) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const elapsedMs = Math.max(0, date.getTime() - start.getTime());
+  const remainingMs = Math.max(0, end.getTime() - date.getTime());
+  const percent = Math.min(100, Math.max(0, Math.round((elapsedMs / MILLISECONDS_PER_DAY) * 100)));
+  const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
+  const remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+  const remaining = remainingHours
+    ? `${remainingHours}h ${remainingMinutes}m left`
+    : `${remainingMinutes}m left`;
+  return { percent, remaining };
+}
+
+function renderDayProgress() {
+  if (!todayDayPercent || !todayDayProgress || !todayDayCopy) return;
+  const { percent, remaining } = getDayProgressState();
+  todayDayPercent.textContent = `${percent}%`;
+  todayDayProgress.style.width = `${percent}%`;
+  todayDayCopy.textContent = `${percent}% of today has passed · ${remaining}`;
+}
+
+function normalizeTodayTasks(tasks) {
+  if (!Array.isArray(tasks)) return [];
+  return tasks
+    .map((task) => ({
+      id: String(task?.id || ""),
+      title: String(task?.title || "").trim(),
+      completed: Boolean(task?.completed),
+      createdAt: String(task?.createdAt || new Date().toISOString()),
+      completedAt: task?.completedAt ? String(task.completedAt) : null,
+    }))
+    .filter((task) => task.id && task.title)
+    .slice(0, 12);
+}
+
+async function readTodayTasks(date = new Date()) {
+  return normalizeTodayTasks(await readDaily(CUSTOM_TASKS_STORAGE_NAME, [], date));
+}
+
+async function writeTodayTasks(tasks, date = new Date()) {
+  await writeDaily(CUSTOM_TASKS_STORAGE_NAME, normalizeTodayTasks(tasks), date);
+}
+
+function todayTaskElement(task) {
+  const item = document.createElement("li");
+  if (task.completed) item.classList.add("is-complete");
+  const check = document.createElement("button");
+  check.className = "today-task-check";
+  check.type = "button";
+  check.dataset.taskAction = "toggle";
+  check.dataset.taskId = task.id;
+  check.setAttribute("aria-label", task.completed ? "Mark task incomplete" : "Mark task complete");
+  check.textContent = task.completed ? "✓" : "";
+  const title = createTextElement("span", "today-task-title", task.title);
+  const remove = document.createElement("button");
+  remove.className = "today-task-delete";
+  remove.type = "button";
+  remove.dataset.taskAction = "delete";
+  remove.dataset.taskId = task.id;
+  remove.setAttribute("aria-label", `Delete ${task.title}`);
+  remove.textContent = "×";
+  item.append(check, title, remove);
+  return item;
+}
+
+async function renderTodayTasks() {
+  if (!todayTaskList) return;
+  const tasks = await readTodayTasks();
+  if (!tasks.length) {
+    todayTaskList.replaceChildren(
+      createTextElement("li", "today-task-empty", "Add errands, admin, or anything else due today."),
+    );
+    return;
+  }
+  todayTaskList.replaceChildren(...tasks.map(todayTaskElement));
+}
+
 async function renderToday() {
   const missions = await buildTodayMissions();
   const completed = await completedMissionIds();
   const arcState = calculateArcState(new Date());
+  renderedTodayDateKey = getDateKey();
   commandGreeting.textContent = getTimeBasedGreeting();
   todayTheme.textContent = await currentTheme();
   todayFollowThrough.textContent = followThroughCopy();
@@ -686,6 +775,17 @@ async function renderToday() {
         return item;
       }),
     );
+  }
+  renderDayProgress();
+  await renderTodayTasks();
+}
+
+async function tickTodayClock() {
+  renderDayProgress();
+  const currentDateKey = getDateKey();
+  const todayVisible = !document.querySelector("#command-center-screen")?.hidden;
+  if (todayVisible && currentDateKey !== renderedTodayDateKey) {
+    await renderToday();
   }
 }
 
@@ -1732,6 +1832,48 @@ $("close-goal-detail")?.addEventListener("click", () => {
   goalDetail.hidden = true;
 });
 startFocusButton?.addEventListener("click", openFocusMode);
+todayTaskForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const title = todayTaskInput?.value.trim();
+  if (!title) return;
+  const tasks = await readTodayTasks();
+  tasks.push({
+    id: globalThis.crypto?.randomUUID?.() ?? `task-${Date.now()}`,
+    title,
+    completed: false,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+  });
+  await writeTodayTasks(tasks);
+  todayTaskInput.value = "";
+  await renderTodayTasks();
+});
+todayTaskList?.addEventListener("click", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  const action = event.target.closest("[data-task-action]");
+  if (!action) return;
+  const taskId = action.dataset.taskId;
+  const tasks = await readTodayTasks();
+  const now = new Date().toISOString();
+  const nextTasks = action.dataset.taskAction === "delete"
+    ? tasks.filter((task) => task.id !== taskId)
+    : tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              completed: !task.completed,
+              completedAt: task.completed ? null : now,
+            }
+          : task,
+      );
+  await writeTodayTasks(nextTasks);
+  await renderTodayTasks();
+});
+$("clear-today-tasks")?.addEventListener("click", async () => {
+  const tasks = await readTodayTasks();
+  await writeTodayTasks(tasks.filter((task) => !task.completed));
+  await renderTodayTasks();
+});
 $("close-focus")?.addEventListener("click", closeFocusMode);
 $("focus-done")?.addEventListener("click", async () => {
   const missions = await buildTodayMissions();
@@ -1994,3 +2136,6 @@ async function initializeApp() {
 
 initializeApp();
 setInterval(renderArcState, 60 * 60 * 1000);
+setInterval(() => {
+  tickTodayClock();
+}, 60 * 1000);

@@ -370,6 +370,30 @@
           <p id="today-focus-kicker" class="aside-kicker">Today's focus</p>
           <ol class="today-focus-list" id="today-focus-list"></ol>
           <button type="button" class="continue-button today-start" id="start-focus">Start</button>
+          <div class="today-context-grid" aria-label="Today context">
+            <section class="today-day-card surface-card" aria-labelledby="today-day-title">
+              <div class="today-card-heading">
+                <p class="aside-kicker" id="today-day-title">Daylight</p>
+                <strong id="today-day-percent">0%</strong>
+              </div>
+              <div class="today-day-track" aria-hidden="true">
+                <span id="today-day-progress"></span>
+              </div>
+              <p id="today-day-copy">Your day is loading.</p>
+            </section>
+            <section class="today-tasks-card surface-card" aria-labelledby="today-tasks-title">
+              <div class="today-card-heading">
+                <p class="aside-kicker" id="today-tasks-title">Today extras</p>
+                <button type="button" class="text-button" id="clear-today-tasks">Clear done</button>
+              </div>
+              <form class="today-task-form" id="today-task-form">
+                <label class="sr-only" for="today-task-input">Add a task for today</label>
+                <input id="today-task-input" maxlength="120" placeholder="Add a task for today" />
+                <button type="submit" class="ghost-button">Add</button>
+              </form>
+              <ul class="today-task-list" id="today-task-list"></ul>
+            </section>
+          </div>
         </section>
         <footer class="today-meta">
           <p>Today I'm optimizing for <strong id="today-theme">FOCUS</strong></p>

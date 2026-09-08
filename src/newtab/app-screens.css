@@ -29,7 +29,7 @@ body.app-ready .command-center.loop-screen {
 
 body.app-ready .command-center.loop-screen .command-shell,
 body.app-ready .command-center.loop-screen .today-shell {
-  width: min(560px, 100%);
+  width: min(680px, 100%);
   min-height: unset;
   margin: 0 auto;
   padding: 0;
@@ -122,6 +122,33 @@ body.app-ready .command-center.loop-screen .today-shell {
   border-color: var(--lavender);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.text-button:hover,
+.text-button:focus-visible {
+  color: var(--ink);
+}
+
 .loop-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -178,7 +205,138 @@ body.app-ready .command-center.loop-screen .today-shell {
 
 .today-start {
   min-width: 168px;
-  margin: 8px 0 36px;
+  margin: 8px 0 26px;
+}
+
+.today-context-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.78fr) minmax(0, 1.22fr);
+  gap: 14px;
+  margin: 0 0 32px;
+}
+
+.today-context-grid .surface-card {
+  padding: 17px 18px;
+  border-radius: 18px;
+}
+
+.today-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.today-card-heading .aside-kicker {
+  margin: 0;
+}
+
+.today-card-heading strong {
+  color: var(--ink);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+.today-day-track {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 10px;
+  margin-bottom: 13px;
+  border-radius: 999px;
+  background: rgba(238, 237, 244, 0.1);
+  overflow: hidden;
+}
+
+.today-day-track span {
+  grid-column: 1;
+  grid-row: 1;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b8d8c3, #d8d2ec);
+  box-shadow: 0 0 22px rgba(216, 210, 236, 0.25);
+  transition: width 240ms ease;
+}
+
+.today-day-card p,
+.today-tasks-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.today-task-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.today-task-form input {
+  min-height: 38px;
+  padding: 9px 10px;
+  border-radius: 12px;
+}
+
+.today-task-form .ghost-button {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.today-task-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-task-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  color: #dedbe7;
+  font-size: 14px;
+}
+
+.today-task-check,
+.today-task-delete {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(238, 237, 244, 0.16);
+  color: var(--ink);
+  background: rgba(5, 6, 9, 0.32);
+  cursor: pointer;
+}
+
+.today-task-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.today-task-delete {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.today-task-list li.is-complete {
+  color: var(--muted);
+}
+
+.today-task-list li.is-complete .today-task-title {
+  text-decoration: line-through;
+}
+
+.today-task-empty {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .today-meta {
@@ -1099,6 +1257,15 @@ body.app-ready .command-center.loop-screen .command-layout {
   .progress-card--wide {
     grid-column: 1;
     min-height: 0;
+  }
+
+  .today-context-grid,
+  .today-task-form {
+    grid-template-columns: 1fr;
+  }
+
+  .today-task-form .ghost-button {
+    justify-self: start;
   }
 
   .today-focus-list li {
