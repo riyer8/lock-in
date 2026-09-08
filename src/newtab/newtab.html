@@ -282,7 +282,10 @@
       <div class="command-shell">
         <header class="command-topbar">
           <p class="command-brand">❄️&nbsp; LOCK IN</p>
-          <p id="command-arc-day">DAY 1 OF 116</p>
+          <div class="command-topbar__actions">
+            <p id="command-arc-day">DAY 1 OF 116</p>
+            <button type="button" id="open-audit">TODAY'S AUDIT</button>
+          </div>
         </header>
 
         <section class="command-intro">
@@ -349,6 +352,83 @@
       </div>
     </main>
 
+    <main class="screen daily-audit" id="daily-audit-screen" hidden>
+      <div class="audit-shell">
+        <header class="audit-topbar">
+          <p class="command-brand">❄️&nbsp; LOCK IN</p>
+          <button type="button" id="close-audit">BACK TO TODAY</button>
+        </header>
+
+        <nav class="audit-date-nav" aria-label="Audit date">
+          <button type="button" id="audit-previous">← PREVIOUS DAY</button>
+          <div>
+            <p id="audit-date-label">TODAY</p>
+            <time id="audit-date"></time>
+          </div>
+          <div class="audit-date-nav__forward">
+            <button type="button" id="audit-today">TODAY</button>
+            <button type="button" id="audit-next">NEXT DAY →</button>
+          </div>
+        </nav>
+
+        <section class="audit-empty" id="audit-empty" hidden>
+          <p>NO DATA YET</p>
+          <h1>LIVE YOUR DAY.</h1>
+          <span>We'll audit it later.</span>
+        </section>
+
+        <article class="audit-content" id="audit-content">
+          <header class="audit-hero">
+            <div>
+              <p class="command-section-label">TODAY'S AUDIT</p>
+              <h1 id="audit-verdict">SOLID DAY</h1>
+            </div>
+            <button type="button" id="refresh-audit">REFRESH AUDIT</button>
+          </header>
+
+          <section class="audit-metrics" aria-label="Daily summary">
+            <article>
+              <span>MISSIONS</span>
+              <strong id="audit-missions">0 / 0 completed</strong>
+            </article>
+            <article>
+              <span>MOOD</span>
+              <strong id="audit-mood">Not selected</strong>
+            </article>
+            <article>
+              <span>BROWSER</span>
+              <strong id="audit-browser-total">0m observed</strong>
+            </article>
+          </section>
+
+          <div class="audit-reflection-grid">
+            <section class="audit-section" aria-labelledby="audit-highlights-title">
+              <p class="command-section-label">01 / WHAT LANDED</p>
+              <h2 id="audit-highlights-title">HIGHLIGHTS</h2>
+              <div class="audit-list" id="audit-highlights"></div>
+            </section>
+            <section class="audit-section" aria-labelledby="audit-misses-title">
+              <p class="command-section-label">02 / OPEN LOOPS</p>
+              <h2 id="audit-misses-title">MISSES</h2>
+              <div class="audit-list" id="audit-misses"></div>
+            </section>
+          </div>
+
+          <section class="audit-section audit-browser" aria-labelledby="audit-browser-title">
+            <p class="command-section-label">03 / OBSERVED ATTENTION</p>
+            <h2 id="audit-browser-title">TOP DOMAINS</h2>
+            <div class="audit-domain-list" id="audit-domains"></div>
+          </section>
+
+          <section class="audit-section audit-patterns" aria-labelledby="audit-patterns-title">
+            <p class="command-section-label">04 / SIGNALS</p>
+            <h2 id="audit-patterns-title">PATTERNS</h2>
+            <div class="audit-pattern-list" id="audit-pattern-list"></div>
+          </section>
+        </article>
+      </div>
+    </main>
+
     <main class="screen event-debug" id="event-debug-screen" hidden>
       <section class="event-debug-panel" aria-labelledby="event-debug-title">
         <header>
@@ -388,6 +468,8 @@
 
     <script src="../core/event-engine.js"></script>
     <script src="../observer/browser-observer.js"></script>
+    <script src="../audit/auditUtils.js"></script>
+    <script src="../audit/auditService.js"></script>
     <script src="newtab.js"></script>
   </body>
 </html>

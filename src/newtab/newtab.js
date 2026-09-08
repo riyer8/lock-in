@@ -34,6 +34,10 @@ const eventPersistence = globalThis.chrome?.storage?.local
 const eventStore = new LockInEvents.EventStore(eventPersistence);
 const eventApi = new LockInEvents.EventApi(eventStore);
 const { EventTypes } = LockInEvents;
+const auditService = new LockInAudit.AuditService({
+  eventStore,
+  persistence: eventPersistence,
+});
 
 const IDENTITY_LABELS = {
   athlete: "ATHLETE",
@@ -241,6 +245,24 @@ const observerDomain = document.querySelector("#observer-domain");
 const observerDuration = document.querySelector("#observer-duration");
 const observerTotal = document.querySelector("#observer-total");
 const observerDomains = document.querySelector("#observer-domains");
+const openAuditButton = document.querySelector("#open-audit");
+const closeAuditButton = document.querySelector("#close-audit");
+const auditPreviousButton = document.querySelector("#audit-previous");
+const auditTodayButton = document.querySelector("#audit-today");
+const auditNextButton = document.querySelector("#audit-next");
+const refreshAuditButton = document.querySelector("#refresh-audit");
+const auditDateLabel = document.querySelector("#audit-date-label");
+const auditDateElement = document.querySelector("#audit-date");
+const auditEmpty = document.querySelector("#audit-empty");
+const auditContent = document.querySelector("#audit-content");
+const auditVerdict = document.querySelector("#audit-verdict");
+const auditMissions = document.querySelector("#audit-missions");
+const auditMood = document.querySelector("#audit-mood");
+const auditBrowserTotal = document.querySelector("#audit-browser-total");
+const auditHighlights = document.querySelector("#audit-highlights");
+const auditMisses = document.querySelector("#audit-misses");
+const auditDomains = document.querySelector("#audit-domains");
+const auditPatternList = document.querySelector("#audit-pattern-list");
 
 function toUtcDate(date) {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -479,8 +501,7 @@ function MissionCard(mission, completedMissions) {
   return card;
 }
 
-function TodayMission() {
-  const missions = buildTodayMissions();
+function TodayMission(missions = buildTodayMissions()) {
   const completedMissions = new Set(
     storage.readJson(getDailyStorageKey("completed-missions"), []),
   );
@@ -536,13 +557,19 @@ function QuickView() {
 function CommandCenter() {
   const name = storage.readText(NAME_STORAGE_KEY).trim();
   const arcState = getCommandArcState();
+  const missions = buildTodayMissions();
   commandGreeting.textContent = name ? `GOOD MORNING, ${name}.` : "GOOD MORNING.";
-  TodayMission();
+  TodayMission(missions);
   ArcProgress(arcState);
   MoodCheckIn();
   QuickView();
   eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
     arcDay: arcState.day,
+    plannedMissions: missions.map(({ id, category, title }) => ({
+      missionId: id,
+      category,
+      title,
+    })),
   });
 }
 
@@ -562,6 +589,171 @@ function formatDuration(durationMs) {
     return `${minutes}m ${seconds}s`;
   }
   return `${seconds}s`;
+}
+
+function formatAuditDuration(durationMs) {
+  const totalMinutes = Math.max(0, Math.round(durationMs / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
+  }
+  return `${minutes}m`;
+}
+
+function formatMood(mood) {
+  if (!mood) {
+    return "Not selected";
+  }
+  return mood
+    .toLowerCase()
+    .split(/[\s-]+/)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
+}
+
+function getPatternCopy(pattern) {
+  switch (pattern.type) {
+    case "HIGH_DISTRACTION_TIME":
+      return {
+        title: "HIGH DISTRACTION TIME",
+        detail: `${formatAuditDuration(pattern.durationMs)} observed on ${pattern.domain}.`,
+      };
+    case "STRONG_MISSION_COMPLETION":
+      return {
+        title: "STRONG MISSION COMPLETION",
+        detail: "At least 80% of planned missions were completed.",
+      };
+    case "LOW_MISSION_COMPLETION":
+      return {
+        title: "LOW MISSION COMPLETION",
+        detail: "Fewer than half of planned missions were completed.",
+      };
+    case "NO_MISSION_ACTIVITY":
+      return {
+        title: "NO MISSION ACTIVITY",
+        detail: "Missions were planned, but no updates were recorded.",
+      };
+    case "LIMITED_BROWSER_DATA":
+      return {
+        title: "LIMITED BROWSER DATA",
+        detail: "No completed browser sessions were available to audit.",
+      };
+    default:
+      return { title: pattern.type.replaceAll("_", " "), detail: "" };
+  }
+}
+
+function renderAuditList(container, items, marker, emptyCopy) {
+  const rows = items.map((item) => {
+    const row = document.createElement("p");
+    row.append(
+      createTextElement("span", "audit-list__marker", marker),
+      createTextElement("span", "", item),
+    );
+    return row;
+  });
+
+  if (rows.length === 0) {
+    rows.push(createTextElement("p", "audit-list__empty", emptyCopy));
+  }
+  container.replaceChildren(...rows);
+}
+
+let selectedAuditDate = new Date();
+
+async function renderDailyAudit() {
+  const audit = await auditService.generateDailyAudit(selectedAuditDate);
+  const todayKey = getDateKey(new Date());
+  const isToday = audit.date === todayKey;
+  const isFuture = audit.date > todayKey;
+  const hasNoFutureData =
+    isFuture && audit.verdict === "INSUFFICIENT_DATA";
+
+  auditDateLabel.textContent = isToday ? "TODAY" : isFuture ? "UPCOMING" : "DAILY AUDIT";
+  auditDateElement.dateTime = audit.date;
+  auditDateElement.textContent = selectedAuditDate
+    .toLocaleDateString([], {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+    .toUpperCase();
+  auditTodayButton.disabled = isToday;
+  auditEmpty.hidden = !hasNoFutureData;
+  auditContent.hidden = hasNoFutureData;
+
+  if (hasNoFutureData) {
+    return;
+  }
+
+  auditVerdict.textContent =
+    audit.verdict === "INSUFFICIENT_DATA"
+      ? "NOT ENOUGH DATA"
+      : `${audit.verdict.replaceAll("_", " ")} DAY`;
+  auditMissions.textContent = `${audit.missions.completed} / ${audit.missions.total} completed`;
+  auditMood.textContent = formatMood(audit.mood.selected);
+  auditBrowserTotal.textContent = `${formatAuditDuration(
+    audit.browser.totalObservedMs,
+  )} observed`;
+
+  renderAuditList(
+    auditHighlights,
+    audit.highlights,
+    "✓",
+    "No highlights recorded yet.",
+  );
+  renderAuditList(
+    auditMisses,
+    audit.misses,
+    "→",
+    "No open loops surfaced.",
+  );
+
+  const domainRows = audit.browser.topDomains.map(({ domain, durationMs }) => {
+    const row = document.createElement("div");
+    row.append(
+      createTextElement("span", "", domain),
+      createTextElement("strong", "", formatAuditDuration(durationMs)),
+    );
+    return row;
+  });
+  if (domainRows.length === 0) {
+    domainRows.push(
+      createTextElement("p", "audit-list__empty", "No browser activity observed."),
+    );
+  }
+  auditDomains.replaceChildren(...domainRows);
+
+  const patternRows = audit.patterns.map((pattern) => {
+    const copy = getPatternCopy(pattern);
+    const row = document.createElement("article");
+    row.className = `audit-pattern audit-pattern--${pattern.severity}`;
+    row.append(
+      createTextElement("h3", "", copy.title),
+      createTextElement("p", "", copy.detail),
+    );
+    return row;
+  });
+  if (patternRows.length === 0) {
+    patternRows.push(
+      createTextElement("p", "audit-list__empty", "No patterns surfaced."),
+    );
+  }
+  auditPatternList.replaceChildren(...patternRows);
+}
+
+async function openDailyAudit() {
+  selectedAuditDate = new Date();
+  showScreen("daily-audit-screen");
+  await renderDailyAudit();
+}
+
+function moveAuditDate(dayOffset) {
+  selectedAuditDate.setDate(selectedAuditDate.getDate() + dayOffset);
+  return renderDailyAudit();
 }
 
 async function renderObserverDebug(events) {
@@ -807,6 +999,30 @@ clearEventsButton.addEventListener("click", async () => {
 });
 
 closeEventsButton.addEventListener("click", closeEventDebug);
+openAuditButton.addEventListener("click", openDailyAudit);
+closeAuditButton.addEventListener("click", () => {
+  showScreen("command-center-screen");
+});
+auditPreviousButton.addEventListener("click", () => moveAuditDate(-1));
+auditTodayButton.addEventListener("click", () => {
+  selectedAuditDate = new Date();
+  renderDailyAudit();
+});
+auditNextButton.addEventListener("click", () => moveAuditDate(1));
+refreshAuditButton.addEventListener("click", async () => {
+  refreshAuditButton.disabled = true;
+  refreshAuditButton.textContent = "REFRESHING";
+
+  try {
+    await renderDailyAudit();
+    refreshAuditButton.textContent = "AUDIT REFRESHED";
+  } finally {
+    setTimeout(() => {
+      refreshAuditButton.textContent = "REFRESH AUDIT";
+      refreshAuditButton.disabled = false;
+    }, 900);
+  }
+});
 
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === "E") {
