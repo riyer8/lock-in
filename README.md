@@ -1,6 +1,12 @@
 # LOCK IN
 
-A focused Chrome new-tab extension.
+A local-first Chrome new-tab behavior-change system.
+
+Identity → goals → behaviors → daily plan → real-world data → audit →
+patterns → experiments → AI coach → adapt, then repeat.
+
+The product is that loop, not a habit tracker with AI attached. It
+optimizes for adherence, recovery, and learning — not breakable streaks.
 
 ## Install locally
 
@@ -10,68 +16,71 @@ A focused Chrome new-tab extension.
 4. Choose this project folder.
 5. Open a new tab.
 
+## Tabs
+
+- **Today** — three focus actions and a Start button. Answers “what should I do right now?”
+- **Goals** — who you are becoming. Each identity has a why, outcome, behaviors, progress, and obstacles.
+- **Arc** — the dated window (Winter Arc by default) and per-identity adherence.
+- **Audit** — a reflection on what happened, what was missed, a multi-day pattern, and a coach take.
+- **Coach** — a cached insight, one-tap adapt (`Yes, fix it`), then chat.
+- **Progress** — evidence that helps you decide, not a vanity dashboard.
+
+Manual sleep, energy, and fitness check-ins live on Audit. Browser
+observation remains a local event stream. Fitness imports can later write
+the same event types with a different `source`.
+
 ## AI Coach
 
-The AI Coach sends a bounded seven-day context to a local Python backend only
-when you select **Ask Coach**. That context includes the Personal Blueprint,
-active goals, current missions, today's audit, six prior daily audits, important
-recent events, and any available intervention outcomes. It does not send the
-entire event history.
+The Coach tab (and Audit’s **Try this**) send a bounded seven-day context
+to a local Python backend. That context includes the Personal Blueprint,
+active goals, current missions, today’s audit, six prior daily audits,
+important recent events, patterns, experiments, and the last insight. It
+does not send the entire event history.
 
-The backend asks OpenAI for a structured observation, pattern, single priority,
-concrete next action, and evidence-based encouragement. The OpenAI key stays in
-the backend process and is never loaded by the extension.
+The backend asks OpenAI for a structured observation, pattern, priority,
+next action, encouragement, and a proposed adaptation. Chat uses the same
+bound. The OpenAI key stays in the backend process and is never loaded by
+the extension.
 
-Requires Python 3.9 or newer. Chrome cannot start Python itself, so Ask Coach
-uses a one-time native helper to launch the local backend. The new-tab page,
-goals, audits, and observer stay in JavaScript because Chrome extensions cannot
-run Python.
+Requires Python 3.9 or newer. Chrome cannot start Python itself, so the
+Coach uses a one-time native helper to launch the local backend.
 
 1. Copy `.env.example` to `.env`.
 2. Add your key to `OPENAI_DEVELOPER_KEY` in `.env`.
 3. Optionally change `OPENAI_MODEL`.
 4. Load the unpacked extension in Chrome.
 5. Run `npm run setup-coach` once (`python3 server/setup_coach.py` also works).
-   After that, **Ask Coach** starts the backend for you — no terminal on later
-   uses, including after reboot.
 6. Reload LOCK IN on `chrome://extensions`.
-7. Open a new tab and select **Ask Coach**.
+7. Open a new tab and select **Coach**.
 
 If you move this folder, run `npm run setup-coach` again.
 
 The backend listens on `http://127.0.0.1:8787` and exposes
-`GET /health`, `POST /api/coach`, and `POST /api/plan`. The extension is
-permitted to call that local origin; regular web-page origins are rejected.
-`.env` is excluded from both git and Cursor agent access.
+`GET /health`, `POST /api/coach`, `POST /api/plan`, `POST /api/adapt`,
+and `POST /api/coach/chat`. The extension is permitted to call that local
+origin; regular web-page origins are rejected. `.env` is excluded from
+both git and Cursor agent access.
 
-## Adaptive daily plan
+## Adaptive plan
 
-**Plan today** uses the same bounded seven-day context as Ask Coach.
-The backend returns 3–5 structured missions. LOCK IN maps those onto the same
-Command Center mission objects, keeps date-bound and already-completed
-commitments, and scales the plan down when recent completion is low.
-
-Use **New plan** to replace today's plan without dropping finished work.
-
-## Daily reflection
-
-After onboarding, open **Today's reflection** from the command center to review
-mission completion, mood, tracked browser time, and deterministic patterns.
-Use **Refresh reflection** to regenerate it from the event stream.
+Coach adaptations write tomorrow’s plan. Difficulty still scales down
+when recent completion is low. After three missed days of the same
+behavior, Audit asks whether the plan was unrealistic instead of
+declaring a streak dead.
 
 ## Private goals and milestones
 
-LOCK IN keeps SMART goals, progress, mission history, and weekly reviews in
-`chrome.storage.local` on your device.
+LOCK IN keeps identity-owned goals, behaviors, experiments, mission
+history, and coach threads in `chrome.storage.local` on your device.
 
-Personal dates and labels can live in `src/config/personal.js`. That file is
-ignored by git. Copy `src/config/personal.example.js` to
-`src/config/personal.js`, add your milestones and preparation windows, then
-reload the unpacked extension. The committed example contains no personal
-information.
+Personal dates and labels can live in `src/config/personal.js`. That file
+is ignored by git. Copy `src/config/personal.example.js` to
+`src/config/personal.js`, add your `displayName`, arc, and milestones,
+then reload the unpacked extension. The committed example contains no
+personal information.
 
-Each goal includes a measurable outcome, deadline, action cue, minimum action,
-normal action, stretch action, and an if-then recovery plan. Daily missions
-default from at most three active goals and nearby milestones. Plan today
-can replace that with 3–5 adaptive missions for the day. Progress uses
-planned-opportunity consistency instead of a breakable streak.
+Each goal hangs off an identity and produces behaviors (cue, minimum,
+standard, if-then recovery). Today’s three actions are scheduled
+instances of those behaviors, plus any active experiment protocol.
+Progress uses planned-opportunity consistency, including recovered
+minimum days.

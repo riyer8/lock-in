@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   buildAdaptiveMissions,
+  applyAdaptationToPlan,
   choosePlanDifficulty,
   planSize,
 } = require("../src/coach/plan-builder.js");
@@ -184,6 +185,23 @@ test("keeps important commitments and scales difficulty from recent completion",
     strongFitness.find((mission) => mission.goalId === "goal-move").description,
     "Add a second movement block",
   );
+});
+
+test("marks adapted plans so the loop is observable", () => {
+  const missions = applyAdaptationToPlan({
+    proposed: PROPOSED.slice(0, 3),
+    goals: GOALS,
+    date: new Date(2026, 8, 9),
+    proposal: {
+      type: "reschedule",
+      changes: "Move deep work to the morning.",
+      reason: "Evenings are overloaded.",
+    },
+    areaLabels: AREA_LABELS,
+  });
+  assert.ok(missions.every((mission) => mission.source === "adapted-plan"));
+  assert.equal(missions[0].adaptedFrom, "reschedule");
+  assert.match(missions[0].reason, /morning/i);
 });
 
 test("does not duplicate a preserved goal when the model repeats it", () => {

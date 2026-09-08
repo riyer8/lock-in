@@ -411,6 +411,53 @@ class CoachTests(unittest.TestCase):
             )
             self.assertIn("POST", header_value(headers, "Access-Control-Allow-Methods") or "")
 
+    def test_chat_and_adapt_endpoints_return_structured_payloads(self):
+        from server.coach import parse_chat_response, request_adapted_plan, request_chat_response
+
+        self.assertEqual(
+            parse_chat_response(json.dumps({"reply": "Move deep work to the morning."})),
+            {"reply": "Move deep work to the morning."},
+        )
+
+        def fetch_impl(_url, options=None):
+            body = json.loads((options or {})["body"])
+            name = body["text"]["format"]["name"]
+            if name == "lock_in_coach_chat":
+                return FakeResponse({"output_text": json.dumps({"reply": "Yes. Protect the morning."})})
+            return FakeResponse(
+                {
+                    "output_text": json.dumps(
+                        {
+                            "missions": [
+                                {
+                                    "title": "Deep work before standup",
+                                    "category": "MIND",
+                                    "priority": "high",
+                                    "reason": "Evenings are overloaded.",
+                                },
+                                {
+                                    "title": "Run 30 minutes",
+                                    "category": "FITNESS",
+                                    "priority": "medium",
+                                    "reason": "Keep the athlete slot.",
+                                },
+                                {
+                                    "title": "Prep lunch",
+                                    "category": "HEALTH & FOOD",
+                                    "priority": "low",
+                                    "reason": "A small evening action remains.",
+                                },
+                            ]
+                        }
+                    )
+                }
+            )
+
+        chat = request_chat_response(CONTEXT, api_key="test-key", fetch_impl=fetch_impl)
+        plan = request_adapted_plan(CONTEXT, api_key="test-key", fetch_impl=fetch_impl)
+        self.assertEqual(chat["reply"], "Yes. Protect the morning.")
+        self.assertEqual(len(plan["missions"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

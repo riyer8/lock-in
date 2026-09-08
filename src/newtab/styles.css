@@ -5498,7 +5498,10 @@ body {
 body.app-ready .command-center,
 body.app-ready .goals-screen,
 body.app-ready .weekly-review,
-body.app-ready .daily-audit {
+body.app-ready .daily-audit,
+body.app-ready .arc-screen,
+body.app-ready .coach-screen,
+body.app-ready .progress-screen {
   padding-top: 72px;
 }
 
@@ -6113,7 +6116,7 @@ body.app-ready .command-center {
 .identity-goals-shell {
   width: min(880px, 100%);
   margin: 0 auto;
-  padding: 88px 20px 48px;
+  padding: 20px 20px 48px;
   display: grid;
   gap: 18px;
 }
@@ -6184,4 +6187,9 @@ body.app-ready .command-center {
 
 .arc-caption {
   color: var(--muted);
+}
+
+body.app-ready .command-center .today-shell {
+  min-height: calc(100vh - 120px);
+  padding: 12px 8px 24px;
 }
