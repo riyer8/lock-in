@@ -46,12 +46,12 @@ permitted to call that local origin; regular web-page origins are rejected.
 
 ## Adaptive daily plan
 
-**Generate Today's Plan** uses the same bounded seven-day context as Ask Coach.
+**Plan today** uses the same bounded seven-day context as Ask Coach.
 The backend returns 3–5 structured missions. LOCK IN maps those onto the same
 Command Center mission objects, keeps date-bound and already-completed
 commitments, and scales the plan down when recent completion is low.
 
-Use **Regenerate Plan** to replace today's plan without dropping finished work.
+Use **New plan** to replace today's plan without dropping finished work.
 
 ## Daily reflection
 
@@ -72,6 +72,6 @@ information.
 
 Each goal includes a measurable outcome, deadline, action cue, minimum action,
 normal action, stretch action, and an if-then recovery plan. Daily missions
-default from at most three active goals and nearby milestones. Generate Today's
-Plan can replace that with 3–5 adaptive missions for the day. Progress uses
+default from at most three active goals and nearby milestones. Plan today
+can replace that with 3–5 adaptive missions for the day. Progress uses
 planned-opportunity consistency instead of a breakable streak.

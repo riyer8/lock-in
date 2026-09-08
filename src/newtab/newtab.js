@@ -29,8 +29,8 @@ const WEEKLY_REVIEWS_STORAGE_KEY = "lock-in-weekly-reviews-v1";
 const COACH_API_URL = "http://127.0.0.1:8787/api/coach";
 const PLAN_API_URL = "http://127.0.0.1:8787/api/plan";
 const COACH_HEALTH_URL = "http://127.0.0.1:8787/health";
-const COACH_LOADING_MESSAGE = "Looking for the useful signal…";
-const PLAN_LOADING_MESSAGE = "Choosing what matters today…";
+const COACH_LOADING_MESSAGE = "Reading today’s context…";
+const PLAN_LOADING_MESSAGE = "Building today’s plan…";
 const ADAPTIVE_PLAN_STORAGE_NAME = "adaptive-plan";
 
 const storage = {
@@ -271,6 +271,38 @@ const arcDayElement = document.querySelector("#arc-day");
 const arcTitleElement = document.querySelector("#arc-title");
 const arcDateRangeElement = document.querySelector("#arc-date-range");
 const screens = document.querySelectorAll(".screen");
+const appNav = document.querySelector("#app-nav");
+const appNavLinks = [...document.querySelectorAll(".app-nav__links [data-nav]")];
+const appNavTriggers = [...document.querySelectorAll("[data-nav]")];
+const celebrateRoot = document.querySelector("#celebrate");
+const celebrateBurst = document.querySelector(".celebrate__burst");
+const celebrateMessage = document.querySelector("#celebrate-message");
+const APP_SCREENS = new Set([
+  "command-center-screen",
+  "goals-screen",
+  "weekly-review-screen",
+  "daily-audit-screen",
+]);
+const SCREEN_HASH = {
+  "landing-screen": "begin",
+  "identity-screen": "identity",
+  "fixing-screen": "focus",
+  "blueprint-screen": "blueprint",
+  "command-center-screen": "today",
+  "goals-screen": "goals",
+  "weekly-review-screen": "week",
+  "daily-audit-screen": "review",
+};
+const HASH_SCREEN = Object.fromEntries(
+  Object.entries(SCREEN_HASH).map(([screenId, hash]) => [hash, screenId]),
+);
+const ONBOARDING_SCREENS = new Set([
+  "landing-screen",
+  "identity-screen",
+  "fixing-screen",
+  "blueprint-screen",
+]);
+const poppedMissionIds = new Set();
 const enterArcButton = document.querySelector("#enter-arc");
 const identityBackButton = document.querySelector("#identity-back");
 const identityCards = [...document.querySelectorAll(".identity-card")];
@@ -287,14 +319,11 @@ const blueprintBackButton = document.querySelector("#blueprint-back");
 const startArcButton = document.querySelector("#start-arc");
 const commandArcDay = document.querySelector("#command-arc-day");
 const commandGreeting = document.querySelector("#command-greeting");
+const commandIdentities = document.querySelector("#command-identities");
 const missionList = document.querySelector("#mission-list");
 const missionProgressSummary = document.querySelector(
   "#mission-progress-summary",
 );
-const missionEncouragement = document.querySelector("#mission-encouragement");
-const becomingDate = document.querySelector("#becoming-date");
-const becomingIdentities = document.querySelector("#becoming-identities");
-const commandGoals = document.querySelector("#command-goals");
 const arcProgress = document.querySelector("#arc-progress");
 const arcProgressFill = document.querySelector("#arc-progress-fill");
 const moodButtons = [...document.querySelectorAll("[data-mood]")];
@@ -307,11 +336,6 @@ const observerDomain = document.querySelector("#observer-domain");
 const observerDuration = document.querySelector("#observer-duration");
 const observerTotal = document.querySelector("#observer-total");
 const observerDomains = document.querySelector("#observer-domains");
-const openAuditButton = document.querySelector("#open-audit");
-const openGoalsButton = document.querySelector("#open-goals");
-const closeGoalsButton = document.querySelector("#close-goals");
-const openWeeklyReviewButton = document.querySelector("#open-weekly-review");
-const closeWeeklyReviewButton = document.querySelector("#close-weekly-review");
 const goalForm = document.querySelector("#goal-form");
 const goalFormTitle = document.querySelector("#goal-form-title");
 const goalFormError = document.querySelector("#goal-form-error");
@@ -321,17 +345,10 @@ const newGoalButton = document.querySelector("#new-goal");
 const cancelGoalButton = document.querySelector("#cancel-goal");
 const smartSummary = document.querySelector("#smart-summary");
 const smartProgress = document.querySelector("#smart-progress");
-const milestoneCard = document.querySelector("#milestone-card");
-const milestoneTitle = document.querySelector("#milestone-title");
-const milestoneCountdown = document.querySelector("#milestone-countdown");
-const milestoneTask = document.querySelector("#milestone-task");
-const weeklyConsistency = document.querySelector("#weekly-consistency");
-const recoveryMessage = document.querySelector("#recovery-message");
 const weeklyReviewForm = document.querySelector("#weekly-review-form");
 const weeklyReviewStatus = document.querySelector("#weekly-review-status");
 const reviewCreateGoalButton = document.querySelector("#review-create-goal");
 const saveWeeklyReviewButton = document.querySelector("#save-weekly-review");
-const closeAuditButton = document.querySelector("#close-audit");
 const auditPreviousButton = document.querySelector("#audit-previous");
 const auditTodayButton = document.querySelector("#audit-today");
 const auditNextButton = document.querySelector("#audit-next");
@@ -858,10 +875,16 @@ function MissionCard(mission, completedMissions, isNextMission) {
   card.className = [
     "mission-card",
     isComplete ? "mission-card--complete" : "",
+    isComplete && !poppedMissionIds.has(mission.id) ? "mission-card--pop" : "",
     isNextMission ? "mission-card--next" : "",
   ]
     .filter(Boolean)
     .join(" ");
+  if (isComplete) {
+    poppedMissionIds.add(mission.id);
+  } else {
+    poppedMissionIds.delete(mission.id);
+  }
 
   const category = createTextElement(
     "p",
@@ -898,6 +921,7 @@ function MissionCard(mission, completedMissions, isNextMission) {
 
     if (wasComplete) {
       completedMissions.delete(mission.id);
+      poppedMissionIds.delete(mission.id);
     } else {
       completedMissions.add(mission.id);
     }
@@ -940,7 +964,9 @@ function MissionCard(mission, completedMissions, isNextMission) {
     });
     await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
     TodayMission();
-    renderWeeklyConsistency();
+    if (!wasComplete) {
+      celebrateMissionProgress();
+    }
   });
 
   if (!isComplete && mission.minimumAction) {
@@ -995,7 +1021,7 @@ function MissionCard(mission, completedMissions, isNextMission) {
         });
         await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
         TodayMission();
-        renderWeeklyConsistency();
+        celebrateMissionProgress();
       });
       levels.append(button);
     });
@@ -1015,35 +1041,39 @@ function TodayMission(missions = buildTodayMissions()) {
   const completedMissions = new Set(
     storage.readJson(getDailyStorageKey("completed-missions"), []),
   );
+  if (!TodayMission.seeded) {
+    completedMissions.forEach((id) => poppedMissionIds.add(id));
+    TodayMission.seeded = true;
+  }
   const completedCount = missions.filter(({ id }) =>
     completedMissions.has(id),
   ).length;
   const nextMission = missions.find(({ id }) => !completedMissions.has(id));
-  const obstacleNudge = [...selectedObstacles]
-    .map((obstacle) => OBSTACLE_NUDGES[obstacle])
-    .find(Boolean);
 
-  missionProgressSummary.textContent = `${completedCount} of ${missions.length}`;
-  const encouragement = [
-    obstacleNudge ?? "Choose your first move. You can handle it. ✨",
-    "One down. Keep it sharp and doable. ✨",
-    "One left. Finish clean if it still matters. 🔥",
-    "Done. Enjoy that. 💅",
-  ];
-  const nudge =
-    encouragement[Math.min(completedCount, encouragement.length - 1)];
-  missionEncouragement.textContent = nudge;
-  missionEncouragement.hidden = !nudge;
+  renderTodayProgress(missions, completedCount);
 
-  missionList.replaceChildren(
-    ...missions.map((mission) =>
-      MissionCard(
-        mission,
-        completedMissions,
-        mission.id === nextMission?.id,
+  if (missions.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "mission-empty";
+    empty.append(
+      createTextElement("p", "", "Today’s missions come from your goals."),
+    );
+    const addGoal = createTextElement("button", "continue-button", "Add a goal");
+    addGoal.type = "button";
+    addGoal.addEventListener("click", () => openAppScreen("goals-screen"));
+    empty.append(addGoal);
+    missionList.replaceChildren(empty);
+  } else {
+    missionList.replaceChildren(
+      ...missions.map((mission) =>
+        MissionCard(
+          mission,
+          completedMissions,
+          mission.id === nextMission?.id,
+        ),
       ),
-    ),
-  );
+    );
+  }
   updatePlanButtons();
 }
 
@@ -1078,137 +1108,32 @@ function MoodCheckIn() {
   });
 }
 
-function renderBecomingReminder(missions, completedToday) {
-  becomingDate.textContent = `By ${ARC_END_DATE.toLocaleDateString([], {
-    month: "long",
-    day: "numeric",
-  })}`;
-
+function renderCommandIdentities() {
   const identities = [...selectedIdentities]
     .map((identity) => IDENTITY_LABELS[identity])
     .filter(Boolean);
-  becomingIdentities.textContent =
-    identities.length > 0
-      ? identities.join(" · ")
-      : "Focused · self-trusting · fully yours";
+  commandIdentities.textContent = identities.join(" · ");
+  commandIdentities.hidden = identities.length === 0;
+}
 
-  const nextGoalId = missions.find(
-    (mission) =>
-      mission.goalId && !completedToday.has(mission.id),
-  )?.goalId;
-  const goals = activeGoals
-    .filter(({ status }) => status === "active")
-    .sort((first, second) => {
-      if (first.id === nextGoalId) return -1;
-      if (second.id === nextGoalId) return 1;
-      return 0;
-    });
-  if (goals.length === 0) {
-    commandGoals.replaceChildren(
-      createTextElement(
-        "p",
-        "command-goals__empty",
-        "Your goals will stay here once you add them.",
-      ),
-    );
-    return;
-  }
-
-  commandGoals.replaceChildren(
-    ...goals.map((goal, index) => {
-      const item = document.createElement("article");
-      const isPriority = goal.id === nextGoalId || (!nextGoalId && index === 0);
-      const progressRange = goal.metric.target - goal.metric.baseline;
-      const progressPercent = Math.round(
-        Math.min(
-          1,
-          Math.max(
-            0,
-            progressRange === 0
-              ? 0
-              : (goal.metric.current - goal.metric.baseline) / progressRange,
-          ),
-        ) * 100,
-      );
-      const progress = `${goal.metric.current} of ${goal.metric.target} ${goal.metric.unit}`;
-      const progressTrack = document.createElement("span");
-      const progressFill = document.createElement("span");
-      progressTrack.className = "command-goals__progress";
-      progressTrack.setAttribute("role", "progressbar");
-      progressTrack.setAttribute("aria-label", `${goal.outcome} progress`);
-      progressTrack.setAttribute("aria-valuemin", "0");
-      progressTrack.setAttribute("aria-valuemax", "100");
-      progressTrack.setAttribute("aria-valuenow", String(progressPercent));
-      progressFill.style.width = `${progressPercent}%`;
-      progressTrack.append(progressFill);
-
-      item.className = isPriority
-        ? "command-goal command-goal--priority"
-        : "command-goal";
-      item.append(
-        createTextElement(
-          "span",
-          "command-goals__rank",
-          isPriority ? "Today's priority" : `Goal ${index + 1}`,
-        ),
-        createTextElement("strong", "", goal.outcome),
-        createTextElement("small", "", progress),
-        progressTrack,
-      );
-      if (goal.actions.minimum) {
-        item.append(
-          createTextElement(
-            "small",
-            "command-goals__minimum",
-            `On a hard day: ${goal.actions.minimum}`,
-          ),
-        );
-      }
-      return item;
-    }),
+function renderTodayProgress(missions = buildTodayMissions(), completedCount) {
+  const completedMissions = new Set(
+    storage.readJson(getDailyStorageKey("completed-missions"), []),
   );
-}
-
-function renderMilestone() {
-  const { next, task } = getMilestoneState();
-  const isToday = next?.daysUntil === 0;
-  const isActiveReminder = Boolean(task) || isToday;
-  milestoneCard.hidden = !isActiveReminder;
-  if (!isActiveReminder) {
-    return;
-  }
-  milestoneCard.classList.toggle("personal-reminder--today", isToday);
-  milestoneTitle.textContent = next.label ?? "Upcoming milestone";
-  milestoneCountdown.textContent =
-    isToday
-      ? "Today"
-      : `In ${next.daysUntil} ${next.daysUntil === 1 ? "day" : "days"}`;
-  milestoneTask.textContent = task?.title ?? "Preparation is done. Be there for it.";
-}
-
-function renderWeeklyConsistency() {
+  const done =
+    completedCount ??
+    missions.filter(({ id }) => completedMissions.has(id)).length;
+  const todayPart =
+    missions.length === 0 ? "No missions yet" : `${done} of ${missions.length} today`;
   const weekStart = LockInGoals.startOfWeek(new Date());
   const consistency = LockInGoals.calculateWeeklyConsistency(
     missionHistory,
     weekStart,
     new Date(),
   );
-  weeklyConsistency.textContent = consistency.planned
-    ? `${consistency.completed} of ${consistency.planned} · ${consistency.percent}%`
-    : "Nothing planned yet";
-
-  const recentMiss = [...missionHistory]
-    .reverse()
-    .find((entry) => entry.planned && !entry.completed && entry.goalId);
-  const goal = activeGoals.find(({ id }) => id === recentMiss?.goalId);
-  const recovery = goal
-    ? LockInGoals.buildLapseRecovery(goal, {
-        date: recentMiss.date,
-        nextDate: new Date(),
-      }).message
-    : "";
-  recoveryMessage.textContent = recovery;
-  recoveryMessage.hidden = !recovery;
+  missionProgressSummary.textContent = consistency.planned
+    ? `${todayPart} · ${consistency.completed} of ${consistency.planned} this week`
+    : todayPart;
 }
 
 function getTimeBasedGreeting(date = new Date()) {
@@ -1256,12 +1181,10 @@ async function CommandCenter() {
   });
   await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
   renderCommandGreeting();
+  renderCommandIdentities();
   TodayMission(missions);
   ArcProgress(arcState);
   MoodCheckIn();
-  renderBecomingReminder(missions, completedToday);
-  renderMilestone();
-  renderWeeklyConsistency();
   eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
     arcDay: arcState.day,
     plannedMissions: missions.map(({ id, category, title }) => ({
@@ -1317,23 +1240,23 @@ function getVerdictCopy(verdict, { isToday, hasPartialData }) {
   switch (verdict) {
     case "STRONG":
       return {
-        title: "You followed through ✨",
-        detail: "Most of what you planned actually happened. That's yours.",
+        title: "You followed through",
+        detail: "Most of what you planned happened.",
       };
     case "SOLID":
       return {
-        title: "A solid day ✨",
-        detail: "The important parts moved forward. Keep that energy.",
+        title: "A solid day",
+        detail: "The important parts moved.",
       };
     case "MIXED":
       return {
         title: "A mixed day",
-        detail: "Some of it landed. Some of it didn't.",
+        detail: "Some of it landed. Some didn’t.",
       };
     case "NEEDS_ATTENTION":
       return {
         title: "A lighter day",
-        detail: "No shame. Reset your crown and choose one clear next step. 👑",
+        detail: "Choose one clear next step.",
       };
     default:
       if (hasPartialData) {
@@ -1345,12 +1268,12 @@ function getVerdictCopy(verdict, { isToday, hasPartialData }) {
       if (!isToday) {
         return {
           title: "Not enough for this day",
-          detail: "There wasn't enough recorded activity to look back on.",
+          detail: "There wasn’t enough recorded activity to review.",
         };
       }
       return {
         title: "Still unfolding",
-        detail: "Check in as you go. This will fill in.",
+        detail: "This will fill in as you go.",
       };
   }
 }
@@ -1412,6 +1335,7 @@ function renderAuditList(container, items, marker, emptyCopy) {
 let selectedAuditDate = new Date();
 
 async function renderDailyAudit() {
+  MoodCheckIn();
   const audit = await auditService.generateDailyAudit(selectedAuditDate);
   const milestoneOnDate = (PERSONAL_CONFIG.milestones ?? []).find(
     ({ date }) => date === audit.date,
@@ -1778,12 +1702,7 @@ async function applyTodayPlan(missions) {
     generatedAt: new Date().toISOString(),
   });
   await syncAdaptivePlanHistory(missions);
-  const completedToday = new Set(
-    storage.readJson(getDailyStorageKey("completed-missions"), []),
-  );
   TodayMission(missions);
-  renderBecomingReminder(missions, completedToday);
-  renderWeeklyConsistency();
 }
 
 async function generateTodayPlan() {
@@ -1795,7 +1714,7 @@ async function generateTodayPlan() {
 
   try {
     await ensureCoachBackend(() => {
-      planStatus.textContent = "Starting the local coach…";
+      planStatus.textContent = "Starting the coach…";
     });
     planStatus.textContent = PLAN_LOADING_MESSAGE;
     const context = await collectCoachContext();
@@ -1825,7 +1744,7 @@ async function generateTodayPlan() {
       throw new Error("The coach returned too few usable missions.");
     }
     await applyTodayPlan(missions);
-    planStatus.textContent = "Today's plan is ready.";
+    planStatus.textContent = "Plan ready.";
   } catch (error) {
     planStatus.hidden = true;
     planError.textContent =
@@ -1841,7 +1760,7 @@ async function generateTodayPlan() {
       return;
     }
     window.setTimeout(() => {
-      if (planStatus.textContent === "Today's plan is ready.") {
+      if (planStatus.textContent === "Plan ready.") {
         planStatus.hidden = true;
       }
     }, 1600);
@@ -1857,7 +1776,7 @@ async function askCoach() {
 
   try {
     await ensureCoachBackend(() => {
-      coachLoading.textContent = "Starting the local coach…";
+      coachLoading.textContent = "Starting the coach…";
     });
     coachLoading.textContent = COACH_LOADING_MESSAGE;
     const response = await fetch(COACH_API_URL, {
@@ -1902,9 +1821,7 @@ async function askCoach() {
 }
 
 async function openDailyAudit() {
-  selectedAuditDate = new Date();
-  showScreen("daily-audit-screen");
-  await renderDailyAudit();
+  await openAppScreen("daily-audit-screen");
 }
 
 function moveAuditDate(dayOffset) {
@@ -2083,8 +2000,13 @@ async function openEventDebug() {
 function closeEventDebug() {
   clearInterval(observerDebugTimer);
   observerDebugTimer = null;
-  history.replaceState(null, "", `${location.pathname}${location.search}`);
-  showScreen(screenBeforeDebug);
+  const screenId = screenBeforeDebug || "command-center-screen";
+  showScreen(screenId);
+  const hash = SCREEN_HASH[screenId];
+  const url = hash
+    ? `${location.pathname}${location.search}#${hash}`
+    : `${location.pathname}${location.search}`;
+  history.replaceState({ screenId }, "", url);
   if (debugReturnFocus instanceof HTMLElement) {
     debugReturnFocus.focus();
   }
@@ -2103,6 +2025,150 @@ function showScreen(screenId) {
   if (activeScreen) {
     activeScreen.scrollTop = 0;
   }
+
+  const inApp = APP_SCREENS.has(screenId);
+  if (appNav) {
+    appNav.hidden = !inApp;
+  }
+  document.body.classList.toggle("app-ready", inApp);
+  appNavLinks.forEach((button) => {
+    const current = button.dataset.nav === screenId;
+    button.classList.toggle("is-current", current);
+    if (current) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  });
+}
+
+function screenFromHash(hash = location.hash) {
+  const key = hash.replace(/^#/, "");
+  if (key === "events") {
+    return "event-debug-screen";
+  }
+  return HASH_SCREEN[key] || null;
+}
+
+function navigateTo(screenId, { replace = false } = {}) {
+  showScreen(screenId);
+  const hash = SCREEN_HASH[screenId];
+  const url = hash
+    ? `${location.pathname}${location.search}#${hash}`
+    : `${location.pathname}${location.search}`;
+  const state = { screenId };
+  if (replace || history.state?.screenId === screenId) {
+    history.replaceState(state, "", url);
+  } else {
+    history.pushState(state, "", url);
+  }
+}
+
+function celebrate(message, { burst = false } = {}) {
+  if (!celebrateRoot || !celebrateMessage) {
+    return;
+  }
+  celebrateMessage.textContent = message;
+  if (celebrateBurst) {
+    celebrateBurst.replaceChildren();
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (burst && !reduceMotion) {
+      for (let index = 0; index < 20; index += 1) {
+        const bit = document.createElement("span");
+        const angle = (index / 20) * Math.PI * 2;
+        const distance = 72 + (index % 4) * 28;
+        bit.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
+        bit.style.setProperty("--ty", `${Math.sin(angle) * distance}px`);
+        bit.style.animationDelay = `${index * 14}ms`;
+        celebrateBurst.append(bit);
+      }
+    }
+  }
+  celebrateRoot.hidden = false;
+  celebrateRoot.classList.add("is-on");
+  window.clearTimeout(celebrate.timer);
+  celebrate.timer = window.setTimeout(() => {
+    celebrateRoot.classList.remove("is-on");
+    celebrateRoot.hidden = true;
+  }, 1500);
+}
+
+function celebrateMissionProgress() {
+  const missions = buildTodayMissions();
+  const completedCount = missions.filter(({ id }) =>
+    storage.readJson(getDailyStorageKey("completed-missions"), []).includes(id),
+  ).length;
+  if (missions.length > 0 && completedCount >= missions.length) {
+    celebrate("That’s the day.", { burst: true });
+    return;
+  }
+  if (completedCount === 1) {
+    celebrate("That’s one.", { burst: true });
+    return;
+  }
+  if (completedCount === 2) {
+    celebrate("That’s two.", { burst: true });
+    return;
+  }
+  celebrate("Locked in.", { burst: true });
+}
+
+function isOnboarded() {
+  return storage.readJson(ONBOARDING_COMPLETE_STORAGE_KEY, false);
+}
+
+async function loadAppScreen(screenId) {
+  if (screenId === "goals-screen") {
+    renderGoalList();
+    if (activeGoals.length === 0) {
+      resetGoalForm();
+    } else {
+      goalForm.hidden = true;
+    }
+  }
+  if (screenId === "weekly-review-screen") {
+    prepareWeeklyReview();
+  }
+  if (screenId === "daily-audit-screen") {
+    selectedAuditDate = new Date();
+    await renderDailyAudit();
+  }
+  if (screenId === "command-center-screen") {
+    await CommandCenter();
+  }
+}
+
+async function openAppScreen(screenId) {
+  await loadAppScreen(screenId);
+  navigateTo(screenId);
+}
+
+function prepareWeeklyReview() {
+  const reviewGoal = document.querySelector("#review-goal");
+  const options = activeGoals
+    .filter(({ status }) => status === "active")
+    .map((goal) => {
+      const option = document.createElement("option");
+      option.value = goal.id;
+      option.textContent = goal.outcome;
+      return option;
+    });
+  if (options.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Create an active goal first";
+    options.push(option);
+  }
+  reviewGoal.replaceChildren(...options);
+  const hasActiveGoal = options.some(({ value }) => value);
+  [...weeklyReviewForm.elements].forEach((control) => {
+    if (control !== reviewCreateGoalButton) {
+      control.disabled = !hasActiveGoal;
+    }
+  });
+  reviewCreateGoalButton.hidden = hasActiveGoal;
+  saveWeeklyReviewButton.hidden = !hasActiveGoal;
+  weeklyReviewStatus.hidden = true;
 }
 
 goalForm.addEventListener("input", renderSmartProgress);
@@ -2152,6 +2218,7 @@ goalForm.addEventListener("submit", async (event) => {
   }
   renderGoalList();
   goalForm.hidden = true;
+  celebrate(existingGoal ? "Goal updated." : "Goal locked in.", { burst: true });
   await CommandCenter();
 });
 
@@ -2160,59 +2227,10 @@ cancelGoalButton.addEventListener("click", () => {
   goalForm.hidden = true;
   goalFormError.textContent = "";
 });
-openGoalsButton.addEventListener("click", () => {
-  renderGoalList();
-  if (activeGoals.length === 0) {
-    resetGoalForm();
-  } else {
-    goalForm.hidden = true;
-  }
-  showScreen("goals-screen");
-});
-closeGoalsButton.addEventListener("click", async () => {
-  await CommandCenter();
-  showScreen("command-center-screen");
-});
-
-openWeeklyReviewButton.addEventListener("click", () => {
-  const reviewGoal = document.querySelector("#review-goal");
-  const options = activeGoals
-    .filter(({ status }) => status === "active")
-    .map((goal) => {
-      const option = document.createElement("option");
-      option.value = goal.id;
-      option.textContent = goal.outcome;
-      return option;
-    });
-  if (options.length === 0) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "Create an active goal first";
-    options.push(option);
-  }
-  reviewGoal.replaceChildren(...options);
-  const hasActiveGoal = options.some(({ value }) => value);
-  [...weeklyReviewForm.elements].forEach((control) => {
-    if (
-      control !== reviewCreateGoalButton &&
-      control !== closeWeeklyReviewButton
-    ) {
-      control.disabled = !hasActiveGoal;
-    }
-  });
-  reviewCreateGoalButton.hidden = hasActiveGoal;
-  saveWeeklyReviewButton.hidden = !hasActiveGoal;
-  weeklyReviewStatus.hidden = true;
-  showScreen("weekly-review-screen");
-});
-closeWeeklyReviewButton.addEventListener("click", async () => {
-  await CommandCenter();
-  showScreen("command-center-screen");
-});
 reviewCreateGoalButton.addEventListener("click", () => {
   renderGoalList();
   resetGoalForm();
-  showScreen("goals-screen");
+  navigateTo("goals-screen");
 });
 weeklyReviewForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -2250,16 +2268,17 @@ weeklyReviewForm.addEventListener("submit", async (event) => {
   }
   await privateStorage.write(WEEKLY_REVIEWS_STORAGE_KEY, weeklyReviews);
   await eventApi.record(EventTypes.WEEKLY_REVIEW_COMPLETED, review);
-  weeklyReviewStatus.textContent = "Saved. Next week uses the minimum you chose.";
+  weeklyReviewStatus.textContent = "Saved. Next week uses that minimum.";
   weeklyReviewStatus.hidden = false;
+  celebrate("Week locked in.", { burst: true });
   await CommandCenter();
 });
 
 enterArcButton.addEventListener("click", () => {
-  showScreen("identity-screen");
+  navigateTo("identity-screen");
 });
 identityBackButton.addEventListener("click", () => {
-  showScreen("landing-screen");
+  navigateTo("landing-screen");
 });
 
 identityCards.forEach((card) => {
@@ -2275,11 +2294,11 @@ identityCards.forEach((card) => {
 
 identityContinueButton.addEventListener("click", () => {
   if (selectedIdentities.size > 0) {
-    showScreen("fixing-screen");
+    navigateTo("fixing-screen");
   }
 });
 fixingBackButton.addEventListener("click", () => {
-  showScreen("identity-screen");
+  navigateTo("identity-screen");
 });
 
 attentionCards.forEach((card) => {
@@ -2307,11 +2326,11 @@ obstacleButtons.forEach((button) => {
 fixingContinueButton.addEventListener("click", () => {
   if (selectedAttentionAreas.size > 0) {
     renderBlueprint();
-    showScreen("blueprint-screen");
+    navigateTo("blueprint-screen");
   }
 });
 blueprintBackButton.addEventListener("click", () => {
-  showScreen("fixing-screen");
+  navigateTo("fixing-screen");
 });
 
 startArcButton.addEventListener("click", async () => {
@@ -2321,13 +2340,14 @@ startArcButton.addEventListener("click", async () => {
     attentionAreas: [...selectedAttentionAreas],
     obstacles: [...selectedObstacles],
   });
+  celebrate("You’re in.", { burst: true });
   if (activeGoals.length === 0) {
     renderGoalList();
     resetGoalForm();
-    showScreen("goals-screen");
+    navigateTo("goals-screen", { replace: true });
   } else {
     await CommandCenter();
-    showScreen("command-center-screen");
+    navigateTo("command-center-screen", { replace: true });
   }
 });
 
@@ -2352,10 +2372,6 @@ clearEventsButton.addEventListener("click", async () => {
 });
 
 closeEventsButton.addEventListener("click", closeEventDebug);
-openAuditButton.addEventListener("click", openDailyAudit);
-closeAuditButton.addEventListener("click", () => {
-  showScreen("command-center-screen");
-});
 auditPreviousButton.addEventListener("click", () => moveAuditDate(-1));
 auditTodayButton.addEventListener("click", () => {
   selectedAuditDate = new Date();
@@ -2383,10 +2399,47 @@ document.addEventListener("keydown", (event) => {
     closeEventDebug();
     return;
   }
+  if (event.key === "Escape") {
+    const activeScreen = [...screens].find((screen) => !screen.hidden);
+    if (
+      activeScreen &&
+      APP_SCREENS.has(activeScreen.id) &&
+      activeScreen.id !== "command-center-screen"
+    ) {
+      event.preventDefault();
+      openAppScreen("command-center-screen");
+    }
+    return;
+  }
   if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === "E") {
     event.preventDefault();
     openEventDebug();
   }
+});
+
+appNavTriggers.forEach((button) => {
+  button.addEventListener("click", () => {
+    openAppScreen(button.dataset.nav);
+  });
+});
+
+window.addEventListener("popstate", async (event) => {
+  if (location.hash === "#events") {
+    return;
+  }
+  let screenId = event.state?.screenId || screenFromHash() || "landing-screen";
+  if (isOnboarded() && ONBOARDING_SCREENS.has(screenId)) {
+    await loadAppScreen("command-center-screen");
+    navigateTo("command-center-screen", { replace: true });
+    return;
+  }
+  if (APP_SCREENS.has(screenId)) {
+    await loadAppScreen(screenId);
+  }
+  if (screenId === "blueprint-screen") {
+    renderBlueprint();
+  }
+  showScreen(screenId);
 });
 
 window.addEventListener("hashchange", () => {
@@ -2413,13 +2466,27 @@ async function initializeApp() {
   renderBlueprint();
   renderGoalList();
 
-  if (storage.readJson(ONBOARDING_COMPLETE_STORAGE_KEY, false)) {
-    await CommandCenter();
-    showScreen("command-center-screen");
+  if (location.hash === "#events") {
+    if (isOnboarded()) {
+      await CommandCenter();
+      showScreen("command-center-screen");
+    }
+    openEventDebug();
+    return;
   }
 
-  if (location.hash === "#events") {
-    openEventDebug();
+  const requested = screenFromHash();
+  if (isOnboarded()) {
+    const screenId = APP_SCREENS.has(requested)
+      ? requested
+      : "command-center-screen";
+    await loadAppScreen(screenId);
+    navigateTo(screenId, { replace: true });
+  } else {
+    const screenId = ONBOARDING_SCREENS.has(requested)
+      ? requested
+      : "landing-screen";
+    navigateTo(screenId, { replace: true });
   }
 }
 

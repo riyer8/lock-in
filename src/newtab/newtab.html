@@ -8,6 +8,22 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <nav id="app-nav" class="app-nav" hidden aria-label="Main">
+      <button type="button" class="command-brand" data-nav="command-center-screen">LOCK IN</button>
+      <div class="app-nav__links">
+        <button type="button" data-nav="command-center-screen">Today</button>
+        <button type="button" data-nav="goals-screen">Goals</button>
+        <button type="button" data-nav="weekly-review-screen">Week</button>
+        <button type="button" data-nav="daily-audit-screen">Review</button>
+      </div>
+      <p id="command-arc-day">Day 1 of 116</p>
+    </nav>
+
+    <div id="celebrate" class="celebrate" hidden role="status">
+      <div class="celebrate__burst" aria-hidden="true"></div>
+      <p id="celebrate-message">Yes.</p>
+    </div>
+
     <main class="screen landing" id="landing-screen">
       <section class="hero hero-card" aria-labelledby="arc-title">
         <p class="label">
@@ -27,7 +43,7 @@
         <div class="countdown" aria-live="polite">
           <div class="countdown__value">
             <strong id="days-remaining">0</strong>
-            <span>days<br />left</span>
+            <span>days left</span>
           </div>
           <p id="arc-day">Loading…</p>
         </div>
@@ -44,15 +60,12 @@
     <main class="screen onboarding" id="identity-screen" hidden>
       <section class="identity-panel onboarding-panel" aria-labelledby="identity-title">
         <nav class="onboarding-nav" aria-label="Onboarding progress">
-          <button class="back-button" id="identity-back" type="button">← Back</button>
-          <span>Step 1 of 3</span>
+          <button class="back-button" id="identity-back" type="button">Back</button>
+          <span>1 of 3</span>
         </nav>
         <header class="identity-header onboarding-header">
-          <p class="step-label">01 / IDENTITY</p>
-          <h1 id="identity-title">Who do you want to <span>practice being?</span></h1>
-          <p>
-            Choose the identities you want your daily actions to reinforce.
-          </p>
+          <h1 id="identity-title">Who are you <span>practicing being?</span></h1>
+          <p>Pick the identities your days should reinforce.</p>
         </header>
 
         <div class="identity-grid" id="identity-grid">
@@ -87,7 +100,7 @@
             <span class="identity-card__icon">✨</span>
             <span class="identity-card__copy">
               <strong>GLOW UP</strong>
-              <small>Care for how you feel and present yourself</small>
+              <small>How you feel and present</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -96,7 +109,7 @@
             <span class="identity-card__icon">🌎</span>
             <span class="identity-card__copy">
               <strong>EXPLORER</strong>
-              <small>Try new places, ideas, and experiences</small>
+              <small>New places, ideas, experiences</small>
             </span>
             <span class="identity-card__mark" aria-hidden="true">+</span>
           </button>
@@ -125,56 +138,55 @@
     <main class="screen onboarding fixing" id="fixing-screen" hidden>
       <section class="starting-panel onboarding-panel" aria-labelledby="fixing-title">
         <nav class="onboarding-nav" aria-label="Onboarding progress">
-          <button class="back-button" id="fixing-back" type="button">← Back</button>
-          <span>Step 2 of 3</span>
+          <button class="back-button" id="fixing-back" type="button">Back</button>
+          <span>2 of 3</span>
         </nav>
         <header class="identity-header fixing-header onboarding-header">
-          <p class="step-label">02 / STARTING POINT</p>
           <h1 id="fixing-title">Where do you want <span>support?</span></h1>
-          <p>Choose the areas that deserve more attention right now.</p>
+          <p>Choose what needs more attention now.</p>
         </header>
 
         <div class="attention-grid" id="attention-grid">
           <button class="attention-card" type="button" data-area="health-food" aria-pressed="false">
             <span class="attention-card__icon">🥗</span>
-            <span><strong>HEALTH &amp; FOOD</strong><small>Meals, energy, and everyday care</small></span>
+            <span><strong>HEALTH &amp; FOOD</strong><small>Meals and energy</small></span>
           </button>
           <button class="attention-card" type="button" data-area="fitness" aria-pressed="false">
             <span class="attention-card__icon">🏋️</span>
-            <span><strong>FITNESS</strong><small>Movement, strength, and consistency</small></span>
+            <span><strong>FITNESS</strong><small>Move and stay consistent</small></span>
           </button>
           <button class="attention-card" type="button" data-area="energy-recovery" aria-pressed="false">
             <span class="attention-card__icon">😴</span>
-            <span><strong>ENERGY &amp; RECOVERY</strong><small>Rest, recovery, and sustainable energy</small></span>
+            <span><strong>ENERGY &amp; RECOVERY</strong><small>Rest that lasts</small></span>
           </button>
           <button class="attention-card" type="button" data-area="mind" aria-pressed="false">
             <span class="attention-card__icon">🧠</span>
-            <span><strong>MIND</strong><small>Focus, confidence, and mental clarity</small></span>
+            <span><strong>MIND</strong><small>Focus and clarity</small></span>
           </button>
           <button class="attention-card" type="button" data-area="career" aria-pressed="false">
             <span class="attention-card__icon">💻</span>
-            <span><strong>CAREER</strong><small>Learning, building, and meaningful work</small></span>
+            <span><strong>CAREER</strong><small>Work that matters</small></span>
           </button>
           <button class="attention-card" type="button" data-area="appearance" aria-pressed="false">
             <span class="attention-card__icon">✨</span>
-            <span><strong>APPEARANCE</strong><small>Style, grooming, and self-expression</small></span>
+            <span><strong>APPEARANCE</strong><small>Style and grooming</small></span>
           </button>
           <button class="attention-card" type="button" data-area="environment" aria-pressed="false">
             <span class="attention-card__icon">🏠</span>
-            <span><strong>ENVIRONMENT</strong><small>Home, organization, and surroundings</small></span>
+            <span><strong>ENVIRONMENT</strong><small>Home and order</small></span>
           </button>
           <button class="attention-card" type="button" data-area="social-life" aria-pressed="false">
             <span class="attention-card__icon">🫶</span>
-            <span><strong>SOCIAL &amp; LIFE</strong><small>Friends, experiences, hobbies, and connection</small></span>
+            <span><strong>SOCIAL &amp; LIFE</strong><small>People and time off-screen</small></span>
           </button>
           <button class="attention-card" type="button" data-area="digital-life" aria-pressed="false">
             <span class="attention-card__icon">📱</span>
-            <span><strong>DIGITAL LIFE</strong><small>Attention, screen time, and intentional use</small></span>
+            <span><strong>DIGITAL LIFE</strong><small>Attention and screens</small></span>
           </button>
         </div>
 
         <section class="details-section" id="details-section" hidden>
-          <h2>What makes follow-through harder?</h2>
+          <h2>What gets in the way?</h2>
           <div class="obstacle-grid" id="obstacle-grid">
             <button type="button" data-obstacle="low-energy" aria-pressed="false">Energy feels low</button>
             <button type="button" data-obstacle="consistency" aria-pressed="false">Consistency feels hard</button>
@@ -204,40 +216,32 @@
     <main class="screen blueprint" id="blueprint-screen" hidden>
       <article class="blueprint-panel onboarding-panel" aria-labelledby="blueprint-title">
         <nav class="onboarding-nav" aria-label="Onboarding progress">
-          <button class="back-button" id="blueprint-back" type="button">← Back</button>
-          <span>Step 3 of 3</span>
+          <button class="back-button" id="blueprint-back" type="button">Back</button>
+          <span>3 of 3</span>
         </nav>
         <header class="blueprint-header onboarding-header">
-          <p class="step-label">03 / BLUEPRINT</p>
           <h1 id="blueprint-title">Your starting <span>blueprint</span></h1>
-          <p>
-            Here is what you chose. LOCK IN will use it to shape your daily
-            missions.
-          </p>
+          <p>This is what will shape today's missions.</p>
         </header>
 
         <div class="blueprint-sections">
           <section class="blueprint-section">
-            <p class="section-number">01</p>
             <div>
-              <h2>Identities you're practicing</h2>
+              <h2>Identities</h2>
               <div class="blueprint-identities" id="blueprint-identities"></div>
-              <p>Your daily actions can reinforce these identities.</p>
             </div>
           </section>
 
           <section class="blueprint-section">
-            <p class="section-number">02</p>
             <div>
-              <h2>Areas to support</h2>
+              <h2>Support areas</h2>
               <div class="blueprint-areas" id="blueprint-areas"></div>
             </div>
           </section>
 
           <section class="blueprint-section">
-            <p class="section-number">03</p>
             <div>
-              <h2>Common friction</h2>
+              <h2>Friction</h2>
               <div class="blueprint-obstacles" id="blueprint-obstacles"></div>
             </div>
           </section>
@@ -248,11 +252,11 @@
           <div class="promise-grid">
             <div>
               <h2>Each day</h2>
-              <p>Up to three actions, a check-in, and a look back at what actually happened.</p>
+              <p>Up to three actions, a check-in, and a look back.</p>
             </div>
             <div>
               <h2>Your part</h2>
-              <p>Pick honestly. Start small. Mark what you did.</p>
+              <p>Start small. Mark what you did.</p>
             </div>
           </div>
         </section>
@@ -270,15 +274,10 @@
 
     <main class="screen goals-screen" id="goals-screen" hidden>
       <div class="goals-shell">
-        <header class="goals-topbar">
-          <p class="command-brand">LOCK IN</p>
-          <button type="button" id="close-goals" aria-label="Return to today's missions">Today</button>
-        </header>
-
         <section class="goals-hero surface-card" aria-labelledby="goals-title">
-          <p class="aside-kicker">Your direction</p>
-          <h1 id="goals-title">Goals worth showing up for</h1>
-          <p>Choose up to three. We will turn them into actions that fit real days.</p>
+          <p class="aside-kicker">Goals</p>
+          <h1 id="goals-title">What you’re building toward</h1>
+          <p>Up to three. They become today’s missions.</p>
         </section>
 
         <div class="goals-layout">
@@ -347,7 +346,7 @@
                   </select>
                 </label>
               </div>
-              <label class="check-label"><input id="goal-feasible" type="checkbox" required /> This fits my actual time, health, skills, and resources.</label>
+              <label class="check-label"><input id="goal-feasible" type="checkbox" required /> This fits my real time and energy.</label>
             </fieldset>
 
             <fieldset>
@@ -357,16 +356,16 @@
                 <label>Time<input id="cue-time" maxlength="40" placeholder="7:30 AM or after work" /></label>
                 <label>Where<input id="cue-place" required maxlength="80" placeholder="At home, at the gym…" /></label>
               </div>
-              <label>Minimum version — counts on hard days<input id="action-minimum" required maxlength="140" placeholder="Do one push-up" /></label>
+              <label>Hard-day minimum<input id="action-minimum" required maxlength="140" placeholder="Do one push-up" /></label>
               <label>Standard action<input id="action-standard" required maxlength="140" placeholder="Complete the 20-minute strength session" /></label>
-              <label>Stretch version — only when energy is there<input id="action-stretch" maxlength="140" placeholder="Add one optional set" /></label>
+              <label>Stretch<input id="action-stretch" maxlength="140" placeholder="Add one optional set" /></label>
             </fieldset>
 
             <fieldset>
               <legend>If it gets hard</legend>
               <label>Likely obstacle<input id="goal-obstacle" required maxlength="140" placeholder="I feel too tired after work" /></label>
               <label>If that happens, then I will…<input id="goal-recovery" required maxlength="180" placeholder="Do the minimum version before deciding whether to continue" /></label>
-              <label>Make it nicer (optional)<input id="goal-reward" maxlength="140" placeholder="Save my favorite podcast for the session" /></label>
+              <label>Make it nicer<input id="goal-reward" maxlength="140" placeholder="Save a favorite podcast for the session" /></label>
             </fieldset>
 
             <p class="form-error" id="goal-form-error" role="alert"></p>
@@ -381,16 +380,6 @@
 
     <main class="screen command-center" id="command-center-screen" hidden>
       <div class="command-shell">
-        <header class="command-topbar">
-          <p class="command-brand">LOCK IN</p>
-          <nav class="command-topbar__actions">
-            <p id="command-arc-day">Day 1 of 116</p>
-            <button type="button" id="open-goals">Goals</button>
-            <button type="button" id="open-weekly-review">This week</button>
-            <button type="button" id="open-audit">Today</button>
-          </nav>
-        </header>
-
         <div
           class="arc-progress-track"
           role="progressbar"
@@ -404,87 +393,53 @@
         </div>
 
         <div class="command-layout">
-          <section class="mission-section surface-card" aria-labelledby="command-greeting">
+          <section class="mission-section" aria-labelledby="command-greeting">
             <header class="command-header">
-              <h1 id="command-greeting">Good morning</h1>
-              <p id="mission-progress-summary">0 of 3</p>
+              <div class="command-header__copy">
+                <h1 id="command-greeting">Good morning</h1>
+                <p id="command-identities" class="command-identities" hidden></p>
+              </div>
+              <div class="command-header__meta">
+                <p id="mission-progress-summary">0 of 3 today</p>
+                <div class="mission-plan-bar">
+                  <button type="button" id="generate-plan">Plan today</button>
+                  <button type="button" id="regenerate-plan" hidden>New plan</button>
+                  <p id="plan-status" class="mission-plan-status" hidden></p>
+                  <p id="plan-error" class="mission-plan-error" role="alert" hidden></p>
+                </div>
+              </div>
             </header>
-            <p class="mission-nudge" id="mission-encouragement" hidden></p>
-            <div class="mission-plan-bar">
-              <button type="button" id="generate-plan">Generate Today's Plan</button>
-              <button type="button" id="regenerate-plan" hidden>Regenerate Plan</button>
-              <p id="plan-status" class="mission-plan-status" hidden></p>
-              <p id="plan-error" class="mission-plan-error" role="alert" hidden></p>
-            </div>
             <div class="mission-list" id="mission-list"></div>
           </section>
 
           <aside class="command-sidebar">
-            <section class="aside-note becoming-note surface-card" aria-labelledby="becoming-title">
-              <p class="aside-kicker" id="becoming-date">By December 31</p>
-              <h2 id="becoming-title">The woman you're becoming 👑</h2>
-              <p class="becoming-identities" id="becoming-identities"></p>
-              <p class="becoming-reminder">
-                Built through what you repeat, not by being perfect.
-              </p>
-              <div class="command-goals" id="command-goals"></div>
-            </section>
-
-            <section class="aside-note personal-reminder surface-card surface-card--warm" id="milestone-card" aria-labelledby="milestone-title" hidden>
-              <div class="personal-reminder__meta">
-                <span>Personal reminder</span>
-                <span id="milestone-countdown"></span>
-              </div>
-              <h2 id="milestone-title"></h2>
-              <p id="milestone-task"></p>
-            </section>
-
-            <section class="aside-note surface-card surface-card--positive" aria-labelledby="consistency-title">
-              <p class="aside-kicker" id="consistency-title">This week</p>
-              <p id="weekly-consistency">Nothing planned yet</p>
-              <p id="recovery-message"></p>
-            </section>
-
             <section class="aside-note coach-card surface-card" aria-labelledby="coach-title">
-              <p class="aside-kicker">AI coach</p>
-              <h2 id="coach-title">One clear next step</h2>
-              <p class="coach-card__intro">
-                Get concise coaching based on today's goals, activity, and reflection.
-              </p>
+              <p class="aside-kicker">Coach</p>
+              <h2 id="coach-title">Next step</h2>
               <button type="button" id="ask-coach">Ask Coach</button>
               <p id="coach-loading" class="coach-card__status" role="status" hidden>
-                Looking for the useful signal…
+                Reading today’s context…
               </p>
               <div id="coach-response" class="coach-response" aria-live="polite" hidden>
                 <section>
-                  <h3>What I'm noticing</h3>
+                  <h3>Noticing</h3>
                   <p id="coach-observation"></p>
                 </section>
                 <section>
-                  <h3>The pattern</h3>
+                  <h3>Pattern</h3>
                   <p id="coach-pattern"></p>
                 </section>
                 <section>
-                  <h3>What matters most</h3>
+                  <h3>Priority</h3>
                   <p id="coach-priority"></p>
                 </section>
                 <section>
-                  <h3>Your next move</h3>
+                  <h3>Next</h3>
                   <p id="coach-next-action"></p>
                 </section>
                 <p id="coach-encouragement" class="coach-response__encouragement"></p>
               </div>
               <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
-            </section>
-
-            <section class="aside-note mood-card surface-card" aria-labelledby="mood-title">
-              <h2 id="mood-title">How are you feeling?</h2>
-              <div class="mood-options" id="mood-options">
-                <button type="button" data-mood="low" aria-pressed="false">😴 Low</button>
-                <button type="button" data-mood="meh" aria-pressed="false">😐 Meh</button>
-                <button type="button" data-mood="good" aria-pressed="false">🙂 Good</button>
-                <button type="button" data-mood="locked-in" aria-pressed="false">🔥 Locked in</button>
-              </div>
             </section>
           </aside>
         </div>
@@ -493,14 +448,10 @@
 
     <main class="screen weekly-review" id="weekly-review-screen" hidden>
       <div class="goals-shell weekly-review-shell">
-        <header class="goals-topbar">
-          <p class="command-brand">LOCK IN</p>
-          <button type="button" id="close-weekly-review" aria-label="Return to today's missions">Today</button>
-        </header>
         <section class="weekly-review-hero surface-card" aria-labelledby="weekly-review-title">
-          <p class="aside-kicker">Learn, do not judge</p>
-          <h1 id="weekly-review-title">Your week, with perspective</h1>
-          <p>Keep what helped. Lighten what did not. Choose a kinder minimum for next week.</p>
+          <p class="aside-kicker">Weekly review</p>
+          <h1 id="weekly-review-title">This week</h1>
+          <p>Keep what helped. Shrink what didn’t.</p>
         </section>
         <form id="weekly-review-form" class="goal-builder weekly-review-form">
           <label class="weekly-review-goal">Goal
@@ -508,21 +459,19 @@
           </label>
           <div class="weekly-review-grid">
             <section class="surface-card surface-card--positive">
-              <p class="aside-kicker">Keep this</p>
               <h2>What supported you?</h2>
               <label>What helped?<textarea id="review-helped" required maxlength="400"></textarea></label>
               <label>What will you change?<textarea id="review-adjustment" required maxlength="400" placeholder="Smaller minimum, different time, clearer cue"></textarea></label>
             </section>
             <section class="surface-card surface-card--warm">
-              <p class="aside-kicker">No judgment</p>
-              <h2>What needs more care?</h2>
-              <label>What got in the way?<textarea id="review-blocked" required maxlength="400"></textarea></label>
-              <label>Next week's minimum<input id="review-minimum" required maxlength="180" /></label>
+              <h2>What got in the way?</h2>
+              <label>What blocked you?<textarea id="review-blocked" required maxlength="400"></textarea></label>
+              <label>Next week’s minimum<input id="review-minimum" required maxlength="180" /></label>
             </section>
           </div>
           <div class="weekly-review-actions">
             <button type="button" id="review-create-goal" hidden>Create a goal first</button>
-            <button type="submit" class="continue-button" id="save-weekly-review">Save reflection</button>
+            <button type="submit" class="continue-button" id="save-weekly-review">Save</button>
           </div>
           <p id="weekly-review-status" class="form-status" hidden></p>
         </form>
@@ -531,26 +480,31 @@
 
     <main class="screen daily-audit" id="daily-audit-screen" hidden>
       <div class="audit-shell">
-        <header class="audit-topbar">
-          <p class="command-brand">LOCK IN</p>
-          <button type="button" id="close-audit">Today</button>
-        </header>
-
         <nav class="audit-date-nav" aria-label="Reflection date">
-          <button type="button" id="audit-previous" aria-label="View previous day">← Previous</button>
+          <button type="button" id="audit-previous" aria-label="View previous day">Previous</button>
           <div class="audit-date-nav__current">
             <p id="audit-date-label">Today</p>
             <time id="audit-date"></time>
           </div>
           <div class="audit-date-nav__forward">
-            <button type="button" id="audit-today">Jump to today</button>
-            <button type="button" id="audit-next" aria-label="View next day">Next →</button>
+            <button type="button" id="audit-today">Today</button>
+            <button type="button" id="audit-next" aria-label="View next day">Next</button>
           </div>
         </nav>
 
+        <section class="audit-mood-check" aria-labelledby="mood-title">
+          <h2 id="mood-title">How do you feel?</h2>
+          <div class="mood-options" id="mood-options">
+            <button type="button" data-mood="low" aria-pressed="false">😴 Low</button>
+            <button type="button" data-mood="meh" aria-pressed="false">😐 Meh</button>
+            <button type="button" data-mood="good" aria-pressed="false">🙂 Good</button>
+            <button type="button" data-mood="locked-in" aria-pressed="false">🔥 Locked in</button>
+          </div>
+        </section>
+
         <section class="audit-empty" id="audit-empty" hidden>
           <h1>Nothing yet</h1>
-          <p>Come back after you've lived the day.</p>
+          <p>Come back once the day has started.</p>
         </section>
 
         <article class="audit-content" id="audit-content" aria-live="polite">
@@ -567,24 +521,20 @@
             <article>
               <span class="audit-metric__label">Missions</span>
               <strong id="audit-missions">0 / 0</strong>
-              <small>completed today</small>
             </article>
             <article>
               <span class="audit-metric__label">Mood</span>
               <strong id="audit-mood">—</strong>
-              <small>your check-in</small>
             </article>
             <article>
               <span class="audit-metric__label">Browser</span>
               <strong id="audit-browser-total">0m</strong>
-              <small>observed time</small>
             </article>
           </section>
 
           <section class="audit-next audit-card" aria-labelledby="audit-next-title">
             <div class="audit-next__lead">
-              <p class="aside-kicker">Your gentle reset</p>
-              <h2 id="audit-next-title">One good next step</h2>
+              <h2 id="audit-next-title">Next step</h2>
               <p id="audit-focus"></p>
             </div>
             <div class="audit-guidance-list">
@@ -606,19 +556,16 @@
           </section>
 
           <section class="audit-goals audit-card" aria-labelledby="audit-goals-title">
-            <p class="aside-kicker">Momentum</p>
             <h2 id="audit-goals-title">Goals</h2>
             <div class="audit-list" id="audit-goal-progress" role="list"></div>
           </section>
 
           <div class="audit-reflection-grid">
             <section class="audit-card audit-card--positive" aria-labelledby="audit-highlights-title">
-              <p class="aside-kicker">Keep this</p>
               <h2 id="audit-highlights-title">What worked</h2>
               <div class="audit-list" id="audit-highlights" role="list"></div>
             </section>
             <section class="audit-card audit-card--warm" aria-labelledby="audit-misses-title">
-              <p class="aside-kicker">No judgment</p>
               <h2 id="audit-misses-title">Still open</h2>
               <div class="audit-list" id="audit-misses" role="list"></div>
             </section>
@@ -626,13 +573,11 @@
 
           <div class="audit-bottom">
             <section class="audit-browser audit-card" aria-labelledby="audit-browser-title">
-              <p class="aside-kicker">Attention</p>
               <h2 id="audit-browser-title">Browser</h2>
               <div class="audit-domain-list" id="audit-domains" role="list"></div>
             </section>
             <section class="audit-patterns audit-card" aria-labelledby="audit-patterns-title">
-              <p class="aside-kicker">A pattern, not a verdict</p>
-              <h2 id="audit-patterns-title">What we noticed</h2>
+              <h2 id="audit-patterns-title">Patterns</h2>
               <div class="audit-pattern-list" id="audit-pattern-list" role="list"></div>
             </section>
           </div>

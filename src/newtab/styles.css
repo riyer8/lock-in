@@ -5145,3 +5145,811 @@ button:disabled {
     border-left: 0;
   }
 }
+
+/* Intentional spacing and layout. Last layer wins over earlier restyles. */
+.identity-grid,
+.attention-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.identity-card,
+.attention-card {
+  min-height: 124px;
+}
+
+.hero-card {
+  padding: clamp(48px, 7vw, 76px) clamp(28px, 7vw, 72px);
+}
+
+.hero-card .date-range {
+  margin-top: 18px;
+}
+
+.hero-card .countdown {
+  margin-top: 32px;
+}
+
+.hero-card .enter-button {
+  margin-top: 32px;
+}
+
+.hero-card h1,
+.onboarding-header h1,
+.blueprint-header h1,
+.goals-hero h1,
+.weekly-review-hero h1,
+.identity-card__copy strong,
+.identity-card__copy small,
+.attention-card strong,
+.attention-card small,
+.mission-card h3,
+.mission-card__copy {
+  overflow-wrap: break-word;
+}
+
+.countdown__value {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.countdown__value span {
+  padding-left: 0;
+  border-left: 0;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hero-card #arc-day,
+.countdown > p {
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.onboarding-header h1,
+.blueprint-header h1 {
+  line-height: 1.1;
+}
+
+.onboarding-nav {
+  padding: 6px 8px 16px;
+}
+
+.blueprint-section {
+  padding: 20px 22px;
+}
+
+.blueprint-identities,
+.blueprint-areas,
+.blueprint-obstacles {
+  margin-top: 14px;
+}
+
+.blueprint-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.promise-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.promise-grid > div + div {
+  padding-left: 32px;
+}
+
+.promise-label {
+  margin-bottom: 20px;
+}
+
+.promise-grid p {
+  margin-top: 10px;
+}
+
+.mission-section {
+  padding: 4px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.command-layout {
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.command-header {
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.mission-plan-bar {
+  margin-top: 12px;
+}
+
+.mission-plan-bar button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid rgba(238, 237, 244, 0.14);
+  color: var(--lavender-dark);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.mission-plan-bar button:hover {
+  color: var(--ink);
+  background: rgba(184, 176, 213, 0.12);
+}
+
+.mission-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.command-sidebar {
+  gap: 12px;
+}
+
+.command-sidebar .aside-note,
+.command-sidebar .mood-card {
+  padding: 18px;
+}
+
+.command-sidebar .surface-card {
+  border-radius: 16px;
+}
+
+.aside-note h2,
+.mood-card h2 {
+  margin-top: 6px;
+}
+
+#ask-coach {
+  margin-top: 14px;
+}
+
+.command-sidebar .mood-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.weekly-review-grid h2 {
+  margin: 0 0 4px;
+}
+
+.audit-hero .aside-kicker,
+.audit-card > h2 {
+  margin-top: 0;
+}
+
+.audit-card > h2 {
+  margin-bottom: 12px;
+  font-size: 22px;
+}
+
+.continue-button:disabled {
+  opacity: 0.72;
+}
+
+@media (max-width: 980px) {
+  .identity-grid,
+  .attention-grid,
+  .mission-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .identity-grid,
+  .attention-grid,
+  .mission-list,
+  .promise-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .promise-grid > div + div {
+    padding-left: 0;
+    padding-top: 20px;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .attention-grid > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .countdown__value span {
+    white-space: normal;
+  }
+}
+
+/* Navigation, landing fit, and completion joy. Last layer wins. */
+body {
+  background:
+    radial-gradient(circle at 50% 22%, rgba(99, 91, 128, 0.22), transparent 36%),
+    radial-gradient(circle at 50% 88%, rgba(67, 82, 99, 0.16), transparent 40%),
+    linear-gradient(135deg, #090a0e 0%, #101118 52%, #171722 100%);
+}
+
+.landing {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+  padding: clamp(16px, 3.2vh, 32px) 24px;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(184, 176, 213, 0.14), transparent 34%),
+    radial-gradient(circle at 50% 92%, rgba(184, 216, 195, 0.07), transparent 32%);
+}
+
+.landing .hero-card {
+  width: min(720px, 100%);
+  padding: clamp(28px, 4.6vh, 52px) clamp(24px, 5vw, 56px);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(184, 176, 213, 0.2), transparent 44%),
+    linear-gradient(135deg, rgba(29, 29, 43, 0.94), rgba(13, 14, 21, 0.92));
+}
+
+.landing .hero-card .label {
+  margin-bottom: clamp(14px, 2.4vh, 26px);
+}
+
+.landing .hero-card .countdown {
+  margin-top: clamp(18px, 2.8vh, 28px);
+}
+
+.landing .hero-card .enter-button {
+  margin-top: clamp(18px, 2.8vh, 28px);
+  animation:
+    rise 900ms 400ms var(--ease-out) both,
+    pulse-glow 2.6s 1.4s ease-in-out infinite;
+}
+
+.app-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 22px;
+  border-bottom: 1px solid rgba(238, 237, 244, 0.1);
+  background: rgba(10, 11, 16, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.app-nav[hidden] {
+  display: none;
+}
+
+.app-nav .command-brand {
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  cursor: pointer;
+  color: var(--lavender-dark);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.app-nav .command-brand:hover,
+.app-nav .command-brand:focus-visible {
+  color: var(--ink);
+}
+
+.app-nav__links {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-nav__links button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #d1cedb;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.app-nav__links button:hover,
+.app-nav__links button:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-nav__links button.is-current {
+  color: #1b1a24;
+  background: #d8d2ec;
+}
+
+.app-nav #command-arc-day {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+body.app-ready .command-center,
+body.app-ready .goals-screen,
+body.app-ready .weekly-review,
+body.app-ready .daily-audit {
+  padding-top: 72px;
+}
+
+.mission-nudge {
+  max-width: 640px;
+  color: #d8d2ec;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.command-goals__cta,
+.command-goals__empty {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed rgba(216, 210, 236, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  color: #d8d2ec;
+  background: rgba(184, 176, 213, 0.06);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.command-goals__cta:hover,
+.command-goals__cta:focus-visible {
+  border-color: rgba(216, 210, 236, 0.7);
+  background: rgba(184, 176, 213, 0.12);
+}
+
+.mission-card--next {
+  box-shadow: inset 0 2px #d8d2ec, 0 0 0 1px rgba(216, 210, 236, 0.16);
+  animation: next-pulse 2.4s ease-in-out infinite;
+}
+
+.mission-card--pop {
+  animation: mission-win 620ms var(--ease-out);
+}
+
+.continue-button[type="submit"],
+.goal-form-actions .continue-button {
+  transition:
+    transform 280ms var(--ease-out),
+    box-shadow 280ms ease,
+    background 280ms ease;
+}
+
+.continue-button[type="submit"]:hover,
+.goal-form-actions .continue-button:hover {
+  transform: translateY(-1px);
+}
+
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgba(184, 176, 213, 0.22),
+    transparent 46%
+  );
+}
+
+.celebrate[hidden] {
+  display: none;
+}
+
+.celebrate__burst {
+  position: absolute;
+  inset: 0;
+}
+
+.celebrate__burst span {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 99px;
+  background: #d8d2ec;
+  box-shadow: 0 0 12px rgba(184, 216, 195, 0.7);
+  animation: celebrate-bit 900ms var(--ease-out) both;
+}
+
+.celebrate__burst span:nth-child(3n) {
+  background: #b8d8c3;
+}
+
+.celebrate__burst span:nth-child(4n) {
+  background: #e8c2b5;
+}
+
+.celebrate p {
+  position: relative;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: 720;
+  letter-spacing: -0.05em;
+  text-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  animation: celebrate-pop 700ms var(--ease-out) both;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 12px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px rgba(255, 255, 255, 0.36);
+  }
+
+  50% {
+    box-shadow:
+      0 16px 42px rgba(184, 176, 213, 0.28),
+      0 0 0 6px rgba(216, 210, 236, 0.12),
+      inset 0 1px rgba(255, 255, 255, 0.36);
+  }
+}
+
+@keyframes next-pulse {
+  0%,
+  100% {
+    background: linear-gradient(
+      180deg,
+      rgba(184, 176, 213, 0.08),
+      transparent 46%
+    );
+  }
+
+  50% {
+    background: linear-gradient(
+      180deg,
+      rgba(184, 176, 213, 0.16),
+      transparent 52%
+    );
+  }
+}
+
+@keyframes mission-win {
+  0% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(184, 216, 195, 0.45);
+  }
+
+  45% {
+    transform: scale(1.03);
+    box-shadow: 0 0 0 10px rgba(184, 216, 195, 0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes celebrate-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(12px);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.06) translateY(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes celebrate-bit {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-nav {
+    padding: 8px 10px;
+  }
+
+  .app-nav .command-brand,
+  .app-nav #command-arc-day {
+    display: none;
+  }
+
+  .app-nav__links {
+    justify-content: space-between;
+  }
+
+  .app-nav__links button {
+    flex: 1;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+
+  .landing {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .hero-card .enter-button,
+  .mission-card--next,
+  .mission-card--pop,
+  .celebrate p,
+  .celebrate__burst span {
+    animation: none;
+  }
+}
+
+/* Today: missions first, coach to the side. Natural height. */
+body.app-ready .command-center {
+  height: auto;
+  max-height: none;
+  overflow: auto;
+  padding: 72px 28px 40px;
+}
+
+.command-center .command-shell {
+  display: block;
+  height: auto;
+}
+
+.command-center .arc-progress-track {
+  height: 2px;
+  margin: 4px 0 0;
+}
+
+.command-center .command-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 28px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+.command-center .mission-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.command-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.command-header__copy {
+  min-width: 0;
+}
+
+.command-header h1 {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 44px);
+  font-weight: 620;
+  letter-spacing: -0.045em;
+}
+
+.command-identities {
+  margin: 8px 0 0;
+  color: var(--lavender-dark);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.command-header__meta {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+#mission-progress-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mission-plan-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+
+.mission-plan-bar button {
+  min-height: 36px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.mission-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 28px;
+  border: 0;
+}
+
+.mission-card,
+.mission-card:last-child,
+.mission-card:last-child:nth-child(odd) {
+  min-height: 160px;
+  padding: 20px 20px 16px;
+}
+
+.mission-card h3 {
+  margin-top: 8px;
+  font-size: 20px;
+}
+
+.mission-card__copy,
+.mission-card__nudge {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.mission-empty {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  min-height: 160px;
+  padding: 28px 24px;
+  border: 1px dashed rgba(216, 210, 236, 0.35);
+  border-radius: 16px;
+  background: rgba(184, 176, 213, 0.05);
+}
+
+.mission-empty p {
+  margin: 0;
+  color: #d1cedb;
+  font-size: 16px;
+}
+
+.command-sidebar {
+  position: static;
+  display: grid;
+  gap: 12px;
+  overflow: visible;
+}
+
+.command-sidebar .coach-card {
+  padding: 20px;
+}
+
+.command-sidebar .coach-card h2 {
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+#ask-coach {
+  margin-top: 14px;
+  padding: 10px 14px;
+}
+
+.audit-mood-check {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border: 1px solid rgba(238, 237, 244, 0.11);
+  border-radius: 16px;
+  background: rgba(12, 13, 19, 0.66);
+}
+
+.audit-mood-check h2 {
+  margin: 0;
+  flex: none;
+  font-size: 15px;
+  font-weight: 620;
+}
+
+.audit-mood-check .mood-options {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.audit-mood-check .mood-options button {
+  min-height: 40px;
+}
+
+@media (max-width: 980px) {
+  .command-center .command-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .command-header,
+  .command-header__meta,
+  .mission-plan-bar {
+    align-items: flex-start;
+  }
+
+  .command-header__meta {
+    align-items: flex-start;
+  }
+
+  #mission-progress-summary {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 720px) {
+  body.app-ready .command-center {
+    padding: 64px 14px 32px;
+  }
+
+  .command-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mission-list {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-mood-check {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .audit-mood-check .mood-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
