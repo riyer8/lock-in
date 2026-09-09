@@ -481,6 +481,109 @@ test("today's missions come from supporting behaviors and keep the goal connecti
   assert.ok(selected.every((mission) => mission.category === "Athlete"));
 });
 
+test("normalizes a first-class behavior with title, description, frequency, difficulty, and status", () => {
+  const behavior = Goals.normalizeBehaviorRecord(
+    {
+      id: "run",
+      goalId: "goal-half",
+      title: "Run 3x/week",
+      description: "Easy aerobic miles after work.",
+      frequency: 3,
+      difficulty: "medium",
+      status: "active",
+    },
+    {},
+    "2030-01-05T12:00:00Z",
+  );
+  assert.equal(behavior.title, "Run 3x/week");
+  assert.equal(behavior.standard, "Run 3x/week");
+  assert.equal(behavior.description, "Easy aerobic miles after work.");
+  assert.equal(behavior.frequency, 3);
+  assert.equal(behavior.schedule.daysPerWeek, 3);
+  assert.equal(behavior.difficulty, "medium");
+  assert.equal(behavior.status, "active");
+  assert.equal(Goals.behaviorTitle(behavior), "Run 3x/week");
+  assert.equal(Goals.isPlannableBehavior(behavior), true);
+});
+
+test("maps legacy standard text onto title and rejects invalid behavior fields", () => {
+  const migrated = Goals.normalizeBehaviorRecord({
+    goalId: "goal-half",
+    standard: "Run 3x/week",
+  });
+  assert.equal(migrated.title, "Run 3x/week");
+  const invalid = Goals.validateBehaviorRecord({
+    goalId: "",
+    title: "",
+    frequency: 9,
+    difficulty: "brutal",
+    status: "maybe",
+  });
+  assert.equal(invalid.valid, false);
+  assert.match(invalid.errors.join(" "), /goalId/);
+  assert.match(invalid.errors.join(" "), /title/);
+  assert.match(invalid.errors.join(" "), /frequency/);
+  assert.match(invalid.errors.join(" "), /difficulty/);
+  assert.match(invalid.errors.join(" "), /status/);
+});
+
+test("paused and archived behaviors leave daily planning", () => {
+  const marathon = goal({
+    id: "goal-half",
+    identityId: "athlete",
+    area: "fitness",
+    title: "Run a half marathon",
+    behaviors: [
+      { id: "run", title: "Run 3x/week", status: "active" },
+      { id: "strength", title: "Strength train 2x/week", status: "paused" },
+      { id: "recover", title: "Recover properly", status: "archived" },
+    ],
+  });
+  const selected = Goals.selectDailyMissions([marathon], [], [], "2030-06-03", 3);
+  assert.deepEqual(
+    selected.map((mission) => mission.behaviorId),
+    ["run"],
+  );
+  const paused = Goals.setBehaviorStatus(
+    { id: "run", goalId: "goal-half", title: "Run 3x/week" },
+    "paused",
+    "2030-06-03T12:00:00Z",
+  );
+  assert.equal(paused.status, "paused");
+  assert.equal(Goals.isPlannableBehavior(paused), false);
+  assert.equal(Goals.setBehaviorStatus(paused, "not-a-status").status, "paused");
+});
+
+test("behavior evidence is a fact from planned missions and supporting missions stay linked", () => {
+  const behavior = {
+    id: "run",
+    goalId: "goal-half",
+    title: "Run 3x/week",
+  };
+  const history = [
+    { behaviorId: "run", date: "2030-06-03", planned: true, completed: true },
+    { behaviorId: "run", date: "2030-06-04", planned: true, completed: false },
+    { behaviorId: "strength", date: "2030-06-03", planned: true, completed: true },
+  ];
+  const evidence = Goals.calculateBehaviorEvidence(behavior, history, "2030-06-04");
+  assert.equal(evidence.planned, 2);
+  assert.equal(evidence.completed, 1);
+  assert.equal(evidence.percent, 50);
+  assert.equal(evidence.lastCompletedAt, "2030-06-03");
+  assert.match(evidence.fact, /1\/2 planned missions kept this week/);
+  const missions = Goals.missionsSupportingBehavior(
+    [
+      { id: "today-run", behaviorId: "run", title: "Run 3x/week" },
+      { id: "today-strength", behaviorId: "strength", title: "Strength train" },
+    ],
+    "run",
+  );
+  assert.deepEqual(
+    missions.map((mission) => mission.id),
+    ["today-run"],
+  );
+});
+
 test("setGoalStatus archives a goal so it leaves daily planning", () => {
   const source = goal({ id: "goal-keep", area: "Area A" });
   const released = Goals.setGoalStatus(source, "cancelled", "2030-06-03T12:00:00Z");

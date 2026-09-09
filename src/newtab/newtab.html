@@ -328,9 +328,13 @@
             </section>
             <section>
               <h3>Behaviors</h3>
-              <p class="goal-detail__hint">Repeatable actions that move this outcome. Not today's checklist.</p>
+              <p class="goal-detail__hint">Repeatable actions that move this outcome. Today turns each one into a mission. Pause if it should leave the plan; archive if it no longer belongs.</p>
               <div id="goal-behavior-list" class="goal-behavior-list"></div>
               <button type="button" class="text-button" id="add-goal-behavior">Add a behavior</button>
+              <details class="archived-behaviors" id="goal-archived-behaviors" hidden>
+                <summary>Archived behaviors</summary>
+                <div id="goal-archived-behavior-list" class="archived-behavior-list"></div>
+              </details>
             </section>
             <section id="goal-today-section">
               <h3>Today</h3>

@@ -391,6 +391,7 @@ function missionActionLabel(entry, events = []) {
   return (
     cleanActionLabel(related.at(-1)?.metadata?.title) ||
     cleanActionLabel(entry?.title) ||
+    cleanActionLabel(behavior?.title) ||
     cleanActionLabel(behavior?.standard) ||
     cleanActionLabel(goal?.actions?.standard) ||
     cleanActionLabel(LockInGoals.goalTitle(goal))
@@ -432,10 +433,308 @@ function closedGoals() {
   return activeGoals.filter((goal) => LockInGoals.FINAL_STATUSES.has(goal.status));
 }
 
-function behaviorsForGoal(goalId) {
-  return activeBehaviors.filter(
-    (behavior) => behavior.goalId === goalId && behavior.status !== "archived",
+function behaviorsForGoal(goalId, { includePaused = true, includeArchived = false } = {}) {
+  return activeBehaviors.filter((behavior) => {
+    if (behavior.goalId !== goalId) return false;
+    if (behavior.status === "archived" && !includeArchived) return false;
+    if (behavior.status === "paused" && !includePaused) return false;
+    return true;
+  });
+}
+
+function plannableBehaviorsForGoal(goalId) {
+  return behaviorsForGoal(goalId, { includePaused: false }).filter((behavior) =>
+    LockInGoals.isPlannableBehavior(behavior),
   );
+}
+
+function archivedBehaviorsForGoal(goalId) {
+  return behaviorsForGoal(goalId, { includeArchived: true }).filter(
+    (behavior) => behavior.status === "archived",
+  );
+}
+
+function nextBehaviorId(goalId) {
+  return (
+    globalThis.crypto?.randomUUID?.() ||
+    `behavior-${goalId || "new"}-${Date.now()}`
+  );
+}
+
+function createSelect(options, value) {
+  const select = document.createElement("select");
+  options.forEach((option) => {
+    const item = document.createElement("option");
+    item.value = String(option.value);
+    item.textContent = option.label;
+    select.append(item);
+  });
+  if (value !== undefined && value !== null && value !== "") {
+    select.value = String(value);
+  }
+  return select;
+}
+
+function behaviorEventMeta(behavior) {
+  return {
+    behaviorId: behavior.id,
+    goalId: behavior.goalId,
+    title: LockInGoals.behaviorTitle(behavior),
+    frequency: behavior.frequency,
+    difficulty: behavior.difficulty,
+    status: behavior.status,
+  };
+}
+
+function behaviorFieldsChanged(before, after) {
+  if (!before) return true;
+  return (
+    LockInGoals.behaviorTitle(before) !== LockInGoals.behaviorTitle(after) ||
+    (before.description || "") !== (after.description || "") ||
+    Number(before.frequency || 0) !== Number(after.frequency || 0) ||
+    (before.difficulty || "medium") !== (after.difficulty || "medium")
+  );
+}
+
+function behaviorEvidenceCopy(evidence) {
+  if (evidence?.planned) {
+    return evidence.lastCompletedAt
+      ? `Fact: ${evidence.fact} Last kept ${evidence.lastCompletedAt}.`
+      : `Fact: ${evidence.fact}`;
+  }
+  if (evidence?.lastCompletedAt) {
+    return `Fact: last kept ${evidence.lastCompletedAt}. Not planned this week.`;
+  }
+  return "No evidence yet. Complete a mission that supports this behavior.";
+}
+
+function behaviorTodayCopy(missions) {
+  if (!missions.length) return "Not on today's plan.";
+  return `Today: ${missions.map((mission) => mission.title).join(" · ")}`;
+}
+
+function behaviorFromRow(row, goalId) {
+  const existing = activeBehaviors.find((item) => item.id === row.dataset.behaviorId);
+  const title = row.querySelector(".behavior-title")?.value.trim() || "";
+  return LockInGoals.normalizeBehaviorRecord(
+    {
+      ...existing,
+      id: row.dataset.behaviorId || nextBehaviorId(goalId),
+      goalId: goalId || existing?.goalId,
+      title,
+      description: row.querySelector(".behavior-description")?.value.trim() || "",
+      frequency: Number(row.querySelector(".behavior-frequency")?.value || existing?.frequency || 3),
+      difficulty: row.querySelector(".behavior-difficulty")?.value || existing?.difficulty || "medium",
+      status: row.dataset.status || existing?.status || "active",
+      standard: title,
+    },
+    {},
+    new Date(),
+  );
+}
+
+async function removeBehaviorFromTodayPlan(behaviorId) {
+  const saved = await readAdaptivePlan();
+  if (!Array.isArray(saved?.missions) || !saved.missions.some((mission) => mission.behaviorId === behaviorId)) {
+    return;
+  }
+  await writeDaily(ADAPTIVE_PLAN_STORAGE_NAME, {
+    ...saved,
+    missions: saved.missions.filter((mission) => mission.behaviorId !== behaviorId),
+  });
+}
+
+async function upsertBehavior(behavior, eventType) {
+  const record = LockInGoals.normalizeBehaviorRecord(behavior, {}, new Date());
+  const exists = activeBehaviors.some((item) => item.id === record.id);
+  activeBehaviors = exists
+    ? activeBehaviors.map((item) => (item.id === record.id ? record : item))
+    : [...activeBehaviors, record];
+  await persistGoals();
+  if (eventType) {
+    await eventApi.record(eventType, behaviorEventMeta(record));
+  }
+  if (!LockInGoals.isPlannableBehavior(record)) {
+    await removeBehaviorFromTodayPlan(record.id);
+  }
+  return record;
+}
+
+function canPersistBehaviors() {
+  const goalId = formValue("goal-id");
+  return Boolean(goalId && activeGoals.some((goal) => goal.id === goalId));
+}
+
+function updateBehaviorRowChrome(row, behavior) {
+  row.dataset.behaviorId = behavior.id;
+  row.dataset.status = behavior.status;
+  row.classList.toggle("is-paused", behavior.status === "paused");
+  const pause = row.querySelector("[data-behavior-action='pause']");
+  if (pause) pause.textContent = behavior.status === "paused" ? "Resume" : "Pause";
+}
+
+async function decorateBehaviorRows(goalId) {
+  const missions = goalId ? await buildTodayMissions() : [];
+  [...document.querySelectorAll("#goal-behavior-list .behavior-card")].forEach((row) => {
+    const id = row.dataset.behaviorId;
+    const supporting = LockInGoals.missionsSupportingBehavior(missions, id);
+    const source =
+      activeBehaviors.find((item) => item.id === id) || behaviorFromRow(row, goalId);
+    const evidence = LockInGoals.calculateBehaviorEvidence(source, missionHistory, new Date());
+    const today = row.querySelector(".behavior-card__today");
+    const copy = row.querySelector(".behavior-card__evidence");
+    if (today) today.textContent = behaviorTodayCopy(supporting);
+    if (copy) copy.textContent = behaviorEvidenceCopy(evidence);
+  });
+}
+
+async function applyBehaviorRowStatus(row, status) {
+  const goalId = formValue("goal-id");
+  const draft = behaviorFromRow(row, goalId);
+  const next = LockInGoals.setBehaviorStatus(draft, status, new Date());
+  updateBehaviorRowChrome(row, next);
+  if (canPersistBehaviors() && next.title) {
+    const eventType =
+      next.status === "paused"
+        ? EventTypes.BEHAVIOR_PAUSED
+        : next.status === "archived"
+          ? EventTypes.BEHAVIOR_ARCHIVED
+          : EventTypes.BEHAVIOR_UPDATED;
+    await upsertBehavior(next, eventType);
+  }
+  if (next.status === "archived") {
+    const list = $("goal-behavior-list");
+    row.remove();
+    if (list && !list.children.length) list.append(createBehaviorRow());
+    await renderArchivedBehaviors(goalId);
+  }
+  updateGoalReadiness();
+  await decorateBehaviorRows(goalId);
+}
+
+function createArchivedBehaviorRow(behavior) {
+  const row = document.createElement("div");
+  row.className = "archived-behavior-row";
+  row.append(createTextElement("span", "", LockInGoals.behaviorTitle(behavior) || "Untitled behavior"));
+  const restore = document.createElement("button");
+  restore.type = "button";
+  restore.className = "ghost-button";
+  restore.textContent = "Restore";
+  restore.addEventListener("click", async () => {
+    const next = LockInGoals.setBehaviorStatus(behavior, "active", new Date());
+    await upsertBehavior(next, EventTypes.BEHAVIOR_UPDATED);
+    const list = $("goal-behavior-list");
+    [...(list?.querySelectorAll(".behavior-card") || [])].forEach((row) => {
+      if (!row.querySelector(".behavior-title")?.value.trim()) row.remove();
+    });
+    list?.append(createBehaviorRow(next));
+    await renderArchivedBehaviors(behavior.goalId);
+    updateGoalReadiness();
+    await decorateBehaviorRows(behavior.goalId);
+  });
+  row.append(restore);
+  return row;
+}
+
+async function renderArchivedBehaviors(goalId) {
+  const section = $("goal-archived-behaviors");
+  const list = $("goal-archived-behavior-list");
+  if (!section || !list) return;
+  const archived = goalId ? archivedBehaviorsForGoal(goalId) : [];
+  section.hidden = archived.length === 0;
+  list.replaceChildren(...archived.map(createArchivedBehaviorRow));
+}
+
+function createBehaviorRow(behavior = {}) {
+  const record = LockInGoals.normalizeBehaviorRecord({
+    ...behavior,
+    id: behavior.id || nextBehaviorId(formValue("goal-id") || behavior.goalId),
+    frequency: behavior.frequency || behavior.schedule?.daysPerWeek || 3,
+    difficulty: behavior.difficulty || "medium",
+    status: behavior.status || "active",
+  });
+  const row = document.createElement("article");
+  row.className = "behavior-card goal-behavior-row";
+  row.dataset.behaviorId = record.id;
+  row.dataset.status = record.status || "active";
+  if (record.status === "paused") row.classList.add("is-paused");
+
+  const header = document.createElement("div");
+  header.className = "behavior-card__header";
+  const title = document.createElement("input");
+  title.className = "behavior-title";
+  title.maxLength = 140;
+  title.placeholder = "Run 3x/week";
+  title.value = LockInGoals.behaviorTitle(record);
+  title.addEventListener("input", updateGoalReadiness);
+  const actions = document.createElement("div");
+  actions.className = "behavior-card__actions";
+  const pause = document.createElement("button");
+  pause.type = "button";
+  pause.className = "text-button";
+  pause.dataset.behaviorAction = "pause";
+  pause.textContent = record.status === "paused" ? "Resume" : "Pause";
+  pause.addEventListener("click", () => {
+    const next = row.dataset.status === "paused" ? "active" : "paused";
+    applyBehaviorRowStatus(row, next);
+  });
+  const archive = document.createElement("button");
+  archive.type = "button";
+  archive.className = "text-button danger-button";
+  archive.textContent = "Archive";
+  archive.addEventListener("click", () => {
+    const label = title.value.trim() || "this behavior";
+    const confirmed = window.confirm(`Archive “${label}”? It will leave Today.`);
+    if (!confirmed) return;
+    applyBehaviorRowStatus(row, "archived");
+  });
+  actions.append(pause, archive);
+  header.append(title, actions);
+
+  const description = document.createElement("textarea");
+  description.className = "behavior-description";
+  description.maxLength = 300;
+  description.placeholder = "What this looks like in a normal week.";
+  description.value = record.description || "";
+  description.addEventListener("input", updateGoalReadiness);
+
+  const meta = document.createElement("div");
+  meta.className = "behavior-card__meta";
+  const frequency = createSelect(
+    [1, 2, 3, 4, 5, 6, 7].map((days) => ({
+      value: days,
+      label: days === 7 ? "Daily" : `${days}× / week`,
+    })),
+    record.frequency || 3,
+  );
+  frequency.className = "behavior-frequency";
+  const difficulty = createSelect(
+    [
+      { value: "easy", label: "Easy" },
+      { value: "medium", label: "Medium" },
+      { value: "hard", label: "Hard" },
+    ],
+    record.difficulty || "medium",
+  );
+  difficulty.className = "behavior-difficulty";
+  const frequencyLabel = document.createElement("label");
+  frequencyLabel.append("Frequency", frequency);
+  const difficultyLabel = document.createElement("label");
+  difficultyLabel.append("Difficulty", difficulty);
+  meta.append(frequencyLabel, difficultyLabel);
+
+  row.append(
+    header,
+    description,
+    meta,
+    createTextElement("p", "behavior-card__today", "Save this goal to see today's missions."),
+    createTextElement(
+      "p",
+      "behavior-card__evidence",
+      "No evidence yet. Complete a mission that supports this behavior.",
+    ),
+  );
+  return row;
 }
 
 function formValue(id) {
@@ -460,44 +759,19 @@ function populateCategorySelect(selectedId) {
       : [...selectedIdentities][0] || "athlete";
 }
 
-function createBehaviorRow(behavior = {}) {
-  const row = document.createElement("div");
-  row.className = "goal-behavior-row";
-  if (behavior.id) row.dataset.behaviorId = behavior.id;
-  const input = document.createElement("input");
-  input.maxLength = 140;
-  input.placeholder = "Run 3x/week";
-  input.value = behavior.standard || "";
-  input.addEventListener("input", updateGoalReadiness);
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.className = "text-button";
-  remove.textContent = "Remove";
-  remove.addEventListener("click", () => {
-    const list = $("goal-behavior-list");
-    if (list && list.children.length > 1) row.remove();
-    else input.value = "";
-    updateGoalReadiness();
-  });
-  row.append(input, remove);
-  return row;
-}
-
 function setBehaviorRows(behaviors) {
   const list = $("goal-behavior-list");
   if (!list) return;
-  const rows = (Array.isArray(behaviors) ? behaviors : []).filter((item) => item?.standard);
+  const rows = (Array.isArray(behaviors) ? behaviors : []).filter((item) =>
+    LockInGoals.behaviorTitle(item),
+  );
   list.replaceChildren(...(rows.length ? rows.map(createBehaviorRow) : [createBehaviorRow()]));
 }
 
 function behaviorsFromForm(goalId) {
-  return [...document.querySelectorAll("#goal-behavior-list .goal-behavior-row")]
-    .map((row, index) => ({
-      id: row.dataset.behaviorId || `${goalId}-behavior-${index}`,
-      goalId,
-      standard: row.querySelector("input")?.value.trim() || "",
-    }))
-    .filter((behavior) => behavior.standard);
+  return [...document.querySelectorAll("#goal-behavior-list .behavior-card")]
+    .map((row) => behaviorFromRow(row, goalId))
+    .filter((behavior) => LockInGoals.behaviorTitle(behavior));
 }
 
 function goalFromForm(existingGoal = null) {
@@ -530,9 +804,16 @@ function goalFromForm(existingGoal = null) {
     obstacle: formValue("goal-obstacle"),
     recoveryPlan: formValue("goal-recovery"),
     behaviors,
+    frequencyPerWeek: behaviors[0]?.frequency || existingGoal?.frequencyPerWeek,
     actions: {
-      minimum: existingGoal?.actions?.minimum || behaviors[0]?.standard || "",
-      standard: behaviors[0]?.standard || existingGoal?.actions?.standard || "",
+      minimum:
+        existingGoal?.actions?.minimum ||
+        LockInGoals.behaviorTitle(behaviors[0]) ||
+        "",
+      standard:
+        LockInGoals.behaviorTitle(behaviors[0]) ||
+        existingGoal?.actions?.standard ||
+        "",
       stretch: existingGoal?.actions?.stretch || "",
     },
     status: existingGoal?.status ?? "active",
@@ -577,7 +858,7 @@ function goalDeadlineCopy(goal) {
 
 function goalCardMeta(goal) {
   const behaviors = behaviorsForGoal(goal.id)
-    .map((behavior) => behavior.standard)
+    .map((behavior) => LockInGoals.behaviorTitle(behavior))
     .filter(Boolean)
     .slice(0, 3);
   return [goal.why, behaviors.join(" · "), goalDeadlineCopy(goal)].filter(Boolean).join(" · ");
@@ -594,17 +875,16 @@ async function setGoalLifecycle(goal, status) {
   const now = new Date().toISOString();
   const nextGoal = LockInGoals.setGoalStatus(goal, status, now);
   const isActive = LockInGoals.ACTIVE_STATUSES.has(nextGoal.status);
-  const isPaused = nextGoal.status === LockInGoals.PAUSED_STATUS;
   activeGoals = activeGoals.map((item) => (item.id === goal.id ? nextGoal : item));
-  if (!isActive && !isPaused) {
+  if (LockInGoals.FINAL_STATUSES.has(nextGoal.status)) {
     activeBehaviors = activeBehaviors.map((behavior) =>
-      behavior.goalId === goal.id
+      behavior.goalId === goal.id && behavior.status !== "archived"
         ? LockInGoals.setBehaviorStatus(behavior, "archived", now)
         : behavior,
     );
-  } else if (isActive) {
+  } else if (isActive && LockInGoals.FINAL_STATUSES.has(goal.status)) {
     activeBehaviors = activeBehaviors.map((behavior) =>
-      behavior.goalId === goal.id
+      behavior.goalId === goal.id && behavior.status === "archived"
         ? LockInGoals.setBehaviorStatus(behavior, "active", now)
         : behavior,
     );
@@ -726,7 +1006,11 @@ async function fillGoalForm(goal) {
   $("goal-why").value = goal.why;
   $("goal-outcome").value = goal.outcome || "";
   $("goal-deadline").value = goal.targetDate || goal.deadline || "";
-  setBehaviorRows(behaviors.length ? behaviors : [{ standard: goal.actions?.standard }]);
+  setBehaviorRows(
+    behaviors.length
+      ? behaviors
+      : [{ title: goal.actions?.standard, standard: goal.actions?.standard }],
+  );
   $("goal-obstacle").value = goal.obstacles?.[0] || goal.obstacle || "";
   $("goal-recovery").value = goal.recoveryPlan || "";
   $("goal-detail-identity").textContent =
@@ -745,7 +1029,9 @@ async function fillGoalForm(goal) {
   setGoalEditorMode(goal);
   updateGoalReadiness();
   goalDetail.hidden = false;
+  await renderArchivedBehaviors(goal.id);
   await renderGoalToday(goal.id);
+  await decorateBehaviorRows(goal.id);
   goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -764,6 +1050,7 @@ function openNewGoal() {
   goalFormError.textContent = "";
   setGoalEditorMode(null);
   updateGoalReadiness();
+  renderArchivedBehaviors("");
   goalDetail.hidden = false;
   goalDetail.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -890,8 +1177,16 @@ function mapMission(mission, goal) {
       AREA_BLUEPRINTS[goal?.area]?.label ||
       mission.category ||
       goal?.area,
-    title: behavior?.standard || mission.action || goal?.actions?.standard || mission.title,
-    description: behavior?.standard || mission.action || mission.description,
+    title:
+      LockInGoals.behaviorTitle(behavior) ||
+      mission.action ||
+      goal?.actions?.standard ||
+      mission.title,
+    description:
+      behavior?.description ||
+      LockInGoals.behaviorTitle(behavior) ||
+      mission.action ||
+      mission.description,
     goalTitle: mission.goalTitle || goal?.title || goal?.outcome,
     minimumAction: behavior?.minimum || goal?.actions?.minimum,
     cue: behavior?.cue || goal?.cue,
@@ -905,7 +1200,7 @@ function buildDefaultMissions() {
   const selected = LockInGoals.selectDailyMissions(
     activeGoals.map((goal) => ({
       ...goal,
-      behaviors: behaviorsForGoal(goal.id),
+      behaviors: plannableBehaviorsForGoal(goal.id),
     })),
     missionHistory,
     PERSONAL_CONFIG.milestones ?? [],
@@ -953,6 +1248,10 @@ async function buildTodayMissions(date = new Date()) {
     const kept = saved.missions.slice(0, 3).map((mission) => {
       const goal = activeGoals.find((item) => item.id === mission.goalId);
       if (goal && !LockInGoals.isPlannableGoal(goal)) return null;
+      const behavior = mission.behaviorId
+        ? activeBehaviors.find((item) => item.id === mission.behaviorId)
+        : null;
+      if (behavior && !LockInGoals.isPlannableBehavior(behavior)) return null;
       return {
         ...mission,
         goalTitle: mission.goalTitle || goal?.title || goal?.outcome,
@@ -1174,9 +1473,10 @@ async function syncPlannedHistory(missions) {
   await privateStorage.write(MISSION_HISTORY_STORAGE_KEY, missionHistory);
   await eventApi.record(EventTypes.COMMAND_CENTER_OPENED, {
     arcDay: calculateArcState(new Date()).currentDay,
-    plannedMissions: missions.map(({ id, title, category, goalId }) => ({
+    plannedMissions: missions.map(({ id, title, category, goalId, behaviorId }) => ({
       missionId: id,
       goalId,
+      behaviorId,
       category,
       title,
     })),
@@ -1281,6 +1581,7 @@ async function collectCoachContext(date = new Date()) {
   const currentMissions = (await buildTodayMissions(date)).map((mission) => ({
     id: mission.id,
     goalId: mission.goalId,
+    behaviorId: mission.behaviorId,
     title: mission.title,
     completed: completed.has(mission.id),
   }));
@@ -2230,6 +2531,13 @@ goalForm?.addEventListener("submit", async (event) => {
     return;
   }
   const behaviors = validation.value.behaviors;
+  const previous = existing
+    ? activeBehaviors.filter((behavior) => behavior.goalId === existing.id)
+    : [];
+  const archivedKept = previous.filter(
+    (behavior) =>
+      behavior.status === "archived" && !behaviors.some((item) => item.id === behavior.id),
+  );
   selectedIdentities.add(validation.value.identityId);
   saveSet(IDENTITIES_STORAGE_KEY, selectedIdentities);
   if (existing) {
@@ -2237,6 +2545,7 @@ goalForm?.addEventListener("submit", async (event) => {
     activeBehaviors = [
       ...activeBehaviors.filter((behavior) => behavior.goalId !== existing.id),
       ...behaviors,
+      ...archivedKept,
     ];
   } else {
     activeGoals.push(validation.value);
@@ -2249,6 +2558,15 @@ goalForm?.addEventListener("submit", async (event) => {
     title: validation.value.title,
     status: validation.value.status,
   });
+  const previousById = new Map(previous.map((behavior) => [behavior.id, behavior]));
+  for (const behavior of behaviors) {
+    const before = previousById.get(behavior.id);
+    if (!before) {
+      await eventApi.record(EventTypes.BEHAVIOR_CREATED, behaviorEventMeta(behavior));
+    } else if (behaviorFieldsChanged(before, behavior)) {
+      await eventApi.record(EventTypes.BEHAVIOR_UPDATED, behaviorEventMeta(behavior));
+    }
+  }
   goalDetail.hidden = true;
   await renderIdentityGoals();
   celebrate(existing ? "Goal updated." : "Goal locked in.", { burst: true });
@@ -2259,6 +2577,7 @@ $("close-goal-detail")?.addEventListener("click", closeGoalDetail);
 $("create-goal")?.addEventListener("click", openNewGoal);
 $("add-goal-behavior")?.addEventListener("click", () => {
   $("goal-behavior-list")?.append(createBehaviorRow());
+  decorateBehaviorRows(formValue("goal-id"));
 });
 $("pause-goal")?.addEventListener("click", async () => {
   const existing = activeGoals.find((goal) => goal.id === $("goal-id").value);

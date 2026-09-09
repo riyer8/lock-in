@@ -125,3 +125,23 @@ test("records goal archive and completion events", async () => {
     [EventTypes.GOAL_ARCHIVED, EventTypes.GOAL_COMPLETED],
   );
 });
+
+test("records behavior create, pause, and archive events", async () => {
+  const api = new EventApi(new EventStore(new MemoryStorage()));
+  await api.record(EventTypes.BEHAVIOR_CREATED, {
+    behaviorId: "run",
+    goalId: "goal-half",
+    title: "Run 3x/week",
+  });
+  await api.record(EventTypes.BEHAVIOR_PAUSED, { behaviorId: "run", status: "paused" });
+  await api.record(EventTypes.BEHAVIOR_ARCHIVED, { behaviorId: "run", status: "archived" });
+  const events = await api.getEvents();
+  assert.deepEqual(
+    events.map((event) => event.type),
+    [
+      EventTypes.BEHAVIOR_CREATED,
+      EventTypes.BEHAVIOR_PAUSED,
+      EventTypes.BEHAVIOR_ARCHIVED,
+    ],
+  );
+});

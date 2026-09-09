@@ -20,6 +20,10 @@
     "ENERGY_CHECKIN",
     "EXPERIMENT_MEASURE",
     "PLAN_ADAPTED",
+    "BEHAVIOR_CREATED",
+    "BEHAVIOR_UPDATED",
+    "BEHAVIOR_PAUSED",
+    "BEHAVIOR_ARCHIVED",
   ]);
 
   function eventTime(event) {

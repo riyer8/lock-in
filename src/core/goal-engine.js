@@ -15,6 +15,8 @@
     "cancelled",
     "archived",
   ]);
+  const BEHAVIOR_STATUSES = new Set(["active", "paused", "archived"]);
+  const BEHAVIOR_DIFFICULTIES = new Set(["easy", "medium", "hard"]);
 
   const IDENTITY_CATALOG = Object.freeze({
     athlete: Object.freeze({
@@ -256,6 +258,29 @@
     };
   }
 
+  function behaviorTitle(source) {
+    return text(source?.title) || text(source?.standard) || text(source?.minimum);
+  }
+
+  function normalizeDifficulty(value, fallback = "medium") {
+    const key = text(value).toLowerCase();
+    if (BEHAVIOR_DIFFICULTIES.has(key)) return key;
+    const inherited = text(fallback).toLowerCase();
+    return BEHAVIOR_DIFFICULTIES.has(inherited) ? inherited : "medium";
+  }
+
+  function normalizeBehaviorStatus(value, fallback = "active") {
+    const key = text(value).toLowerCase();
+    if (BEHAVIOR_STATUSES.has(key)) return key;
+    const inherited = text(fallback).toLowerCase();
+    return BEHAVIOR_STATUSES.has(inherited) ? inherited : "active";
+  }
+
+  function isPlannableBehavior(behavior) {
+    const status = normalizeBehaviorStatus(behavior?.status);
+    return status === "active" && Boolean(behaviorTitle(behavior));
+  }
+
   function normalizeBehaviorRecord(input, fallback = {}, now = null) {
     const source = isObject(input) ? input : {};
     const cueSource = isObject(source.cue)
@@ -267,16 +292,31 @@
     const schedule = isObject(source.schedule) ? source.schedule : {};
     const nowDate = parseDate(now) || new Date(0);
     const goalId = text(source.goalId) || text(fallback.goalId);
-    const standard = text(source.standard) || text(fallback.standard);
-    const generatedId = `${goalId}-${standard}`
+    const title = behaviorTitle(source) || behaviorTitle(fallback);
+    const generatedId = `${goalId}-${title}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
+    const frequency = clamp(
+      Math.round(
+        finiteNumber(
+          source.frequency,
+          finiteNumber(schedule.daysPerWeek, fallback.frequency ?? fallback.daysPerWeek),
+        ),
+      ),
+      0,
+      7,
+    );
     return {
       version: BEHAVIOR_VERSION,
       id: text(source.id) || `behavior-${generatedId || "untitled"}`,
       goalId,
-      standard,
+      title,
+      description: text(source.description) || text(fallback.description),
+      frequency,
+      difficulty: normalizeDifficulty(source.difficulty, fallback.difficulty),
+      status: normalizeBehaviorStatus(source.status, fallback.status),
+      standard: title,
       minimum: text(source.minimum) || text(fallback.minimum),
       stretch: text(source.stretch) || text(fallback.stretch),
       cue: {
@@ -285,17 +325,12 @@
         place: text(cueSource.place),
       },
       schedule: {
-        daysPerWeek: clamp(
-          Math.round(finiteNumber(schedule.daysPerWeek, fallback.daysPerWeek)),
-          0,
-          7,
-        ),
+        daysPerWeek: frequency,
       },
       friction: {
         obstacle: text(friction.obstacle) || text(fallback.obstacle),
         recoveryPlan: text(friction.recoveryPlan) || text(fallback.recoveryPlan),
       },
-      status: text(source.status).toLowerCase() || "active",
       timestamps: {
         createdAt:
           parseDate(source.timestamps?.createdAt)?.toISOString() || nowDate.toISOString(),
@@ -338,6 +373,10 @@
               ...record,
               id: text(record?.id) || `${goalId}-behavior-${index}`,
               goalId,
+              title:
+                text(record?.title) ||
+                text(record?.standard) ||
+                text(behavior),
               standard:
                 text(record?.standard) || text(record?.title) || text(behavior),
             },
@@ -345,10 +384,10 @@
             now,
           );
         })
-        .filter((behavior) => behavior.standard || behavior.minimum);
+        .filter((behavior) => behaviorTitle(behavior));
       if (normalized.length) return normalized;
     }
-    if (!fallback.standard && !fallback.minimum) return [];
+    if (!behaviorTitle(fallback) && !text(fallback.minimum)) return [];
     return [
       normalizeBehaviorRecord(
         { id: `${goalId}-behavior-primary`, goalId },
@@ -402,7 +441,10 @@
       targetDate,
       frequencyPerWeek: clamp(
         Math.round(
-          finiteNumber(source.frequencyPerWeek, primary?.schedule?.daysPerWeek || 0),
+          finiteNumber(
+            source.frequencyPerWeek,
+            primary?.frequency || primary?.schedule?.daysPerWeek || 0,
+          ),
         ),
         0,
         7,
@@ -414,7 +456,7 @@
       },
       actions: {
         minimum: text(actions.minimum) || text(primary?.minimum),
-        standard: text(actions.standard) || text(primary?.standard),
+        standard: text(actions.standard) || text(primary?.title) || text(primary?.standard),
         stretch: text(actions.stretch) || text(primary?.stretch),
       },
       behaviors,
@@ -449,9 +491,7 @@
     if (requestedDate && !goal.targetDate) {
       errors.push("targetDate must be a valid date.");
     }
-    const hasBehavior = (goal.behaviors || []).some(
-      (behavior) => text(behavior.standard) || text(behavior.minimum),
-    );
+    const hasBehavior = (goal.behaviors || []).some((behavior) => behaviorTitle(behavior));
     if (!hasBehavior) errors.push("at least one behavior is required.");
     if (!goal.timestamps.createdAt || !goal.timestamps.updatedAt) {
       errors.push("timestamps must be valid.");
@@ -731,12 +771,9 @@
     const candidates = [];
     normalizedGoals.forEach(({ goal, input, index }) => {
       if (!isPlannableGoal(goal)) return;
-      const behaviors = extractBehaviorsFromGoal({ ...input, ...goal, id: goal.id }, today)
-        .filter(
-          (behavior) =>
-            text(behavior.status).toLowerCase() !== "archived" &&
-            (behavior.standard || behavior.minimum),
-        );
+      const behaviors = extractBehaviorsFromGoal({ ...input, ...goal, id: goal.id }, today).filter(
+        isPlannableBehavior,
+      );
       if (!behaviors.length) return;
       const goalHistory = safeHistory.filter((entry) => historyGoalId(entry) === goal.id);
       const relatedTasks = milestoneTasks.filter((task) => task.goalId === goal.id);
@@ -789,7 +826,10 @@
           : 7;
         const weeklyTarget = Math.max(
           1,
-          finiteNumber(behavior.schedule?.daysPerWeek, goal.frequencyPerWeek || 1),
+          finiteNumber(
+            behavior.frequency,
+            finiteNumber(behavior.schedule?.daysPerWeek, goal.frequencyPerWeek || 1),
+          ),
         );
         const frequencyDeficit = Math.max(0, weeklyTarget - weekCompletions);
         const score =
@@ -810,7 +850,7 @@
           category: goal.category,
           goalTitle: goal.title || goal.outcome,
           outcome: goal.outcome,
-          action: behavior.standard || behavior.minimum,
+          action: behaviorTitle(behavior),
           minimumAction: behavior.minimum || goal.actions.minimum,
           score,
           daysToDeadline,
@@ -907,7 +947,7 @@
     const behaviors = extractBehaviorsFromGoal(input, new Date(0));
     const criteria = {
       why: Boolean(goal.why),
-      behavior: behaviors.some((item) => item.standard || item.minimum),
+      behavior: behaviors.some((item) => behaviorTitle(item)),
       notice: Boolean(goal.targetDate || goal.deadline || hasUsableMetric(goal.metric)),
     };
     const completed = Object.values(criteria).filter(Boolean).length;
@@ -1064,6 +1104,91 @@
     );
   }
 
+  function validateBehaviorRecord(input, now = null) {
+    const source = isObject(input) ? input : {};
+    const behavior = normalizeBehaviorRecord(input, {}, now);
+    const errors = [];
+    if (!isObject(input)) errors.push("Behavior must be an object.");
+    if (behavior.version !== BEHAVIOR_VERSION) {
+      errors.push(`Unsupported behavior version: ${behavior.version}.`);
+    }
+    if (!behavior.goalId) errors.push("goalId is required.");
+    if (!behavior.title) errors.push("title is required.");
+    if (source.frequency !== undefined && source.frequency !== "") {
+      const frequency = Number(source.frequency);
+      if (!Number.isFinite(frequency) || frequency < 1 || frequency > 7) {
+        errors.push("frequency must be between 1 and 7 days per week.");
+      }
+    }
+    if (text(source.difficulty) && !BEHAVIOR_DIFFICULTIES.has(text(source.difficulty).toLowerCase())) {
+      errors.push("difficulty must be easy, medium, or hard.");
+    }
+    if (text(source.status) && !BEHAVIOR_STATUSES.has(text(source.status).toLowerCase())) {
+      errors.push("status must be active, paused, or archived.");
+    }
+    if (!behavior.timestamps.createdAt || !behavior.timestamps.updatedAt) {
+      errors.push("timestamps must be valid.");
+    }
+    return { valid: errors.length === 0, errors, value: behavior, behavior };
+  }
+
+  function missionsSupportingBehavior(missions, behaviorId) {
+    const id = text(behaviorId);
+    if (!id) return [];
+    return (Array.isArray(missions) ? missions : []).filter(
+      (mission) => text(mission?.behaviorId) === id,
+    );
+  }
+
+  function calculateBehaviorEvidence(behaviorInput, history, date = new Date(), events = []) {
+    const behavior = normalizeBehaviorRecord(behaviorInput, {}, date);
+    const today = startOfDay(date);
+    const weekStart = startOfWeek(today);
+    const weekEnd = endOfDay(today);
+    const entries = (Array.isArray(history) ? history : []).filter(
+      (entry) => historyBehaviorId(entry) === behavior.id,
+    );
+    const weekEntries = entries.filter(
+      (entry) =>
+        wasPlannedOpportunity(entry) &&
+        isWithinDateRange(historyDate(entry), weekStart, weekEnd),
+    );
+    const completed = weekEntries.filter(wasCompleted).length;
+    const planned = weekEntries.length;
+    const lastCompleted = entries
+      .filter(wasCompleted)
+      .map(historyDate)
+      .filter((value) => parseDate(value))
+      .sort((a, b) => calendarSerial(b) - calendarSerial(a))[0];
+    const eventHits = (Array.isArray(events) ? events : []).filter((event) => {
+      const type = text(event?.type);
+      const metaId = text(event?.metadata?.behaviorId);
+      return (
+        type === "MISSION_COMPLETED" &&
+        metaId === behavior.id &&
+        isWithinDateRange(event.timestamp, weekStart, weekEnd)
+      );
+    }).length;
+    const happening = completed > 0 || eventHits > 0;
+    let fact = "No planned missions for this behavior this week.";
+    if (planned) {
+      fact = `${completed}/${planned} planned missions kept this week.`;
+    } else if (eventHits) {
+      fact = `${eventHits} completed ${eventHits === 1 ? "mission" : "missions"} this week.`;
+    }
+    return {
+      behaviorId: behavior.id,
+      goalId: behavior.goalId,
+      planned,
+      completed,
+      missed: Math.max(0, planned - completed),
+      percent: planned ? Math.round((completed / planned) * 100) : 0,
+      lastCompletedAt: lastCompleted ? formatDateKey(lastCompleted) : "",
+      happening,
+      fact,
+    };
+  }
+
   function setBehaviorStatus(input, status, now = null) {
     const nowDate = parseDate(now) || new Date();
     const behavior = normalizeBehaviorRecord(input, {}, nowDate);
@@ -1071,7 +1196,7 @@
     return normalizeBehaviorRecord(
       {
         ...behavior,
-        status: nextStatus || behavior.status,
+        status: BEHAVIOR_STATUSES.has(nextStatus) ? nextStatus : behavior.status,
         timestamps: {
           ...behavior.timestamps,
           updatedAt: nowDate.toISOString(),
@@ -1091,10 +1216,16 @@
       const change = changes.find((item) => text(item?.behaviorId) === behavior.id);
       if (!change) return behavior;
       const cue = isObject(change.cue) ? change.cue : {};
+      const nextTitle =
+        text(change.title) || text(change.standard) || behavior.title || behavior.standard;
       return normalizeBehaviorRecord({
         ...behavior,
+        title: nextTitle,
+        standard: nextTitle,
+        description: text(change.description) || behavior.description,
+        frequency: finiteNumber(change.frequency, behavior.frequency),
+        difficulty: change.difficulty || behavior.difficulty,
         minimum: text(change.minimum) || behavior.minimum,
-        standard: text(change.standard) || behavior.standard,
         cue: {
           ...behavior.cue,
           trigger: text(cue.trigger) || behavior.cue.trigger,
@@ -1118,6 +1249,8 @@
     PAUSED_STATUS,
     FINAL_STATUSES,
     GOAL_STATUSES,
+    BEHAVIOR_STATUSES,
+    BEHAVIOR_DIFFICULTIES,
     FOCUS_THEMES,
     DEFAULT_PRIVATE_CONFIG,
     identityFromArea,
@@ -1127,11 +1260,14 @@
     goalTitle,
     normalizeObstacles,
     isPlannableGoal,
+    isPlannableBehavior,
+    behaviorTitle,
     normalizeGoalRecord,
     normalizeBehaviorRecord,
     extractBehaviorsFromGoal,
     migrateGoalCollection,
     validateGoalRecord,
+    validateBehaviorRecord,
     calculateSMARTCompleteness,
     calculateSmartCompleteness: calculateSMARTCompleteness,
     calculateGoalReadiness,
@@ -1160,6 +1296,8 @@
     applyBehaviorAdaptation,
     setGoalStatus,
     setBehaviorStatus,
+    missionsSupportingBehavior,
+    calculateBehaviorEvidence,
     buildLapseRecovery,
   };
 
