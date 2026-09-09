@@ -1,14 +1,9 @@
 # LOCK IN
 
-A local-first Chrome new-tab behavior-change system for a Winter Arc.
+Local-first Chrome new-tab that turns your goals into a daily plan.
 
-**Agents and anyone changing the product:** read [docs/PRODUCT.md](docs/PRODUCT.md) first. That is the canonical purpose, philosophy, and architecture. [AGENTS.md](AGENTS.md) is how to work in this repo.
-
-Identity → goals → behaviors → daily plan → real-world data → audit →
-patterns → experiments → AI coach → adapt, then repeat.
-
-The product is that loop, not a habit tracker with AI attached. It
-optimizes for adherence, recovery, and learning — not breakable streaks.
+Open a new tab, see what to do today, then look back at what actually
+happened. Goals, history, and browser time stay on your machine.
 
 ## Install locally
 
@@ -20,31 +15,33 @@ optimizes for adherence, recovery, and learning — not breakable streaks.
 
 ## Tabs
 
-- **Today** — three focus actions, quieter every-day repeats, one-off extras, and timed cues while Chrome is open. Answers “what should I do right now?”
-- **Goals** — who you are becoming. Each identity has a why, outcome, behaviors, progress, and obstacles.
-- **Arc** — the dated window (Winter Arc by default) and per-identity adherence.
-- **Audit** — what actually happened that day: kept and missed actions, a pattern, a coach take, sleep/energy/fitness check-ins, and where the browser went.
-- **Coach** — a cached insight, one-tap adapt (`Yes, fix it`), then chat.
+- **Today** — a few important actions, quieter every-day repeats, and
+  timed cues while Chrome is open. Answers “what should I do right now?”
+- **Goals** — who you are becoming, and the behaviors that get you there.
+- **Arc** — the dated window you are working inside.
+- **Audit** — what actually happened: kept and missed actions, a pattern,
+  check-ins, and where the browser went.
+- **Coach** — an optional local helper that can suggest one next change.
 
-Manual sleep, energy, and fitness check-ins live on Audit. Observed browser time is a local fact on Audit, not a score. Fitness imports can later write
-the same event types with a different `source`.
+## Private data
 
-## AI Coach
+Identity-owned goals, behaviors, experiments, mission history, and coach
+threads live in `chrome.storage.local` on your device.
 
-The Coach tab (and Audit’s **Try this**) send a bounded seven-day context
-to a local Python backend. That context includes the Personal Blueprint,
-active goals, current missions, today’s audit, six prior daily audits,
-important recent events, intervention outcomes, patterns, experiments,
-the last insight, and the current chat thread. It does not send the
-entire event history.
+Personal dates and labels can live in `src/config/personal.js`. That
+file is ignored by git. Copy `src/config/personal.example.js` to
+`src/config/personal.js`, then reload the unpacked extension. The
+committed example contains no personal information.
 
-The backend asks OpenAI for a structured observation, pattern, priority,
-next action, encouragement, and a proposed adaptation. Chat uses the same
-bound. The OpenAI key stays in the backend process and is never loaded by
-the extension.
+## Optional coach
+
+Coach and Audit’s **Try this** can send a bounded recent-context snapshot
+to a local Python backend on your machine. The backend can propose a next
+action and a plan change. Chat uses the same bound. Your API key stays in
+that process and is never loaded by the extension.
 
 Requires Python 3.9 or newer. Chrome cannot start Python itself, so the
-Coach uses a one-time native helper to launch the local backend.
+coach uses a one-time native helper to launch the local backend.
 
 1. Copy `.env.example` to `.env`.
 2. Add your key to `OPENAI_DEVELOPER_KEY` in `.env`.
@@ -56,32 +53,16 @@ Coach uses a one-time native helper to launch the local backend.
 
 If you move this folder, run `npm run setup-coach` again.
 
-The backend listens on `http://127.0.0.1:8787` and exposes
-`GET /health`, `POST /api/coach`, `POST /api/plan`, `POST /api/adapt`,
-and `POST /api/coach/chat`. The extension is permitted to call that local
-origin; regular web-page origins are rejected. `.env` is excluded from
-both git and Cursor agent access.
+The backend listens on `http://127.0.0.1:8787`. The extension may call
+that local origin; regular web-page origins are rejected. `.env` is
+excluded from git.
 
-## Adaptive plan
+Coach adaptations write tomorrow’s plan. Difficulty scales down when
+recent completion is low. After three missed days of the same behavior,
+Audit asks whether the plan was unrealistic instead of declaring a
+streak dead.
 
-Coach adaptations write tomorrow’s plan. Difficulty still scales down
-when recent completion is low. After three missed days of the same
-behavior, Audit asks whether the plan was unrealistic instead of
-declaring a streak dead.
+## Working on this
 
-## Private goals and milestones
-
-LOCK IN keeps identity-owned goals, behaviors, experiments, mission
-history, and coach threads in `chrome.storage.local` on your device.
-
-Personal dates and labels can live in `src/config/personal.js`. That file
-is ignored by git. Copy `src/config/personal.example.js` to
-`src/config/personal.js`, add your `displayName`, arc, and milestones,
-then reload the unpacked extension. The committed example contains no
-personal information.
-
-Each goal hangs off an identity and produces behaviors (cue, minimum,
-standard, if-then recovery). Today’s three actions are scheduled
-instances of those behaviors, plus any active experiment protocol.
-Progress uses planned-opportunity consistency, including recovered
-minimum days.
+Product intent: [docs/PRODUCT.md](docs/PRODUCT.md). How to work in the
+repo: [AGENTS.md](AGENTS.md). Tests live in `tests/`.

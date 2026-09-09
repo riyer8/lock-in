@@ -186,17 +186,17 @@ The question:
 
 Goals should represent meaningful outcomes, not tiny habits.
 
-Example:
+Example (illustrative, not a personal plan):
 
 ```text
 ATHLETE
-Run a half marathon
+Finish a first race
 
 THINKER
-Become genuinely strong at ML
+Get fluent in a hard skill
 
 GLOW UP
-Build a sustainable appearance/self-care system
+Build a sustainable self-care system
 
 EXPLORER
 Build a richer life outside work

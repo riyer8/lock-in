@@ -4,7 +4,7 @@
  */
 globalThis.LOCK_IN_PERSONAL_CONFIG = {
   schemaVersion: 1,
-    displayName: "Ramya",
+    displayName: "",
     arc: {
     name: "My Arc",
     start: "2026-09-07",

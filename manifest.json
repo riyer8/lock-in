@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LOCK IN",
   "version": "1.4.0",
-  "description": "ramya's winter lock in.",
+  "description": "Turns your goals into a daily plan. Local-first Chrome new tab.",
   "permissions": [
     "storage",
     "tabs",
