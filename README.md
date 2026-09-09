@@ -1,68 +1,75 @@
 # LOCK IN
 
-Local-first Chrome new-tab that turns your goals into a daily plan.
+New tab opens. Who are you becoming, what are the few things that matter today, did you actually do them.
 
-Open a new tab, see what to do today, then look back at what actually
-happened. Goals, history, and browser time stay on your machine.
+Winter Arc is just a dated stretch of days (116 by default). You pick an identity, it turns into a daily plan, then you look back at what really happened. Not a habit tracker. Not a todo list. No streak counter trying to parent you.
 
-## Install locally
+I built this to use. The whole thing is one loop: **Choose → Plan → Act → Observe → Audit → Learn → Adapt**.
 
-1. Open `chrome://extensions`.
-2. Turn on **Developer mode**.
-3. Select **Load unpacked**.
-4. Choose this project folder.
-5. Open a new tab.
+## How it works
 
-## Tabs
+Chrome new-tab extension (Manifest V3). What you did lives in an `EventStore` on your laptop. What you *meant* to do does not get to pretend it's the truth.
 
-- **Today** — a few important actions, quieter every-day repeats, and
-  timed cues while Chrome is open. Answers “what should I do right now?”
-- **Goals** — who you are becoming, and the behaviors that get you there.
-- **Arc** — the dated window you are working inside.
-- **Audit** — what actually happened: kept and missed actions, a pattern,
-  check-ins, and where the browser went.
-- **Coach** — an optional local helper that can suggest one next change.
+```text
+IDENTITY → GOALS → BEHAVIORS → DAILY PLAN → REAL LIFE
+  → OBSERVATION → AUDIT → PATTERNS → EXPERIMENTS → AI COACH → ADAPT
+```
 
-## Private data
+| Screen | It's asking |
+| --- | --- |
+| **Today** | What should I do right now? |
+| **Goals** | Who am I becoming? |
+| **Arc** | Am I actually changing? |
+| **Audit** | What happened? |
+| **Coach** | What should I do differently? Optional. Local Python on `127.0.0.1:8787`. |
 
-Identity-owned goals, behaviors, experiments, mission history, and coach
-threads live in `chrome.storage.local` on your device.
+Coach only sees about a week of context. Your OpenAI key stays in that Python process, never in the extension. How to wire it, env vars, and "it's broken": [docs/setup.md](docs/setup.md).
 
-Personal dates and labels can live in `src/config/personal.js`. That
-file is ignored by git. Copy `src/config/personal.example.js` to
-`src/config/personal.js`, then reload the unpacked extension. The
-committed example contains no personal information.
+## Screenshots
 
-## Optional coach
+Fake day. Click a row in [docs/screens.md](docs/screens.md) if you want the longer captions.
 
-Coach and Audit’s **Try this** can send a bounded recent-context snapshot
-to a local Python backend on your machine. The backend can propose a next
-action and a plan change. Chat uses the same bound. Your API key stays in
-that process and is never loaded by the extension.
+<table>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <p><strong>First open</strong></p>
+      <img src="docs/screenshots/landing.png" alt="Winter Arc landing card" />
+      <p><sub>Dated window. Then you start.</sub></p>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <p><strong>Today</strong></p>
+      <img src="docs/screenshots/today.png" alt="Today screen with three focus actions" />
+      <p><sub>A few actions. Repeats stay quiet.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <p><strong>Coach</strong></p>
+      <img src="docs/screenshots/coach.png" alt="Coach insight and chat" />
+      <p><sub>Noticed something. You can push back.</sub></p>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <p><strong>Audit</strong></p>
+      <img src="docs/screenshots/audit.png" alt="Audit of kept and missed actions" />
+      <p><sub>What happened. Including where the browser went.</sub></p>
+    </td>
+  </tr>
+</table>
 
-Requires Python 3.9 or newer. Chrome cannot start Python itself, so the
-coach uses a one-time native helper to launch the local backend.
+## Setup
 
-1. Copy `.env.example` to `.env`.
-2. Add your key to `OPENAI_DEVELOPER_KEY` in `.env`.
-3. Optionally change `OPENAI_MODEL`.
-4. Load the unpacked extension in Chrome.
-5. Run `npm run setup-coach` once (`python3 server/setup_coach.py` also works).
-6. Reload LOCK IN on `chrome://extensions`.
-7. Open a new tab and select **Coach**.
+1. `chrome://extensions`
+2. Developer mode on
+3. **Load unpacked** → this folder (the one with `manifest.json`)
+4. Open a new tab
 
-If you move this folder, run `npm run setup-coach` again.
+Coach is optional. Python 3.9+, nothing to pip:
 
-The backend listens on `http://127.0.0.1:8787`. The extension may call
-that local origin; regular web-page origins are rejected. `.env` is
-excluded from git.
+1. Copy `.env.example` to `.env`, paste `OPENAI_DEVELOPER_KEY`
+2. Load the extension first
+3. `npm run setup-coach` once
+4. Reload the extension, then hit **Coach**
 
-Coach adaptations write tomorrow’s plan. Difficulty scales down when
-recent completion is low. After three missed days of the same behavior,
-Audit asks whether the plan was unrealistic instead of declaring a
-streak dead.
+Moved the folder? Run `setup-coach` again. Want your own dates/name? Copy `src/config/personal.example.js` to `src/config/personal.js` (gitignored).
 
-## Working on this
-
-Product intent: [docs/PRODUCT.md](docs/PRODUCT.md). How to work in the
-repo: [AGENTS.md](AGENTS.md). Tests live in `tests/`.
+More setup detail: [docs/setup.md](docs/setup.md). How the loop maps: [docs/loop.md](docs/loop.md). What I'm aiming at: [docs/PRODUCT.md](docs/PRODUCT.md).

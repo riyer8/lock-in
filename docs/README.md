@@ -1,9 +1,10 @@
-# LOCK IN docs
+# Docs
 
-These documents are the lasting product context for humans and agents. They are not scratch notes.
-
-| Document | What it is |
+| File | What's in it |
 | --- | --- |
-| [PRODUCT.md](PRODUCT.md) | Canonical purpose, philosophy, architecture, product areas, and design/technical north star. **Read this before changing or building anything.** |
+| [PRODUCT.md](PRODUCT.md) | What LOCK IN is trying to be. Read this before changing anything. |
+| [loop.md](loop.md) | Choose → Adapt mapped onto the actual screens. |
+| [screens.md](screens.md) | Shots with captions. Open a section like a tab. |
+| [setup.md](setup.md) | Env vars, coach routes, "it's broken", tests, what's still a wish. |
 
-Install and runtime setup live in the root [README](../README.md). Agent operating instructions live in [AGENTS.md](../AGENTS.md).
+Install is in the [README](../README.md). How to work in the repo: [AGENTS.md](../AGENTS.md).
