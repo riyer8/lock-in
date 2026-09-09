@@ -20,15 +20,13 @@ optimizes for adherence, recovery, and learning — not breakable streaks.
 
 ## Tabs
 
-- **Today** — three focus actions and a Start button. Answers “what should I do right now?”
+- **Today** — three focus actions, quieter every-day repeats, one-off extras, and timed cues while Chrome is open. Answers “what should I do right now?”
 - **Goals** — who you are becoming. Each identity has a why, outcome, behaviors, progress, and obstacles.
 - **Arc** — the dated window (Winter Arc by default) and per-identity adherence.
-- **Audit** — a reflection on what happened, what was missed, a multi-day pattern, and a coach take.
+- **Audit** — what actually happened that day: kept and missed actions, a pattern, a coach take, sleep/energy/fitness check-ins, and where the browser went.
 - **Coach** — a cached insight, one-tap adapt (`Yes, fix it`), then chat.
-- **Progress** — evidence that helps you decide, not a vanity dashboard.
 
-Manual sleep, energy, and fitness check-ins live on Audit. Browser
-observation remains a local event stream. Fitness imports can later write
+Manual sleep, energy, and fitness check-ins live on Audit. Observed browser time is a local fact on Audit, not a score. Fitness imports can later write
 the same event types with a different `source`.
 
 ## AI Coach

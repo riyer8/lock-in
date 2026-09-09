@@ -164,6 +164,14 @@ body.app-ready .command-center.loop-screen .today-shell {
   font-size: clamp(42px, 7vw, 68px);
 }
 
+.today-greeting-emoji {
+  display: inline-block;
+  margin-right: 0.12em;
+  font-size: 0.72em;
+  line-height: 1;
+  vertical-align: 0.04em;
+}
+
 .today-rule {
   width: 100%;
   height: 1px;
@@ -202,6 +210,73 @@ body.app-ready .command-center.loop-screen .today-shell {
 .today-start {
   min-width: 168px;
   margin: 8px 0 26px;
+}
+
+.today-dailies {
+  margin: 0 0 28px;
+}
+
+.today-dailies .aside-kicker {
+  margin: 0 0 10px;
+}
+
+.today-daily-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.today-daily-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  color: #c9c6d3;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.today-daily-list li.is-complete {
+  color: var(--muted);
+}
+
+.today-daily-list li.is-complete .today-daily-title {
+  text-decoration: line-through;
+}
+
+.today-daily-list li.today-daily-empty {
+  grid-template-columns: 1fr;
+}
+
+.today-daily-empty {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.today-daily-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.today-daily-form input {
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(5, 6, 9, 0.28);
+  border: 1px solid rgba(238, 237, 244, 0.12);
+  font: inherit;
+  font-size: 13px;
+}
+
+.today-daily-form .ghost-button {
+  min-height: 34px;
+  padding: 6px 12px;
 }
 
 .today-context-grid {
@@ -333,6 +408,269 @@ body.app-ready .command-center.loop-screen .today-shell {
 .today-task-empty {
   color: var(--muted);
   font-size: 13px;
+}
+
+.today-cue-settings {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(238, 237, 244, 0.08);
+}
+
+.today-cue-settings summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.today-cue-hint {
+  margin: 10px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.today-cue-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-cue-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 6px 6px 6px;
+  border-radius: 14px;
+  color: #dedbe7;
+  background: rgba(5, 6, 9, 0.28);
+  font-size: 13px;
+}
+
+.today-cue-list li .today-cue-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-cue-list li .today-cue-interval {
+  flex: 0 0 auto;
+}
+
+.today-cue-list li .today-cue-delete {
+  margin-left: auto;
+}
+
+.today-cue-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.today-cue-form input[type="text"],
+.today-cue-form #today-cue-input {
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.loop-screen .today-cue-interval-label,
+.loop-screen .today-cue-interval,
+.today-cue-form .today-cue-interval-label,
+.today-cue-list .today-cue-interval {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.loop-screen .today-cue-interval-label > span,
+.loop-screen .today-cue-interval > span {
+  display: inline;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.loop-screen .today-cue-interval-label input,
+.loop-screen .today-cue-interval input {
+  width: 2.7rem;
+  min-width: 2.7rem;
+  max-width: 2.7rem;
+  min-height: 28px;
+  padding: 3px 0;
+  margin: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(5, 6, 9, 0.4);
+  border: 1px solid rgba(238, 237, 244, 0.14);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+  appearance: textfield;
+}
+
+.today-cue-interval-label input::-webkit-outer-spin-button,
+.today-cue-interval-label input::-webkit-inner-spin-button,
+.today-cue-interval input::-webkit-outer-spin-button,
+.today-cue-interval input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.today-cue-form .ghost-button {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.today-cue-rail {
+  position: fixed;
+  top: 68px;
+  right: 18px;
+  z-index: 36;
+  width: min(236px, calc(100vw - 36px));
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.today-cue-rail[hidden] {
+  display: none;
+}
+
+.today-cue-card {
+  position: relative;
+  pointer-events: auto;
+  padding: 14px 16px 14px 38px;
+  border-radius: 16px;
+  transform-origin: right center;
+}
+
+.today-cue-card.is-entering {
+  animation: cue-fly-in 420ms cubic-bezier(0.22, 1, 0.32, 1) both;
+}
+
+.today-cue-card.is-leaving {
+  animation: cue-fly-out 280ms ease both;
+}
+
+.today-cue-dismiss {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.today-cue-dismiss:hover,
+.today-cue-dismiss:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.today-cue-card p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.today-cue-list li.today-task-empty {
+  min-height: 0;
+  padding: 8px 4px;
+  background: transparent;
+}
+
+.today-cue-toggle,
+.today-cue-delete {
+  min-width: 36px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(238, 237, 244, 0.16);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(5, 6, 9, 0.32);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.today-cue-delete {
+  min-width: 28px;
+  padding: 0;
+  border-radius: 10px;
+}
+
+.today-cue-toggle[aria-pressed="true"] {
+  color: #102018;
+  background: #b8d8c3;
+  border-color: transparent;
+}
+
+.today-cue-list li.is-off .today-cue-name {
+  color: var(--muted);
+}
+
+@keyframes cue-fly-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cue-fly-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-cue-card.is-entering,
+  .today-cue-card.is-leaving {
+    animation: none;
+  }
 }
 
 .today-meta {
@@ -1525,6 +1863,98 @@ body.app-ready .command-center.loop-screen .today-shell {
   margin-top: 16px;
 }
 
+#audit-browser-card {
+  overflow: visible;
+}
+
+#audit-browser-card h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+#audit-browser-total {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.audit-browser-list {
+  display: grid;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.audit-browser-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(238, 237, 244, 0.08);
+}
+
+.audit-browser-domain {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-browser-time {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.audit-browser-recent-title {
+  margin-top: 22px;
+}
+
+.audit-browser-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.audit-browser-day {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(238, 237, 244, 0.12);
+  border-radius: 14px;
+  background: rgba(5, 6, 9, 0.32);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.audit-browser-day[aria-pressed="true"] {
+  border-color: rgba(184, 216, 195, 0.45);
+  background: rgba(184, 216, 195, 0.08);
+}
+
+.audit-browser-day__when {
+  color: var(--lavender-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.audit-browser-day__time {
+  font-size: 15px;
+}
+
+.audit-browser-day__top {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .focus-mode input {
   width: 100%;
   padding: 11px 12px;
@@ -1619,6 +2049,22 @@ body.app-ready .command-center.loop-screen .command-layout {
 
   .today-task-form .ghost-button {
     justify-self: start;
+  }
+
+  .today-daily-form {
+    grid-template-columns: 1fr;
+  }
+
+  .today-daily-form .ghost-button {
+    justify-self: start;
+  }
+
+  .today-cue-rail {
+    top: auto;
+    right: 12px;
+    bottom: 16px;
+    left: 12px;
+    width: auto;
   }
 
   .today-focus-list li {

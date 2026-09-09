@@ -4,6 +4,8 @@ const assert = require("node:assert/strict");
 const {
   buildAdaptiveMissions,
   applyAdaptationToPlan,
+  tryNextProposal,
+  missionsFromNextAction,
   choosePlanDifficulty,
   planSize,
 } = require("../src/coach/plan-builder.js");
@@ -234,4 +236,28 @@ test("does not duplicate a preserved goal when the model repeats it", () => {
     1,
   );
   assert.ok(missions.some((mission) => mission.category === "MIND"));
+});
+
+test("Try this keeps the displayed next action as tomorrow's first mission without AI", () => {
+  const next =
+    "Read the minimum two pages of How to Scale Your Model tonight at 7:30 PM, on the bus or at home, and stop after two pages if needed.";
+  const proposal = tryNextProposal(
+    { nextAction: next },
+    "Use Try this to adjust the plan.",
+  );
+  assert.equal(proposal.changes, next);
+  assert.equal(proposal.type, "protect-slot");
+  const missions = missionsFromNextAction({
+    nextAction: proposal.changes,
+    fallbackMissions: [
+      { title: "Run 3x/week", category: "FITNESS" },
+      { title: "Write the paper", category: "CAREER" },
+    ],
+    date: new Date(2026, 8, 9),
+    proposal,
+  });
+  assert.equal(missions[0].title, next);
+  assert.equal(missions[0].source, "adapted-plan");
+  assert.equal(missions.length, 3);
+  assert.equal(missions[1].title, "Run 3x/week");
 });

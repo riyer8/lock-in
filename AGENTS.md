@@ -60,9 +60,8 @@ LOCK IN is a local-first Chrome new-tab extension (`manifest.json` overrides new
 | Today | `command-center-screen` |
 | Goals | `goals-screen` |
 | Arc | `arc-screen` |
-| Audit | `daily-audit-screen` |
+| Audit | `daily-audit-screen` (what happened, check-ins, observed browser time) |
 | Coach | `coach-screen` |
-| Evidence / check-ins | `progress-screen` (must stay an evidence surface, not a vanity dashboard) |
 | Experiments | engine + Audit experiment result; not a top-level tab yet |
 
 | Concern | Where it lives |

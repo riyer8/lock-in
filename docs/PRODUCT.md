@@ -240,8 +240,9 @@ Show:
 - behavioral patterns
 - important changes
 - one useful takeaway
+- observed browser time for that day, plus recent days as fact
 
-Avoid excessive metrics.
+Avoid excessive metrics. Do not keep a separate Evidence tab; Audit is the “what actually happened” surface. Check-ins and browser observation belong here.
 
 ### COACH
 

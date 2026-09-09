@@ -1,4 +1,8 @@
-importScripts("../core/event-engine.js", "../observer/browser-observer.js");
+importScripts(
+  "../core/event-engine.js",
+  "../core/cue-engine.js",
+  "../observer/browser-observer.js",
+);
 
 const NATIVE_HOST_NAME = "com.lockin.coach";
 
@@ -46,13 +50,57 @@ function ensureCoachBackend() {
     }));
 }
 
+const CUE_ALARM_NAME = "lock-in-hourly-cues";
+
+async function loadCueSnapshot() {
+  const keys = [LockInCues.CUES_STORAGE_KEY, LockInCues.CUE_STATE_STORAGE_KEY];
+  const values = await chrome.storage.local.get(keys);
+  const storedCues = values[LockInCues.CUES_STORAGE_KEY];
+  const cues = LockInCues.normalizeCueCollection(storedCues ?? null);
+  const state = LockInCues.ensureInitialized(values[LockInCues.CUE_STATE_STORAGE_KEY]);
+  const writes = {};
+  if (storedCues == null) writes[LockInCues.CUES_STORAGE_KEY] = cues;
+  if (!values[LockInCues.CUE_STATE_STORAGE_KEY]?.initializedAt) {
+    writes[LockInCues.CUE_STATE_STORAGE_KEY] = state;
+  }
+  if (Object.keys(writes).length) await chrome.storage.local.set(writes);
+  return { cues, state };
+}
+
+async function syncDueCue() {
+  const { cues, state } = await loadCueSnapshot();
+  const due = LockInCues.chooseDueCue(cues, state);
+  if (!due) return;
+  if (state.pendingId !== due.id) {
+    await chrome.storage.local.set({
+      [LockInCues.CUE_STATE_STORAGE_KEY]: LockInCues.markPending(state, due.id),
+    });
+  }
+  chrome.runtime.sendMessage({ type: "CUE_DUE", cue: due }).catch(() => {});
+}
+
+function ensureCueAlarm() {
+  chrome.alarms.get(CUE_ALARM_NAME, (existing) => {
+    if (!existing) {
+      chrome.alarms.create(CUE_ALARM_NAME, { periodInMinutes: 1 });
+    }
+  });
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === CUE_ALARM_NAME) syncDueCue();
+});
+
 chrome.runtime.onStartup.addListener(() => {
   browserObserver.initialize({ discardPersisted: true });
   ensureCoachBackend();
+  ensureCueAlarm();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureCoachBackend();
+  ensureCueAlarm();
+  loadCueSnapshot();
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -63,3 +111,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   ensureCoachBackend().then(sendResponse);
   return true;
 });
+
+ensureCueAlarm();
+

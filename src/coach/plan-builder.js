@@ -233,10 +233,67 @@
     }));
   }
 
+  function tryNextProposal(insight, displayed = "") {
+    const adaptation =
+      insight?.proposedAdaptation && typeof insight.proposedAdaptation === "object"
+        ? insight.proposedAdaptation
+        : {};
+    const placeholder = "Use Try this to adjust the plan.";
+    const shown = text(displayed) === placeholder ? "" : text(displayed);
+    const next =
+      text(adaptation.changes) ||
+      text(adaptation.reason) ||
+      text(insight?.nextAction) ||
+      shown;
+    return {
+      type: text(adaptation.type) || "protect-slot",
+      changes: next,
+      reason: text(adaptation.reason) || text(insight?.nextAction) || next,
+    };
+  }
+
+  function missionsFromNextAction({
+    nextAction = "",
+    fallbackMissions = [],
+    date = new Date(),
+    proposal = null,
+  } = {}) {
+    const action = text(nextAction);
+    const dateKey = formatDateKey(date);
+    const adaptedFrom = text(proposal?.type) || "next-action";
+    const reason = text(proposal?.reason) || action;
+    const rest = (Array.isArray(fallbackMissions) ? fallbackMissions : []).filter(
+      (mission) =>
+        mission &&
+        text(mission.title) &&
+        normalizeLabel(mission.title) !== normalizeLabel(action),
+    );
+    const lead = action
+      ? [
+          {
+            id: `${dateKey}:next-action`,
+            title: action,
+            description: action,
+            category: "FOCUS",
+            source: "adapted-plan",
+            adaptedFrom,
+            reason,
+          },
+        ]
+      : [];
+    return [...lead, ...rest].slice(0, 3).map((mission) => ({
+      ...mission,
+      source: "adapted-plan",
+      adaptedFrom,
+    }));
+  }
+
   const planBuilder = {
     PRIORITY_RANK,
     buildAdaptiveMissions,
     applyAdaptationToPlan,
+    tryNextProposal,
+    missionsFromNextAction,
     choosePlanDifficulty,
     planSize,
   };

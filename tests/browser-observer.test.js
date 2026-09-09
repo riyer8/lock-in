@@ -6,6 +6,7 @@ const {
   calculateSessionDuration,
   getBrowserSessionsForDate,
   getBrowserTimeByDomain,
+  getBrowserDaySummaries,
   getHostnameFromUrl,
 } = require("../src/observer/browser-observer.js");
 
@@ -64,6 +65,31 @@ test("aggregates requested-date browser time by domain", () => {
     { domain: "github.com", durationMs: 3000000 },
     { domain: "youtube.com", durationMs: 600000 },
   ]);
+});
+
+test("summarizes browser time for recent local days", () => {
+  const asOf = new Date(2026, 8, 9, 18, 0, 0);
+  const events = [
+    {
+      type: "BROWSER_SITE_SESSION",
+      timestamp: new Date(2026, 8, 9, 10, 0, 0).toISOString(),
+      metadata: { domain: "github.com", durationMs: 3600000 },
+    },
+    {
+      type: "BROWSER_SITE_SESSION",
+      timestamp: new Date(2026, 8, 8, 11, 0, 0).toISOString(),
+      metadata: { domain: "youtube.com", durationMs: 1800000 },
+    },
+  ];
+  const days = getBrowserDaySummaries(events, asOf, 3);
+  assert.equal(days.length, 3);
+  assert.equal(days[0].dateKey, "2026-09-09");
+  assert.equal(days[0].topDomain, "github.com");
+  assert.equal(days[0].totalMs, 3600000);
+  assert.equal(days[1].dateKey, "2026-09-08");
+  assert.equal(days[1].topDomain, "youtube.com");
+  assert.equal(days[2].totalMs, 0);
+  assert.equal(days[2].topDomain, "");
 });
 
 test("records one completed session when Chrome loses focus", async () => {

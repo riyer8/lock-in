@@ -17,7 +17,6 @@
         <button type="button" data-nav="arc-screen">Arc</button>
         <button type="button" data-nav="daily-audit-screen">Audit</button>
         <button type="button" data-nav="coach-screen">Coach</button>
-        <button type="button" data-nav="progress-screen">Evidence</button>
       </div>
       <p id="command-arc-day">Day 1 of 116</p>
     </nav>
@@ -26,6 +25,13 @@
       <div class="celebrate__burst" aria-hidden="true"></div>
       <p id="celebrate-message">Yes.</p>
     </div>
+
+    <aside id="today-cue-rail" class="today-cue-rail" hidden>
+      <article id="today-cue-card" class="today-cue-card surface-card" hidden role="status" aria-live="polite">
+        <button type="button" class="today-cue-dismiss" id="today-cue-dismiss" aria-label="Dismiss reminder">×</button>
+        <p id="today-cue-title">Drink water</p>
+      </article>
+    </aside>
 
     <main class="screen landing" id="landing-screen">
       <section class="hero hero-card" aria-labelledby="arc-title">
@@ -374,7 +380,10 @@
     <main class="screen command-center loop-screen" id="command-center-screen" hidden>
       <div class="command-shell today-shell">
         <section class="today-hero" aria-labelledby="command-greeting">
-          <h1 id="command-greeting">Good morning</h1>
+          <h1 id="command-greeting">
+            <span class="today-greeting-emoji" aria-hidden="true">☀️</span>
+            Good morning
+          </h1>
           <hr class="today-rule" />
           <p id="today-focus-kicker" class="aside-kicker">Today's focus</p>
           <ol class="today-focus-list" id="today-focus-list"></ol>
@@ -382,6 +391,15 @@
             <button type="button" class="continue-button today-start" id="start-focus">Start</button>
             <button type="button" class="continue-button" id="write-goal" hidden>Write a goal</button>
           </div>
+          <section class="today-dailies" aria-labelledby="today-dailies-title">
+            <p class="aside-kicker" id="today-dailies-title">Every day</p>
+            <ul class="today-daily-list" id="today-daily-list"></ul>
+            <form class="today-daily-form" id="today-daily-form">
+              <label class="sr-only" for="today-daily-input">Add something you repeat every day</label>
+              <input id="today-daily-input" maxlength="80" placeholder="Add something you repeat every day" />
+              <button type="submit" class="ghost-button">Add</button>
+            </form>
+          </section>
           <div class="today-context-grid" aria-label="Today context">
             <section class="today-day-card surface-card" aria-labelledby="today-day-title">
               <div class="today-card-heading">
@@ -395,15 +413,30 @@
             </section>
             <section class="today-tasks-card surface-card" aria-labelledby="today-tasks-title">
               <div class="today-card-heading">
-                <p class="aside-kicker" id="today-tasks-title">Today extras</p>
+                <p class="aside-kicker" id="today-tasks-title">Also today</p>
                 <button type="button" class="text-button" id="clear-today-tasks">Clear done</button>
               </div>
               <form class="today-task-form" id="today-task-form">
-                <label class="sr-only" for="today-task-input">Add a task for today</label>
-                <input id="today-task-input" maxlength="120" placeholder="Add a task for today" />
+                <label class="sr-only" for="today-task-input">Add something else for today</label>
+                <input id="today-task-input" maxlength="120" placeholder="Add something else for today" />
                 <button type="submit" class="ghost-button">Add</button>
               </form>
               <ul class="today-task-list" id="today-task-list"></ul>
+              <details class="today-cue-settings" id="today-cue-settings">
+                <summary>Cues</summary>
+                <p class="today-cue-hint">Little reminders while Chrome is open. Quiet from 11pm to 7am. Dismiss from the top left.</p>
+                <form class="today-cue-form" id="today-cue-form">
+                  <label class="sr-only" for="today-cue-input">Add a reminder</label>
+                  <input id="today-cue-input" maxlength="80" placeholder="Drink water, stand up…" />
+                  <div class="today-cue-interval-label">
+                    <span>every</span>
+                    <input id="today-cue-interval" type="number" min="5" max="240" value="60" aria-label="Repeat every minutes" />
+                    <span>min</span>
+                  </div>
+                  <button type="submit" class="ghost-button">Add</button>
+                </form>
+                <ul class="today-cue-list" id="today-cue-list"></ul>
+              </details>
             </section>
           </div>
         </section>
@@ -537,9 +570,18 @@
           </section>
         </article>
 
+        <section class="audit-card" id="audit-browser-card" aria-labelledby="audit-browser-title">
+          <h2 id="audit-browser-title">Where the browser went</h2>
+          <p class="goal-detail__hint">Fact from observed tabs that day. Not a score.</p>
+          <p id="audit-browser-total"></p>
+          <div id="audit-browser-list" class="audit-browser-list"></div>
+          <p class="aside-kicker audit-browser-recent-title">Past days</p>
+          <div id="audit-browser-days" class="audit-browser-days"></div>
+        </section>
+
         <details class="audit-checkins surface-card" id="audit-checkins">
           <summary id="checkin-title">Sleep, energy, fitness</summary>
-          <p class="goal-detail__hint">Manual check-ins feed Today and Evidence. No streaks.</p>
+          <p class="goal-detail__hint">Manual check-ins belong to this day. No streaks.</p>
           <div class="checkin-grid">
             <label>Sleep (hours)
               <input id="sleep-hours" type="number" min="0" max="14" step="0.1" />
@@ -590,22 +632,6 @@
       </div>
     </main>
 
-    <main class="screen progress-screen loop-screen" id="progress-screen" hidden>
-      <div class="progress-shell">
-        <section class="goals-hero surface-card">
-          <p class="aside-kicker">Evidence</p>
-          <h1>Signals, not scores.</h1>
-          <p id="progress-lens">Signals appear as days accumulate.</p>
-          <div class="evidence-hero__tags" aria-label="Evidence purpose">
-            <span>Feeds Audit</span>
-            <span>Local-first</span>
-            <span>No streaks</span>
-          </div>
-        </section>
-        <div id="progress-sections" class="progress-sections"></div>
-      </div>
-    </main>
-
     <main class="screen event-debug" id="event-debug-screen" hidden>
       <section class="event-debug-panel" aria-labelledby="event-debug-title">
         <header>
@@ -651,6 +677,8 @@
 
     <script src="../config/personal.js"></script>
     <script src="../core/event-engine.js"></script>
+    <script src="../core/cue-engine.js"></script>
+    <script src="../core/daily-engine.js"></script>
     <script src="../core/goal-engine.js"></script>
     <script src="../core/experiment-engine.js"></script>
     <script src="../observer/browser-observer.js"></script>

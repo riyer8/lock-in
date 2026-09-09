@@ -24,6 +24,8 @@
     "BEHAVIOR_UPDATED",
     "BEHAVIOR_PAUSED",
     "BEHAVIOR_ARCHIVED",
+    "CUE_DONE",
+    "DAILY_COMPLETED",
   ]);
 
   function eventTime(event) {

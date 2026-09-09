@@ -31,6 +31,10 @@ const MISSION_HISTORY_STORAGE_KEY = "lock-in-mission-history-v1";
 const INSIGHT_STORAGE_KEY = "lock-in-coach-insight";
 const THREAD_STORAGE_KEY = "lock-in-coach-thread";
 const CUSTOM_TASKS_STORAGE_NAME = "custom-tasks";
+const DAILIES_STORAGE_KEY = LockInDailies.DAILIES_STORAGE_KEY;
+const DAILY_COMPLETIONS_STORAGE_NAME = LockInDailies.DAILY_COMPLETIONS_STORAGE_NAME;
+const CUES_STORAGE_KEY = LockInCues.CUES_STORAGE_KEY;
+const CUE_STATE_STORAGE_KEY = LockInCues.CUE_STATE_STORAGE_KEY;
 const COACH_API_URL = "http://127.0.0.1:8787/api/coach";
 const PLAN_API_URL = "http://127.0.0.1:8787/api/plan";
 const ADAPT_API_URL = "http://127.0.0.1:8787/api/adapt";
@@ -143,7 +147,6 @@ const APP_SCREENS = new Set([
   "arc-screen",
   "daily-audit-screen",
   "coach-screen",
-  "progress-screen",
 ]);
 const SCREEN_HASH = {
   "landing-screen": "begin",
@@ -155,12 +158,12 @@ const SCREEN_HASH = {
   "arc-screen": "arc",
   "daily-audit-screen": "audit",
   "coach-screen": "coach",
-  "progress-screen": "evidence",
 };
 const HASH_SCREEN = Object.fromEntries(
   Object.entries(SCREEN_HASH).map(([screenId, hash]) => [hash, screenId]),
 );
-HASH_SCREEN.progress = "progress-screen";
+HASH_SCREEN.progress = "daily-audit-screen";
+HASH_SCREEN.evidence = "daily-audit-screen";
 const ONBOARDING_SCREENS = new Set([
   "landing-screen",
   "identity-screen",
@@ -352,11 +355,19 @@ function getTimeBasedGreeting(date = new Date()) {
   const hour = date.getHours();
   const name = displayName();
   const named = name ? `, ${name}` : "";
-  if (hour < 5) return `Still up${named}`;
-  if (hour < 12) return `Good morning${named}`;
-  if (hour < 17) return `Good afternoon${named}`;
-  if (hour < 21) return `Good evening${named}`;
-  return `Good night${named}`;
+  if (hour < 5) return { emoji: "🌃", phrase: `Still up${named}` };
+  if (hour < 12) return { emoji: "☀️", phrase: `Good morning${named}` };
+  if (hour < 17) return { emoji: "🌤️", phrase: `Good afternoon${named}` };
+  if (hour < 21) return { emoji: "🌇", phrase: `Good evening${named}` };
+  return { emoji: "🌙", phrase: `Good night${named}` };
+}
+
+function renderGreeting(date = new Date()) {
+  if (!commandGreeting) return;
+  const { emoji, phrase } = getTimeBasedGreeting(date);
+  const mark = createTextElement("span", "today-greeting-emoji", emoji);
+  mark.setAttribute("aria-hidden", "true");
+  commandGreeting.replaceChildren(mark, document.createTextNode(` ${phrase}`));
 }
 
 function areaLabels() {
@@ -1196,7 +1207,7 @@ function mapMission(mission, goal) {
   };
 }
 
-function buildDefaultMissions() {
+function buildDefaultMissions(date = new Date()) {
   const selected = LockInGoals.selectDailyMissions(
     activeGoals.map((goal) => ({
       ...goal,
@@ -1204,7 +1215,7 @@ function buildDefaultMissions() {
     })),
     missionHistory,
     PERSONAL_CONFIG.milestones ?? [],
-    new Date(),
+    date,
     3,
   ).map((mission) => {
     const goal = activeGoals.find((item) => item.id === mission.goalId);
@@ -1212,7 +1223,7 @@ function buildDefaultMissions() {
   });
   const experimentActions = LockInExperiments.protocolActionsForDate(
     experiments,
-    new Date(),
+    date,
   ).map((action) => ({
     ...action,
     category: "EXPERIMENT",
@@ -1220,10 +1231,10 @@ function buildDefaultMissions() {
   }));
   const milestone = (PERSONAL_CONFIG.milestones ?? [])
     .map((item, index) => {
-      const days = LockInGoals.differenceInCalendarDays(item.date, new Date());
+      const days = LockInGoals.differenceInCalendarDays(item.date, date);
       if (days < 0 || days > 3) return null;
       return {
-        id: `${getDateKey()}:milestone:${item.id || index}`,
+        id: `${getDateKey(date)}:milestone:${item.id || index}`,
         title: item.label,
         description: item.label,
         category: "MILESTONE",
@@ -1260,7 +1271,7 @@ async function buildTodayMissions(date = new Date()) {
     }).filter(Boolean);
     if (kept.length) return kept;
   }
-  return buildDefaultMissions();
+  return buildDefaultMissions(date);
 }
 
 function followThroughCopy() {
@@ -1377,11 +1388,66 @@ async function renderTodayTasks() {
   const tasks = await readTodayTasks();
   if (!tasks.length) {
     todayTaskList.replaceChildren(
-      createTextElement("li", "today-task-empty", "Add errands, admin, or anything else due today."),
+      createTextElement("li", "today-task-empty", "Errands, admin, or anything else that isn't a mission."),
     );
     return;
   }
   todayTaskList.replaceChildren(...tasks.map(todayTaskElement));
+}
+
+async function loadDailies() {
+  const stored = await privateStorage.read(DAILIES_STORAGE_KEY, []);
+  return LockInDailies.normalizeDailyCollection(stored);
+}
+
+async function loadDailyCompletions(date = new Date()) {
+  return LockInDailies.completionIds(await readDaily(DAILY_COMPLETIONS_STORAGE_NAME, [], date));
+}
+
+async function writeDailyCompletions(ids, date = new Date()) {
+  await writeDaily(DAILY_COMPLETIONS_STORAGE_NAME, LockInDailies.completionIds(ids), date);
+}
+
+function dailyListItem(daily) {
+  const item = document.createElement("li");
+  if (daily.completedToday) item.classList.add("is-complete");
+  const check = document.createElement("button");
+  check.className = "today-task-check";
+  check.type = "button";
+  check.dataset.dailyAction = "toggle";
+  check.dataset.dailyId = daily.id;
+  check.setAttribute(
+    "aria-label",
+    daily.completedToday ? `Undo ${daily.title}` : `Mark ${daily.title} done for today`,
+  );
+  check.textContent = daily.completedToday ? "✓" : "";
+  const title = createTextElement("span", "today-daily-title", daily.title);
+  const remove = document.createElement("button");
+  remove.className = "today-task-delete";
+  remove.type = "button";
+  remove.dataset.dailyAction = "delete";
+  remove.dataset.dailyId = daily.id;
+  remove.setAttribute("aria-label", `Remove ${daily.title} from every day`);
+  remove.textContent = "×";
+  item.append(check, title, remove);
+  return item;
+}
+
+async function renderTodayDailies() {
+  const list = $("today-daily-list");
+  if (!list) return;
+  const dailies = LockInDailies.withTodayState(await loadDailies(), await loadDailyCompletions());
+  if (!dailies.length) {
+    list.replaceChildren(
+      createTextElement(
+        "li",
+        "today-daily-empty",
+        "Repeats every day. Keep this quieter than focus.",
+      ),
+    );
+    return;
+  }
+  list.replaceChildren(...dailies.map(dailyListItem));
 }
 
 async function renderToday() {
@@ -1389,7 +1455,7 @@ async function renderToday() {
   const completed = await completedMissionIds();
   const arcState = calculateArcState(new Date());
   renderedTodayDateKey = getDateKey();
-  commandGreeting.textContent = getTimeBasedGreeting();
+  renderGreeting();
   todayTheme.textContent = await currentTheme();
   todayFollowThrough.textContent = followThroughCopy();
   commandArcInline.textContent = ` · ${getArcDayLabel(arcState)}`;
@@ -1436,16 +1502,199 @@ async function renderToday() {
     );
   }
   renderDayProgress();
+  await renderTodayDailies();
   await renderTodayTasks();
+  await renderCueRail();
 }
 
 async function tickTodayClock() {
   renderDayProgress();
+  renderGreeting();
   const currentDateKey = getDateKey();
   const todayVisible = !document.querySelector("#command-center-screen")?.hidden;
   if (todayVisible && currentDateKey !== renderedTodayDateKey) {
     await renderToday();
+  } else if (document.body.classList.contains("app-ready")) {
+    await renderCueRail();
   }
+}
+
+async function loadCues() {
+  const stored = await privateStorage.read(CUES_STORAGE_KEY, null);
+  if (stored == null) {
+    const cues = LockInCues.normalizeCueCollection(null);
+    await privateStorage.write(CUES_STORAGE_KEY, cues);
+    return cues;
+  }
+  return LockInCues.normalizeCueCollection(stored);
+}
+
+async function loadCueState() {
+  const stored = await privateStorage.read(CUE_STATE_STORAGE_KEY, {});
+  const state = LockInCues.ensureInitialized(stored);
+  if (!stored?.initializedAt) {
+    await privateStorage.write(CUE_STATE_STORAGE_KEY, state);
+  }
+  return state;
+}
+
+function cueListItem(cue) {
+  const item = document.createElement("li");
+  if (!cue.enabled) item.classList.add("is-off");
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "today-cue-toggle";
+  toggle.dataset.cueAction = "toggle";
+  toggle.dataset.cueId = cue.id;
+  toggle.setAttribute("aria-pressed", cue.enabled ? "true" : "false");
+  toggle.setAttribute("aria-label", cue.enabled ? `Pause ${cue.title}` : `Resume ${cue.title}`);
+  toggle.textContent = cue.enabled ? "On" : "Off";
+  const title = createTextElement("span", "today-cue-name", cue.title);
+  const interval = document.createElement("div");
+  interval.className = "today-cue-interval";
+  const intervalInput = document.createElement("input");
+  intervalInput.type = "number";
+  intervalInput.min = String(LockInCues.MIN_INTERVAL_MINUTES);
+  intervalInput.max = String(LockInCues.MAX_INTERVAL_MINUTES);
+  intervalInput.value = String(cue.intervalMinutes);
+  intervalInput.dataset.cueAction = "interval";
+  intervalInput.dataset.cueId = cue.id;
+  intervalInput.setAttribute("aria-label", `Repeat ${cue.title} every minutes`);
+  interval.append(
+    createTextElement("span", "", "every"),
+    intervalInput,
+    createTextElement("span", "", "min"),
+  );
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "today-cue-delete";
+  remove.dataset.cueAction = "delete";
+  remove.dataset.cueId = cue.id;
+  remove.setAttribute("aria-label", `Remove ${cue.title}`);
+  remove.textContent = "×";
+  item.append(toggle, title, interval, remove);
+  return item;
+}
+
+async function renderCueList(cues) {
+  const list = $("today-cue-list");
+  if (!list) return;
+  if (!cues.length) {
+    list.replaceChildren(
+      createTextElement("li", "today-task-empty", "Add a reminder if you want a quiet nudge."),
+    );
+    return;
+  }
+  list.replaceChildren(...cues.map(cueListItem));
+}
+
+let cueRenderQueue = Promise.resolve();
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function hideCueCard(card) {
+  if (!card || card.hidden) {
+    card?.classList.remove("is-entering", "is-leaving");
+    card?.removeAttribute("data-cue-id");
+    return Promise.resolve();
+  }
+  if (prefersReducedMotion()) {
+    card.hidden = true;
+    card.classList.remove("is-entering", "is-leaving");
+    card.removeAttribute("data-cue-id");
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      card.hidden = true;
+      card.classList.remove("is-entering", "is-leaving");
+      card.removeAttribute("data-cue-id");
+      resolve();
+    };
+    card.classList.remove("is-entering");
+    card.classList.add("is-leaving");
+    card.addEventListener("animationend", (event) => {
+      if (event.target === card) done();
+    });
+    window.setTimeout(done, 360);
+  });
+}
+
+function showCueCard(card, cue) {
+  const entering = card.hidden || card.dataset.cueId !== cue.id;
+  card.hidden = false;
+  card.dataset.cueId = cue.id;
+  const title = $("today-cue-title");
+  if (title) title.textContent = cue.title;
+  if (!entering || prefersReducedMotion()) {
+    card.classList.remove("is-entering", "is-leaving");
+    return;
+  }
+  card.classList.remove("is-leaving", "is-entering");
+  void card.offsetWidth;
+  card.classList.add("is-entering");
+}
+
+function renderCueRail() {
+  cueRenderQueue = cueRenderQueue.then(
+    () => syncCueRail(),
+    () => syncCueRail(),
+  );
+  return cueRenderQueue;
+}
+
+async function syncCueRail() {
+  const now = new Date();
+  const rail = $("today-cue-rail");
+  const card = $("today-cue-card");
+  if (!rail || !card) return;
+  const inApp = document.body.classList.contains("app-ready");
+  if (!inApp) {
+    rail.hidden = true;
+    card.hidden = true;
+    card.classList.remove("is-entering", "is-leaving");
+    card.removeAttribute("data-cue-id");
+    return;
+  }
+  rail.hidden = false;
+  const cues = await loadCues();
+  await renderCueList(cues);
+  let state = await loadCueState();
+  const due = LockInCues.chooseDueCue(cues, state, now);
+  if (!due) {
+    await hideCueCard(card);
+    return;
+  }
+  const alreadyShown = state.pendingId === due.id && Boolean(state.lastById[due.id]?.lastShownAt);
+  showCueCard(card, due);
+  if (!alreadyShown) {
+    state = LockInCues.markShown(state, due.id, now);
+    await privateStorage.write(CUE_STATE_STORAGE_KEY, state);
+    await eventApi.record(EventTypes.CUE_SHOWN, { cueId: due.id, title: due.title });
+  }
+}
+
+async function dismissActiveCue() {
+  const card = $("today-cue-card");
+  const cueId = card?.dataset.cueId;
+  if (!cueId) return;
+  const cues = await loadCues();
+  const cue = cues.find((item) => item.id === cueId);
+  const state = await loadCueState();
+  await privateStorage.write(
+    CUE_STATE_STORAGE_KEY,
+    LockInCues.markSnoozed(state, cueId),
+  );
+  await eventApi.record(EventTypes.CUE_SNOOZED, {
+    cueId,
+    title: cue?.title || "",
+  });
+  await renderCueRail();
 }
 
 async function syncPlannedHistory(missions) {
@@ -1760,26 +2009,42 @@ async function refreshCoachInsight() {
 }
 
 async function applyAdaptation(proposal) {
-  await ensureCoachBackend();
-  const context = await collectCoachContext();
-  context.lastInsight = { ...coachInsight, proposedAdaptation: proposal };
-  const response = await fetch(ADAPT_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(context),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "The plan could not be adapted.");
   const tomorrow = LockInGoals.addDays(new Date(), 1);
-  const missions = LockInPlanBuilder.applyAdaptationToPlan({
-    proposed: result.plan?.missions || [],
-    goals: activeGoals.filter(({ status }) => LockInGoals.ACTIVE_STATUSES.has(status)),
-    date: tomorrow,
-    recentOutcomes: context.recentMissionOutcomes,
-    preserved: [],
-    areaLabels: areaLabels(),
-    proposal,
-  });
+  let proposed = [];
+  if (await isCoachReachable()) {
+    try {
+      const context = await collectCoachContext();
+      context.lastInsight = { ...coachInsight, proposedAdaptation: proposal };
+      const response = await fetch(ADAPT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(context),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) proposed = result.plan?.missions || [];
+    } catch {
+      proposed = [];
+    }
+  }
+  const missions = proposed.length
+    ? LockInPlanBuilder.applyAdaptationToPlan({
+        proposed,
+        goals: activeGoals.filter(({ status }) => LockInGoals.ACTIVE_STATUSES.has(status)),
+        date: tomorrow,
+        recentOutcomes: missionHistory,
+        preserved: [],
+        areaLabels: areaLabels(),
+        proposal,
+      })
+    : LockInPlanBuilder.missionsFromNextAction({
+        nextAction: proposal?.changes || proposal?.reason,
+        fallbackMissions: buildDefaultMissions(tomorrow),
+        date: tomorrow,
+        proposal,
+      });
+  if (!missions.length) {
+    throw new Error("No action to put on tomorrow’s plan.");
+  }
   if (proposal?.type === "shrink") {
     activeBehaviors = LockInGoals.applyBehaviorAdaptation(activeBehaviors, {
       changes: activeBehaviors.map((behavior) => ({
@@ -1874,17 +2139,99 @@ function defaultAuditDate() {
   return date;
 }
 
+function formatQuietDuration(durationMs) {
+  const totalMinutes = Math.max(0, Math.round(Number(durationMs) / 60000));
+  if (totalMinutes < 1) return "<1m";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+  return `${minutes}m`;
+}
+
+async function renderAuditBrowser() {
+  const date = selectedAuditDate;
+  const asOf = new Date();
+  const selectedStart = LockInGoals.startOfDay(date);
+  const weekStart = LockInGoals.startOfDay(LockInGoals.addDays(asOf, -6));
+  const fetchStart = selectedStart < weekStart ? selectedStart : weekStart;
+  const events = await eventApi.getEventsBetween(fetchStart, LockInGoals.endOfDay(asOf));
+  const allDomains = LockInBrowserObserver.getBrowserTimeByDomain(events, date);
+  const totalMs = allDomains.reduce((sum, item) => sum + item.durationMs, 0);
+  const domains = allDomains.slice(0, 6);
+  const totalEl = $("audit-browser-total");
+  const list = $("audit-browser-list");
+  const daysEl = $("audit-browser-days");
+  if (totalEl) {
+    totalEl.textContent = totalMs
+      ? `${formatQuietDuration(totalMs)} in the browser`
+      : "No browser time recorded this day.";
+  }
+  if (list) {
+    list.replaceChildren(
+      ...domains.map(({ domain, durationMs }) => {
+        const row = document.createElement("div");
+        row.className = "audit-browser-row";
+        row.append(
+          createTextElement("span", "audit-browser-domain", domain),
+          createTextElement("span", "audit-browser-time", formatQuietDuration(durationMs)),
+        );
+        return row;
+      }),
+    );
+  }
+  if (daysEl) {
+    const selectedKey = getDateKey(date);
+    const days = LockInBrowserObserver.getBrowserDaySummaries(events, asOf, 7);
+    daysEl.replaceChildren(
+      ...days.map((day) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "audit-browser-day";
+        button.dataset.auditDay = day.dateKey;
+        button.setAttribute("aria-pressed", String(day.dateKey === selectedKey));
+        const parsed = LockInGoals.parseDate(day.dateKey);
+        const weekday = parsed
+          ? parsed.toLocaleDateString([], { weekday: "short" })
+          : day.dateKey;
+        const dateLabel = parsed
+          ? parsed.toLocaleDateString([], { month: "short", day: "numeric" })
+          : day.dateKey;
+        button.append(
+          createTextElement("span", "audit-browser-day__when", `${weekday} · ${dateLabel}`),
+          createTextElement("span", "audit-browser-day__time", day.totalMs ? formatQuietDuration(day.totalMs) : "—"),
+          createTextElement("span", "audit-browser-day__top", day.topDomain || "—"),
+        );
+        button.setAttribute(
+          "aria-label",
+          `${weekday} ${dateLabel}, ${day.totalMs ? formatQuietDuration(day.totalMs) : "no time"}, ${day.topDomain || "no top site"}`,
+        );
+        return button;
+      }),
+    );
+  }
+  return { totalMs };
+}
+
 async function renderDailyAudit() {
   const date = selectedAuditDate;
-  const isToday = getDateKey(date) === getDateKey();
-  $("audit-date-label").textContent = isToday ? "Today" : "Yesterday";
+  const today = new Date();
+  const yesterday = LockInGoals.addDays(today, -1);
+  const isToday = getDateKey(date) === getDateKey(today);
+  const isYesterday = getDateKey(date) === getDateKey(yesterday);
+  const relative = isToday
+    ? "Today"
+    : isYesterday
+      ? "Yesterday"
+      : date.toLocaleDateString([], { weekday: "long" });
+  $("audit-date-label").textContent = relative;
   $("audit-date").textContent = date.toLocaleDateString();
-  $("audit-view-title").textContent = isToday ? "Today" : "Yesterday";
+  $("audit-view-title").textContent = relative;
   const audit = await auditService.generateDailyAudit(date);
   const events = await eventApi.getEventsBetween(
     LockInGoals.startOfDay(date),
     LockInGoals.endOfDay(date),
   );
+  const browser = await renderAuditBrowser();
   const patterns = LockInPatterns.detectMultiDayPatterns({
     history: missionHistory,
     events,
@@ -1892,7 +2239,11 @@ async function renderDailyAudit() {
     asOf: date,
   });
   const usefulPattern = patterns.find((pattern) => pattern.type !== "INSUFFICIENT_PATTERN_DATA") || patterns[0];
-  const empty = !audit.happened?.length && !audit.missed?.length && audit.missions.total === 0;
+  const empty =
+    !audit.happened?.length &&
+    !audit.missed?.length &&
+    audit.missions.total === 0 &&
+    !browser.totalMs;
   $("audit-empty").hidden = !empty;
   $("audit-content").hidden = empty;
   const sleep = events.find((event) => event.type === EventTypes.SLEEP_CHECKIN);
@@ -1952,6 +2303,17 @@ async function renderDailyAudit() {
     coachInsight?.proposedAdaptation?.reason ||
     coachInsight?.nextAction ||
     "Use Try this to adjust the plan.";
+  const adaptStatus = $("audit-adapt-status");
+  const tryThis = $("try-this");
+  if (coachInsight?.status === "applied") {
+    if (adaptStatus) {
+      adaptStatus.hidden = false;
+      adaptStatus.textContent = "Tomorrow’s plan changed.";
+    }
+    if (tryThis) tryThis.textContent = "Applied";
+  } else if (tryThis) {
+    tryThis.textContent = "Try this";
+  }
   const finished = experiments.find(
     (experiment) =>
       experiment.status === "active" &&
@@ -2111,232 +2473,6 @@ async function renderArcScreen() {
   }
 }
 
-function weekdayTrendRows() {
-  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return labels
-    .map((label, day) => {
-      const planned = missionHistory.filter((entry) => {
-        if (!entry.planned) return false;
-        const date = LockInGoals.parseDate(entry.date);
-        return date && date.getDay() === day;
-      });
-      return {
-        label,
-        planned: planned.length,
-        completed: planned.filter((entry) => entry.completed).length,
-      };
-    })
-    .filter((row) => row.planned > 0);
-}
-
-async function renderProgress() {
-  const start = LockInGoals.startOfDay(LockInGoals.addDays(new Date(), -13));
-  const events = await eventApi.getEventsBetween(start, LockInGoals.endOfDay(new Date()));
-  const patterns = LockInPatterns.detectMultiDayPatterns({
-    history: missionHistory,
-    events,
-    goals: activeGoals,
-    asOf: new Date(),
-  });
-  const lens = patterns.find((pattern) => pattern.type !== "INSUFFICIENT_PATTERN_DATA");
-  $("progress-lens").textContent =
-    lens?.copy || "Raw signals for better audits.";
-  const sections = [];
-  const signalList = (items) => {
-    const list = document.createElement("ul");
-    list.className = "signal-list";
-    items.filter(Boolean).forEach((item) => {
-      list.append(createTextElement("li", "", item));
-    });
-    return list;
-  };
-  const signalMeter = (percent, label) => {
-    const wrap = document.createElement("div");
-    wrap.className = "signal-meter";
-    const bar = document.createElement("span");
-    bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-    wrap.append(bar, createTextElement("small", "", label));
-    return wrap;
-  };
-  const rankedSignal = (label, percent, value) => {
-    const row = document.createElement("div");
-    row.className = "signal-rank";
-    const bar = document.createElement("span");
-    bar.style.width = `${Math.min(100, Math.max(4, percent))}%`;
-    row.append(createTextElement("strong", "", label), bar, createTextElement("small", "", value));
-    return row;
-  };
-  const addCustom = (title, nodes, options = {}) => {
-    if (!nodes.length) return;
-    const card = document.createElement("section");
-    const { tone = "quiet", wide = false, priority = 50 } = options;
-    card.className = `progress-card surface-card progress-card--${tone}${wide ? " progress-card--wide" : ""}`;
-    card.append(createTextElement("h2", "", title), ...nodes);
-    sections.push({ node: card, priority });
-  };
-
-  activeGoals
-    .filter((goal) => LockInGoals.ACTIVE_STATUSES.has(goal.status))
-    .forEach((goal) => {
-      const consistency = LockInGoals.calculateWeeklyConsistency(
-        missionHistory.filter((entry) => entry.goalId === goal.id),
-        LockInGoals.startOfWeek(new Date()),
-        new Date(),
-      );
-      if (!consistency.planned) return;
-      const interpretation = consistency.percent >= 80
-        ? "Plan is working. Protect it."
-        : consistency.percent >= 50
-          ? "Goal is alive. Tighten the cue."
-          : "Plan is too heavy. Shrink the next action.";
-      addCustom(
-        `${IDENTITY_CATALOG[goal.identityId]?.label || "Goal"} signal`,
-        [
-          signalMeter(consistency.percent, `${consistency.percent}% kept this week`),
-          signalList([
-            displayGoalTitle(goal),
-            goal.why ? `Why: ${goal.why}` : "",
-            `${consistency.completed}/${consistency.planned} planned actions happened.`,
-            interpretation,
-          ]),
-        ],
-        { tone: "primary", wide: true, priority: 10 },
-      );
-    });
-
-  const weekdays = weekdayTrendRows();
-  if (weekdays.length) {
-    addCustom(
-      "Day patterns",
-      [
-        ...weekdays.map((row) => {
-          const percent = Math.round((row.completed / row.planned) * 100);
-          const line = document.createElement("div");
-          line.className = "weekday-row";
-          const bar = document.createElement("div");
-          bar.className = "arc-bar";
-          bar.append(document.createElement("span"));
-          bar.firstChild.style.width = `${percent}%`;
-          line.append(
-            createTextElement("span", "", row.label),
-            bar,
-            createTextElement("span", "", `${percent}%`),
-          );
-          return line;
-        }),
-        createTextElement(
-          "p",
-          "signal-note",
-          "Shows which days support follow-through.",
-        ),
-      ],
-      { tone: "chart", priority: 20 },
-    );
-  }
-
-  const completed = missionHistory.filter((entry) => entry.completed).slice(-6);
-  if (completed.length) {
-    addCustom(
-      "Recent proof",
-      [
-        signalList(
-          completed.map((entry) => {
-            const title =
-              missionActionLabel(entry) ||
-              String(entry.missionId || "").split(":").at(-1).replaceAll("-", " ");
-            return `${entry.date} · ${title}`;
-          }),
-        ),
-        createTextElement("p", "signal-note", "These are receipts, not vibes."),
-      ],
-      { tone: "proof", priority: 30 },
-    );
-  }
-
-  const weekdayTotals = {};
-  for (let offset = 0; offset < 7; offset += 1) {
-    const date = LockInGoals.addDays(new Date(), -offset);
-    LockInBrowserObserver.getBrowserTimeByDomain(events, date).forEach(({ domain, durationMs }) => {
-      weekdayTotals[domain] = (weekdayTotals[domain] || 0) + durationMs;
-    });
-  }
-  const attention = Object.entries(weekdayTotals)
-    .sort((left, right) => right[1] - left[1])
-    .slice(0, 5);
-  if (attention.length) {
-    const mostAttention = attention[0]?.[1] || 1;
-    addCustom(
-      "Browser attention",
-      [
-        ...attention.map(([domain, durationMs]) =>
-          rankedSignal(domain, (durationMs / mostAttention) * 100, formatDuration(durationMs)),
-        ),
-        createTextElement("p", "signal-note", "Where browser attention went."),
-      ],
-      { tone: "attention", wide: true, priority: 40 },
-    );
-  }
-
-  const fitness = events.filter((event) => event.type === EventTypes.FITNESS_CHECKIN);
-  if (fitness.length) {
-    const minutes = fitness.reduce(
-      (sum, event) => sum + (Number(event.metadata?.durationMin) || 0),
-      0,
-    );
-    addCustom(
-      "Fitness",
-      [
-        signalList([
-          `${fitness.length} check-ins logged.`,
-          `${minutes} total minutes.`,
-          `Recent: ${fitness
-            .slice(-4)
-            .map((event) => event.metadata?.activity || "session")
-            .join(" · ")}`,
-        ]),
-      ],
-      { tone: "body", priority: 35 },
-    );
-  }
-
-  if (experiments.length) {
-    addCustom(
-      "Experiments",
-      [
-        signalList(experiments.map((item) => `${item.hypothesis} · ${item.status}`)),
-        createTextElement("p", "signal-note", "Tests what works on you."),
-      ],
-      { tone: "experiment", priority: 45 },
-    );
-  }
-
-  const milestones = PERSONAL_CONFIG.milestones ?? [];
-  if (milestones.length) {
-    addCustom(
-      "Milestones",
-      [signalList(milestones.map((item) => `${item.label} · ${item.date}`))],
-      { tone: "quiet", priority: 60 },
-    );
-  }
-
-  if (!sections.length) {
-    addCustom(
-      "Waiting on evidence",
-      [
-        signalList([
-          "Complete a behavior.",
-          "Log sleep, energy, or fitness.",
-          "Let a few browser days accumulate.",
-        ]),
-      ],
-      { tone: "primary", wide: true, priority: 10 },
-    );
-  }
-  $("progress-sections").replaceChildren(
-    ...sections.sort((left, right) => left.priority - right.priority).map((item) => item.node),
-  );
-}
-
 function formatDuration(durationMs) {
   const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -2453,6 +2589,11 @@ function showScreen(screenId) {
     if (current) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
+  if (inApp) void renderCueRail();
+  else {
+    const rail = $("today-cue-rail");
+    if (rail) rail.hidden = true;
+  }
 }
 
 function screenFromHash(hash = location.hash) {
@@ -2512,7 +2653,6 @@ async function loadAppScreen(screenId) {
     renderCoachInsight();
     renderCoachThread();
   }
-  if (screenId === "progress-screen") await renderProgress();
 }
 
 async function openAppScreen(screenId) {
@@ -2659,6 +2799,112 @@ $("clear-today-tasks")?.addEventListener("click", async () => {
   await writeTodayTasks(tasks.filter((task) => !task.completed));
   await renderTodayTasks();
 });
+$("today-daily-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = $("today-daily-input");
+  const title = input?.value.trim();
+  if (!title) return;
+  const dailies = await loadDailies();
+  if (dailies.length >= LockInDailies.MAX_DAILIES) return;
+  let daily = LockInDailies.normalizeDaily({ title }, new Date());
+  if (dailies.some((item) => item.id === daily.id)) {
+    daily = LockInDailies.normalizeDaily({ title, id: `daily-${Date.now()}` }, new Date());
+  }
+  await privateStorage.write(DAILIES_STORAGE_KEY, [...dailies, daily]);
+  if (input) input.value = "";
+  await renderTodayDailies();
+});
+$("today-daily-list")?.addEventListener("click", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  const action = event.target.closest("[data-daily-action]");
+  if (!action) return;
+  const dailyId = action.dataset.dailyId;
+  if (action.dataset.dailyAction === "delete") {
+    const dailies = await loadDailies();
+    await privateStorage.write(
+      DAILIES_STORAGE_KEY,
+      dailies.filter((daily) => daily.id !== dailyId),
+    );
+    await writeDailyCompletions((await loadDailyCompletions()).filter((id) => id !== dailyId));
+    await renderTodayDailies();
+    return;
+  }
+  const completions = await loadDailyCompletions();
+  const done = completions.includes(dailyId);
+  const next = done
+    ? completions.filter((id) => id !== dailyId)
+    : [...completions, dailyId];
+  await writeDailyCompletions(next);
+  const dailies = await loadDailies();
+  const daily = dailies.find((item) => item.id === dailyId);
+  await eventApi.record(done ? EventTypes.DAILY_UNCOMPLETED : EventTypes.DAILY_COMPLETED, {
+    dailyId,
+    title: daily?.title || "",
+  });
+  await renderTodayDailies();
+});
+$("today-cue-dismiss")?.addEventListener("click", () => dismissActiveCue());
+$("today-cue-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = $("today-cue-input");
+  const title = input?.value.trim();
+  if (!title) return;
+  const intervalMinutes = Number($("today-cue-interval")?.value);
+  const cues = await loadCues();
+  let cue = LockInCues.normalizeCue({ title, intervalMinutes }, new Date());
+  if (cues.some((item) => item.id === cue.id)) {
+    cue = LockInCues.normalizeCue(
+      { title, intervalMinutes, id: `cue-${Date.now()}` },
+      new Date(),
+    );
+  }
+  await privateStorage.write(CUES_STORAGE_KEY, [...cues, cue]);
+  if (input) input.value = "";
+  await renderCueRail();
+});
+$("today-cue-list")?.addEventListener("click", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest("[data-cue-action='interval']")) return;
+  const action = event.target.closest("[data-cue-action]");
+  if (!action) return;
+  const cues = await loadCues();
+  const cueId = action.dataset.cueId;
+  const nextCues =
+    action.dataset.cueAction === "delete"
+      ? cues.filter((cue) => cue.id !== cueId)
+      : cues.map((cue) =>
+          cue.id === cueId ? { ...cue, enabled: !cue.enabled } : cue,
+        );
+  await privateStorage.write(CUES_STORAGE_KEY, nextCues);
+  const state = await loadCueState();
+  if (state.pendingId === cueId && action.dataset.cueAction !== "toggle") {
+    await privateStorage.write(CUE_STATE_STORAGE_KEY, LockInCues.markPending(state, ""));
+  } else if (action.dataset.cueAction === "toggle") {
+    const disabled = nextCues.find((cue) => cue.id === cueId && !cue.enabled);
+    if (disabled && state.pendingId === cueId) {
+      await privateStorage.write(
+        CUE_STATE_STORAGE_KEY,
+        LockInCues.markPending(state, ""),
+      );
+    }
+  }
+  await renderCueRail();
+});
+$("today-cue-list")?.addEventListener("change", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  const input = event.target.closest("[data-cue-action='interval']");
+  if (!input) return;
+  const cueId = input.dataset.cueId;
+  const intervalMinutes = Number(input.value);
+  const cues = await loadCues();
+  await privateStorage.write(
+    CUES_STORAGE_KEY,
+    cues.map((cue) =>
+      cue.id === cueId ? LockInCues.normalizeCue({ ...cue, intervalMinutes }) : cue,
+    ),
+  );
+  await renderCueRail();
+});
 $("close-focus")?.addEventListener("click", closeFocusMode);
 $("focus-done")?.addEventListener("click", async () => {
   const missions = await buildTodayMissions();
@@ -2697,27 +2943,45 @@ $("audit-today")?.addEventListener("click", () => {
   selectedAuditDate = new Date();
   renderDailyAudit();
 });
+$("audit-browser-days")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-audit-day]");
+  if (!button) return;
+  const nextDate = LockInGoals.parseDate(button.dataset.auditDay);
+  if (!nextDate) return;
+  selectedAuditDate = nextDate;
+  await renderDailyAudit();
+});
 $("refresh-audit")?.addEventListener("click", renderDailyAudit);
 function coachOfflineCopy() {
   return "Local coach offline. Try again when it’s running.";
 }
 
 $("try-this")?.addEventListener("click", async () => {
-  const proposal = coachInsight?.proposedAdaptation || {
-    type: "protect-slot",
-    changes: "Move the hardest work to the first slot tomorrow.",
-    reason: "Protect the slipping goal.",
-  };
+  const displayed = $("audit-coach-copy")?.textContent || "";
+  const proposal = LockInPlanBuilder.tryNextProposal(coachInsight, displayed);
   const status = $("audit-adapt-status");
+  const button = $("try-this");
+  if (!proposal.changes) {
+    if (status) {
+      status.hidden = false;
+      status.textContent = "No next action yet.";
+    }
+    return;
+  }
   if (status) {
     status.hidden = false;
     status.textContent = "Working on tomorrow…";
   }
+  if (button) button.disabled = true;
   try {
     await applyAdaptation(proposal);
     if (status) status.textContent = "Tomorrow’s plan changed.";
+    if (button) button.textContent = "Applied";
+    renderCoachInsight();
   } catch {
-    if (status) status.textContent = coachOfflineCopy();
+    if (status) status.textContent = "Could not change tomorrow’s plan.";
+  } finally {
+    if (button) button.disabled = false;
   }
 });
 $("keep-experiment")?.addEventListener("click", async () => {
@@ -2741,16 +3005,10 @@ $("discard-experiment")?.addEventListener("click", async () => {
 });
 $("yes-fix-it")?.addEventListener("click", async () => {
   try {
-    await applyAdaptation(
-      coachInsight?.proposedAdaptation || {
-        type: "protect-slot",
-        changes: "Protect the slipping behavior tomorrow morning.",
-        reason: "The current evening plan is overloaded.",
-      },
-    );
+    await applyAdaptation(LockInPlanBuilder.tryNextProposal(coachInsight));
     renderCoachInsight();
   } catch {
-    $("coach-error").textContent = coachOfflineCopy();
+    $("coach-error").textContent = "Could not change tomorrow’s plan.";
     $("coach-error").hidden = false;
   }
 });
@@ -2935,3 +3193,16 @@ setInterval(renderArcState, 60 * 60 * 1000);
 setInterval(() => {
   tickTodayClock();
 }, 60 * 1000);
+if (globalThis.chrome?.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === "CUE_DUE") void renderCueRail();
+  });
+}
+if (globalThis.chrome?.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes[CUES_STORAGE_KEY] || changes[CUE_STATE_STORAGE_KEY]) {
+      void renderCueRail();
+    }
+  });
+}

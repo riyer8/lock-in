@@ -59,6 +59,31 @@
       .sort((first, second) => second.durationMs - first.durationMs);
   }
 
+  function localDateKey(date = new Date()) {
+    const value = date instanceof Date ? date : new Date(date);
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getBrowserDaySummaries(events, asOf = new Date(), dayCount = 7) {
+    const origin = new Date(asOf);
+    origin.setHours(0, 0, 0, 0);
+    const count = Math.max(1, Math.min(14, Number(dayCount) || 7));
+    return Array.from({ length: count }, (_, offset) => {
+      const date = new Date(origin);
+      date.setDate(date.getDate() - offset);
+      const domains = getBrowserTimeByDomain(events, date);
+      return {
+        dateKey: localDateKey(date),
+        totalMs: domains.reduce((sum, item) => sum + item.durationMs, 0),
+        domains,
+        topDomain: domains[0]?.domain || "",
+      };
+    });
+  }
+
   class ObserverStateStore {
     constructor(storageArea, storageKey = OBSERVER_STATE_KEY) {
       this.storage = storageArea;
@@ -298,6 +323,7 @@
     calculateSessionDuration,
     getBrowserSessionsForDate,
     getBrowserTimeByDomain,
+    getBrowserDaySummaries,
   };
 
   globalScope.LockInBrowserObserver = browserObserver;

@@ -126,6 +126,29 @@ test("records goal archive and completion events", async () => {
   );
 });
 
+test("records cue shown, done, and snoozed events", async () => {
+  const api = new EventApi(new EventStore(new MemoryStorage()));
+  await api.record(EventTypes.CUE_SHOWN, { cueId: "water", title: "Drink water" });
+  await api.record(EventTypes.CUE_DONE, { cueId: "water", title: "Drink water" });
+  await api.record(EventTypes.CUE_SNOOZED, { cueId: "walk", title: "Stand and walk" });
+  const events = await api.getEvents();
+  assert.deepEqual(
+    events.map((event) => event.type),
+    [EventTypes.CUE_SHOWN, EventTypes.CUE_DONE, EventTypes.CUE_SNOOZED],
+  );
+});
+
+test("records repeating daily completions", async () => {
+  const api = new EventApi(new EventStore(new MemoryStorage()));
+  await api.record(EventTypes.DAILY_COMPLETED, { dailyId: "bed", title: "Make the bed" });
+  await api.record(EventTypes.DAILY_UNCOMPLETED, { dailyId: "bed", title: "Make the bed" });
+  const events = await api.getEvents();
+  assert.deepEqual(
+    events.map((event) => event.type),
+    [EventTypes.DAILY_COMPLETED, EventTypes.DAILY_UNCOMPLETED],
+  );
+});
+
 test("records behavior create, pause, and archive events", async () => {
   const api = new EventApi(new EventStore(new MemoryStorage()));
   await api.record(EventTypes.BEHAVIOR_CREATED, {
