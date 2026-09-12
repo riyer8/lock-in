@@ -146,8 +146,6 @@ PATTERNS
    ↓
 EXPERIMENTS
    ↓
-AI COACH
-   ↓
 ADAPT
    ↺
 ```
@@ -244,29 +242,15 @@ Show:
 
 Avoid excessive metrics. Do not keep a separate Evidence tab; Audit is the “what actually happened” surface. Check-ins and browser observation belong here.
 
-### COACH
+### ADAPT
 
 The question:
 
 > **What should I do differently?**
 
-The AI Coach should eventually reason across:
+Adaptation lives on Audit (**Try this**), not a separate Coach tab and not an AI integration.
 
-- identity
-- goals
-- behavior
-- audits
-- browser activity
-- fitness
-- food
-- experiments
-- interventions
-
-It should prioritize rather than overwhelm.
-
-The Coach should be:
-
-**smart + honest + concise + personalized + actionable.**
+If a plan repeatedly fails, change the plan. Prioritize rather than overwhelm. Do not rebuild a Coach screen or wire a model into the extension unless the product doc is explicitly updated to ask for that.
 
 ### EXPERIMENTS
 
@@ -349,7 +333,7 @@ Keep:
 
 - local-first where possible
 - modular architecture
-- clear separation between data, logic, AI, and UI
+- clear separation between data, logic, and UI
 - existing EventStore as the behavioral source of truth
 
 Do not introduce infrastructure unless the feature genuinely requires it.

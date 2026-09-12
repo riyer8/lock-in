@@ -229,7 +229,7 @@
     return missions.map((mission) => ({
       ...mission,
       source: "adapted-plan",
-      adaptedFrom: text(proposal?.type) || "coach",
+      adaptedFrom: text(proposal?.type) || "audit",
     }));
   }
 

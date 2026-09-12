@@ -1,12 +1,10 @@
 {
   "name": "lock-in",
-  "version": "1.4.0",
+  "version": "1.7.0",
   "private": true,
   "description": "Local-first Chrome new-tab that turns your goals into a daily plan.",
   "scripts": {
-    "start": "python3 server/server.py",
-    "setup-coach": "python3 server/setup_coach.py",
-    "test": "node --test && python3 -m unittest discover -s tests -p 'test_*.py'"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20.6"

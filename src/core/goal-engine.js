@@ -69,6 +69,22 @@
     "digital-life": "thinker",
   });
 
+  const LIFE_AREAS = Object.freeze([
+    Object.freeze({ id: "health", label: "Health" }),
+    Object.freeze({ id: "fitness", label: "Fitness" }),
+    Object.freeze({ id: "career", label: "Career" }),
+    Object.freeze({ id: "learning", label: "Learning" }),
+    Object.freeze({ id: "appearance", label: "Appearance" }),
+    Object.freeze({ id: "relationships", label: "Relationships" }),
+    Object.freeze({ id: "environment", label: "Environment" }),
+    Object.freeze({ id: "finance", label: "Finance" }),
+    Object.freeze({ id: "personal", label: "Personal" }),
+  ]);
+  const DEFAULT_LIFE_AREA = "personal";
+  const LIFE_AREA_BY_ID = Object.freeze(
+    Object.fromEntries(LIFE_AREAS.map((area) => [area.id, area])),
+  );
+
   const FOCUS_THEMES = Object.freeze(["ENERGY", "FOCUS", "RECOVERY", "CONSISTENCY"]);
 
   const DEFAULT_PRIVATE_CONFIG = Object.freeze({
@@ -188,6 +204,56 @@
       totalDays,
       progress: totalDays === 0 ? (elapsedDays >= 0 ? 1 : 0) : clamp(elapsedDays / totalDays, 0, 1),
     };
+  }
+
+  function describeInclusiveArc({ start, end, asOf = new Date() } = {}) {
+    const startDate = startOfDay(start);
+    const endDate = startOfDay(end);
+    const today = startOfDay(asOf);
+    if (!startDate || !endDate || !today) {
+      return { valid: false, currentDay: 0, totalDays: 0, daysRemaining: 0 };
+    }
+    const span = differenceInCalendarDays(endDate, startDate);
+    const elapsed = differenceInCalendarDays(today, startDate);
+    if (!Number.isFinite(span) || span < 0 || !Number.isFinite(elapsed)) {
+      return { valid: false, currentDay: 0, totalDays: 0, daysRemaining: 0 };
+    }
+    const totalDays = span + 1;
+    const currentDay = elapsed + 1;
+    return {
+      valid: true,
+      currentDay,
+      totalDays,
+      daysRemaining:
+        currentDay < 1 ? totalDays : Math.max(0, totalDays - Math.min(currentDay, totalDays)),
+      startDate,
+      endDate,
+    };
+  }
+
+  function dropClosedGoals(goals = [], behaviors = []) {
+    const listedGoals = Array.isArray(goals) ? goals : [];
+    const listedBehaviors = Array.isArray(behaviors) ? behaviors : [];
+    const keptGoals = listedGoals.filter((goal) => !FINAL_STATUSES.has(goal?.status));
+    const keptIds = new Set(keptGoals.map((goal) => goal.id));
+    return {
+      goals: keptGoals,
+      behaviors: listedBehaviors.filter((behavior) => keptIds.has(behavior?.goalId)),
+    };
+  }
+
+  function normalizeLifeArea(value) {
+    const raw = text(value);
+    if (!raw) return DEFAULT_LIFE_AREA;
+    const compact = raw.toLowerCase().replace(/[\s_]+/g, "-");
+    const match = LIFE_AREAS.find(
+      (area) => area.id === compact || area.label.toLowerCase() === raw.toLowerCase(),
+    );
+    return match?.id || DEFAULT_LIFE_AREA;
+  }
+
+  function lifeAreaLabel(value) {
+    return LIFE_AREA_BY_ID[normalizeLifeArea(value)]?.label || LIFE_AREA_BY_ID[DEFAULT_LIFE_AREA].label;
   }
 
   function identityFromArea(area) {
@@ -433,6 +499,7 @@
       identityId,
       category: text(source.category) || categoryFromIdentity(identityId),
       area: area || areaFromIdentity(identityId),
+      lifeArea: normalizeLifeArea(source.lifeArea),
       title,
       outcome: outcome || title,
       why: text(source.why),
@@ -1245,6 +1312,8 @@
     BEHAVIOR_VERSION,
     IDENTITY_CATALOG,
     AREA_TO_IDENTITY,
+    LIFE_AREAS,
+    DEFAULT_LIFE_AREA,
     ACTIVE_STATUSES,
     PAUSED_STATUS,
     FINAL_STATUSES,
@@ -1257,6 +1326,8 @@
     areaFromIdentity,
     categoryFromIdentity,
     identityFromCategory,
+    normalizeLifeArea,
+    lifeAreaLabel,
     goalTitle,
     normalizeObstacles,
     isPlannableGoal,
@@ -1280,6 +1351,8 @@
     differenceInCalendarDays,
     isWithinDateRange,
     getDateArc,
+    describeInclusiveArc,
+    dropClosedGoals,
     startOfWeek,
     validatePrivateConfig,
     validatePersonalConfig,

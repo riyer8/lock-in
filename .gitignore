@@ -1,23 +1,13 @@
 .cursor/*
 !.cursor/rules/
 .cursor/rules/*
+.cursorignore
 !.cursor/rules/product-context.mdc
 .env
 .env.*
-!.env.example
 node_modules/
 src/config/personal.js
-server/.generated/
 .tmp-ui/
-
-# Python
-.venv/
-venv/
-env/
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
 
 # OS junk
 .DS_Store

@@ -2,7 +2,7 @@
 
 New tab opens. Who are you becoming, what are the few things that matter today, did you actually do them.
 
-Winter Arc is just a dated stretch of days (116 by default). You pick an identity, it turns into a daily plan, then you look back at what really happened. Not a habit tracker. Not a todo list. No streak counter trying to parent you.
+Winter Arc is just a dated stretch of days (116 by default, through Dec 31). You pick an identity, it turns into a daily plan, then you look back at what really happened. Not a habit tracker. Not a todo list. No streak counter trying to parent you.
 
 I built this to use. The whole thing is one loop: **Choose → Plan → Act → Observe → Audit → Learn → Adapt**.
 
@@ -12,7 +12,7 @@ Chrome new-tab extension (Manifest V3). What you did lives in an `EventStore` on
 
 ```text
 IDENTITY → GOALS → BEHAVIORS → DAILY PLAN → REAL LIFE
-  → OBSERVATION → AUDIT → PATTERNS → EXPERIMENTS → AI COACH → ADAPT
+  → OBSERVATION → AUDIT → PATTERNS → EXPERIMENTS → ADAPT
 ```
 
 | Screen | It's asking |
@@ -20,10 +20,9 @@ IDENTITY → GOALS → BEHAVIORS → DAILY PLAN → REAL LIFE
 | **Today** | What should I do right now? |
 | **Goals** | Who am I becoming? |
 | **Arc** | Am I actually changing? |
-| **Audit** | What happened? |
-| **Coach** | What should I do differently? Optional. Local Python on `127.0.0.1:8787`. |
+| **Audit** | What happened? What should I try next? |
 
-Coach only sees about a week of context. Your OpenAI key stays in that Python process, never in the extension. How to wire it, env vars, and "it's broken": [docs/setup.md](docs/setup.md).
+The gear in the nav resets the arc: day 1 from today through the end date, and archived/reached goals leave. It asks twice in the app, not a browser popup.
 
 ## Screenshots
 
@@ -44,15 +43,11 @@ Fake day. Click a row in [docs/screens.md](docs/screens.md) if you want the long
   </tr>
   <tr>
     <td align="center" valign="top" width="50%">
-      <p><strong>Coach</strong></p>
-      <img src="docs/screenshots/coach.png" alt="Coach insight and chat" />
-      <p><sub>Noticed something. You can push back.</sub></p>
-    </td>
-    <td align="center" valign="top" width="50%">
       <p><strong>Audit</strong></p>
       <img src="docs/screenshots/audit.png" alt="Audit of kept and missed actions" />
       <p><sub>What happened. Including where the browser went.</sub></p>
     </td>
+    <td></td>
   </tr>
 </table>
 
@@ -63,13 +58,6 @@ Fake day. Click a row in [docs/screens.md](docs/screens.md) if you want the long
 3. **Load unpacked** → this folder (the one with `manifest.json`)
 4. Open a new tab
 
-Coach is optional. Python 3.9+, nothing to pip:
-
-1. Copy `.env.example` to `.env`, paste `OPENAI_DEVELOPER_KEY`
-2. Load the extension first
-3. `npm run setup-coach` once
-4. Reload the extension, then hit **Coach**
-
-Moved the folder? Run `setup-coach` again. Want your own dates/name? Copy `src/config/personal.example.js` to `src/config/personal.js` (gitignored).
+Want your own dates/name? Copy `src/config/personal.example.js` to `src/config/personal.js` (gitignored). After a reload, the gear can restart the count from today.
 
 More setup detail: [docs/setup.md](docs/setup.md). How the loop maps: [docs/loop.md](docs/loop.md). What I'm aiming at: [docs/PRODUCT.md](docs/PRODUCT.md).

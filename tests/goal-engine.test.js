@@ -443,6 +443,74 @@ test("normalizes title, category, targetDate, obstacles, and supporting behavior
   assert.equal(validation.valid, true);
 });
 
+test("existing goals without a life area become Personal", () => {
+  const normalized = Goals.normalizeGoalRecord(goal(), "2030-01-05T12:00:00Z");
+  assert.equal(normalized.lifeArea, "personal");
+  assert.equal(Goals.lifeAreaLabel(normalized.lifeArea), "Personal");
+});
+
+test("lifeArea accepts default labels and falls back to Personal", () => {
+  assert.equal(Goals.normalizeLifeArea("Fitness"), "fitness");
+  assert.equal(Goals.normalizeLifeArea("relationships"), "relationships");
+  assert.equal(Goals.normalizeLifeArea("not-a-real-area"), "personal");
+  assert.equal(Goals.normalizeLifeArea(""), "personal");
+  const named = Goals.normalizeGoalRecord(
+    goal({ lifeArea: "Career" }),
+    "2030-01-05T12:00:00Z",
+  );
+  assert.equal(named.lifeArea, "career");
+  assert.deepEqual(
+    Goals.LIFE_AREAS.map((area) => area.label),
+    [
+      "Health",
+      "Fitness",
+      "Career",
+      "Learning",
+      "Appearance",
+      "Relationships",
+      "Environment",
+      "Finance",
+      "Personal",
+    ],
+  );
+});
+
+test("inclusive arc from today to year end is day 1 of remaining days", () => {
+  const progress = Goals.describeInclusiveArc({
+    start: "2026-09-12",
+    end: "2026-12-31",
+    asOf: "2026-09-12",
+  });
+  assert.equal(progress.valid, true);
+  assert.equal(progress.currentDay, 1);
+  assert.equal(progress.totalDays, 111);
+  assert.equal(progress.daysRemaining, 110);
+});
+
+test("dropClosedGoals removes archived and reached goals plus their behaviors", () => {
+  const result = Goals.dropClosedGoals(
+    [
+      goal({ id: "keep", status: "active" }),
+      goal({ id: "paused", status: "paused" }),
+      goal({ id: "done", status: "archived" }),
+      goal({ id: "reached", status: "completed" }),
+    ],
+    [
+      { id: "b-keep", goalId: "keep", status: "active" },
+      { id: "b-done", goalId: "done", status: "archived" },
+      { id: "b-reached", goalId: "reached", status: "archived" },
+    ],
+  );
+  assert.deepEqual(
+    result.goals.map((item) => item.id),
+    ["keep", "paused"],
+  );
+  assert.deepEqual(
+    result.behaviors.map((item) => item.id),
+    ["b-keep"],
+  );
+});
+
 test("paused goals leave daily planning and can be resumed", () => {
   const source = goal({ id: "goal-keep", area: "Area A" });
   const paused = Goals.setGoalStatus(source, "paused", "2030-06-03T12:00:00Z");

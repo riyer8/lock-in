@@ -5,20 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101118" />
     <title>LOCK IN</title>
+    <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="../assets/icon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../assets/icon-128.png" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="app-screens.css" />
+    <script>
+      (function applyStoredTheme() {
+        try {
+          var stored = localStorage.getItem("lock-in-theme");
+          var theme = stored ? JSON.parse(stored) : "system";
+          if (theme !== "light" && theme !== "dark" && theme !== "system") theme = "system";
+          document.documentElement.dataset.theme = theme;
+        } catch (error) {
+          document.documentElement.dataset.theme = "system";
+        }
+      })();
+    </script>
   </head>
   <body>
     <nav id="app-nav" class="app-nav" hidden aria-label="Main">
-      <button type="button" class="command-brand" data-nav="command-center-screen">LOCK IN</button>
+      <button type="button" class="command-brand" data-nav="command-center-screen">
+        <img src="../assets/icon.svg" width="22" height="22" alt="" />
+        LOCK IN
+      </button>
       <div class="app-nav__links">
         <button type="button" data-nav="command-center-screen">Today</button>
         <button type="button" data-nav="goals-screen">Goals</button>
         <button type="button" data-nav="arc-screen">Arc</button>
         <button type="button" data-nav="daily-audit-screen">Audit</button>
-        <button type="button" data-nav="coach-screen">Coach</button>
       </div>
-      <p id="command-arc-day">Day 1 of 116</p>
+      <div class="app-nav__meta">
+        <p id="command-arc-day">Day 1 of 116</p>
+        <button type="button" class="app-nav__settings" id="open-settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
     </nav>
 
     <div id="celebrate" class="celebrate" hidden role="status">
@@ -36,11 +61,7 @@
     <main class="screen landing" id="landing-screen">
       <section class="hero hero-card" aria-labelledby="arc-title">
         <p class="label">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-            <rect x="5" y="10" width="14" height="11" rx="3" />
-            <path d="M12 15v2" />
-          </svg>
+          <img src="../assets/icon-48.png" width="28" height="28" alt="" />
           <span>LOCK IN</span>
         </p>
 
@@ -293,6 +314,11 @@
             <button type="button" class="continue-button" id="create-goal">Create a goal</button>
           </div>
         </section>
+        <section class="identity-picker surface-card" aria-labelledby="life-area-filter-title">
+          <p class="aside-kicker" id="life-area-filter-title">Life area</p>
+          <p class="goal-detail__hint">Group and filter outcomes by the part of life they belong to.</p>
+          <div id="life-area-filter" class="identity-picker__row"></div>
+        </section>
         <section class="identity-picker surface-card" aria-labelledby="identity-picker-title">
           <p class="aside-kicker" id="identity-picker-title">Identities I'm practicing</p>
           <p class="goal-detail__hint">Category for goals. Cards are outcomes, not habits.</p>
@@ -313,6 +339,12 @@
             </header>
             <input type="hidden" id="goal-id" />
             <input type="hidden" id="goal-identity" />
+            <section>
+              <h3>Life area</h3>
+              <label>Part of life
+                <select id="goal-life-area" required></select>
+              </label>
+            </section>
             <section>
               <h3>Category</h3>
               <label>Who this belongs to
@@ -604,33 +636,48 @@
       </div>
     </main>
 
-    <main class="screen coach-screen loop-screen" id="coach-screen" hidden>
-      <div class="coach-shell">
-        <section class="coach-insight surface-card" aria-labelledby="coach-insight-title">
-          <p class="aside-kicker">What should I do differently?</p>
-          <h1 id="coach-insight-title">Ask what to do next.</h1>
-          <p id="coach-noticing" class="coach-noticing"></p>
-          <p id="coach-offer" class="coach-offer" hidden>I can change tomorrow’s plan around this.</p>
-          <div class="coach-insight-actions">
-            <button type="button" class="continue-button" id="yes-fix-it" hidden>Yes, fix it</button>
-            <button type="button" class="ghost-button" id="refresh-insight">Look again</button>
+    <div id="settings-overlay" class="settings-overlay" hidden>
+      <article class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <header class="settings-sheet__head">
+          <div>
+            <p class="aside-kicker">Settings</p>
+            <h2 id="settings-title">Your space</h2>
           </div>
-          <p id="coach-loading" class="coach-card__status" role="status" hidden>Reading today’s context…</p>
-          <p id="coach-error" class="coach-card__error" role="alert" hidden></p>
-        </section>
-        <section class="coach-chat surface-card" aria-labelledby="coach-chat-title">
-          <p class="aside-kicker" id="coach-chat-title">Talk</p>
-          <div id="coach-thread" class="coach-thread" aria-live="polite"></div>
-          <p id="coach-chat-loading" class="coach-card__status" role="status" hidden>Reading your recent days…</p>
-          <p id="coach-chat-error" class="coach-card__error" role="alert" hidden></p>
-          <form id="coach-chat-form" class="coach-chat-form">
-            <label class="sr-only" for="coach-chat-input">Message the coach</label>
-            <input id="coach-chat-input" maxlength="400" autocomplete="off" placeholder="What’s getting in the way?" />
-            <button type="submit" id="coach-chat-send">Send</button>
-          </form>
-        </section>
-      </div>
-    </main>
+          <button type="button" class="settings-sheet__close" id="settings-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div id="settings-home">
+          <section class="settings-block" aria-labelledby="settings-theme-title">
+            <p class="aside-kicker" id="settings-theme-title">Appearance</p>
+            <div id="theme-toggle" class="theme-toggle" role="radiogroup" aria-label="Theme">
+              <button type="button" data-theme-choice="system">System</button>
+              <button type="button" data-theme-choice="light">Light</button>
+              <button type="button" data-theme-choice="dark">Dark</button>
+            </div>
+          </section>
+          <section class="settings-block" aria-labelledby="settings-arc-heading">
+            <p class="aside-kicker" id="settings-arc-heading">Winter Arc</p>
+            <p id="settings-arc-copy" class="settings-sheet__day">Day 1 of 116</p>
+            <p class="settings-sheet__hint">Reset starts the count at day 1 from today through the arc end, and removes archived and reached goals. Active and paused goals stay.</p>
+            <button type="button" class="settings-sheet__danger" id="settings-reset">Reset Winter Arc</button>
+          </section>
+        </div>
+        <div id="settings-confirm" hidden>
+          <section class="settings-block">
+            <p class="aside-kicker">Confirm</p>
+            <h3 id="settings-confirm-title">Start over from today?</h3>
+            <p id="settings-confirm-copy" class="settings-sheet__hint"></p>
+            <div class="settings-sheet__actions">
+              <button type="button" class="settings-sheet__danger" id="settings-confirm-reset">Yes, reset</button>
+              <button type="button" class="settings-sheet__quiet" id="settings-confirm-cancel">No, keep this arc</button>
+            </div>
+          </section>
+        </div>
+      </article>
+    </div>
 
     <main class="screen event-debug" id="event-debug-screen" hidden>
       <section class="event-debug-panel" aria-labelledby="event-debug-title">
@@ -685,7 +732,6 @@
     <script src="../audit/auditUtils.js"></script>
     <script src="../audit/auditService.js"></script>
     <script src="../audit/pattern-engine.js"></script>
-    <script src="../coach/context-builder.js"></script>
     <script src="../coach/plan-builder.js"></script>
     <script src="newtab.js"></script>
   </body>

@@ -18,10 +18,13 @@ test("goals screen exposes first-class behavior create, archive, and evidence su
     "goal-archived-behavior-list",
     "goal-today-list",
     "goal-progress-copy",
+    "goal-life-area",
+    "life-area-filter",
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /Repeatable actions that move this outcome/);
+  assert.match(html, />Life area</);
 });
 
 test("a goal can define the repeatable behaviors that make it happen", () => {

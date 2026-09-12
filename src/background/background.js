@@ -4,8 +4,6 @@ importScripts(
   "../observer/browser-observer.js",
 );
 
-const NATIVE_HOST_NAME = "com.lockin.coach";
-
 const eventPersistence = new LockInEvents.ChromeStorageEventAdapter(
   chrome.storage.local,
 );
@@ -39,16 +37,6 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.windows.onFocusChanged.addListener((windowId) => {
   browserObserver.handleWindowFocusChanged(windowId);
 });
-
-function ensureCoachBackend() {
-  return chrome.runtime
-    .sendNativeMessage(NATIVE_HOST_NAME, { action: "ensureRunning" })
-    .catch((error) => ({
-      ok: false,
-      code: "NATIVE_HOST_UNAVAILABLE",
-      error: error?.message || "Native host unavailable.",
-    }));
-}
 
 const CUE_ALARM_NAME = "lock-in-hourly-cues";
 
@@ -93,24 +81,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onStartup.addListener(() => {
   browserObserver.initialize({ discardPersisted: true });
-  ensureCoachBackend();
   ensureCueAlarm();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  ensureCoachBackend();
   ensureCueAlarm();
   loadCueSnapshot();
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "ENSURE_COACH_BACKEND") {
-    return undefined;
-  }
-
-  ensureCoachBackend().then(sendResponse);
-  return true;
-});
-
 ensureCueAlarm();
-
