@@ -5,25 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101118" />
     <title>LOCK IN</title>
+    <style>
+      html {
+        background: var(--boot-bg, #090a0e);
+      }
+      html[data-theme="light"] {
+        background: var(--boot-bg, #f3eee7);
+      }
+      @media (prefers-color-scheme: light) {
+        html[data-theme="system"] {
+          background: var(--boot-bg, #f3eee7);
+        }
+      }
+      html:not(.is-ready) body {
+        opacity: 0 !important;
+      }
+      html.is-ready body {
+        opacity: 1 !important;
+        transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html.is-ready body {
+          transition: none;
+        }
+      }
+      .screen {
+        display: none !important;
+      }
+      html[data-screen="landing-screen"] #landing-screen {
+        display: grid !important;
+      }
+      html[data-screen="command-center-screen"] #command-center-screen {
+        display: grid !important;
+      }
+      html[data-screen="goals-screen"] #goals-screen,
+      html[data-screen="arc-screen"] #arc-screen,
+      html[data-screen="daily-audit-screen"] #daily-audit-screen,
+      html[data-screen="identity-screen"] #identity-screen,
+      html[data-screen="fixing-screen"] #fixing-screen,
+      html[data-screen="blueprint-screen"] #blueprint-screen,
+      html[data-screen="event-debug-screen"] #event-debug-screen {
+        display: block !important;
+      }
+      html[data-boot="app"] #app-nav {
+        display: grid !important;
+      }
+      html[data-boot="app"] .command-center,
+      html[data-boot="app"] .goals-screen,
+      html[data-boot="app"] .daily-audit,
+      html[data-boot="app"] .weekly-review,
+      html[data-boot="app"] .event-debug,
+      html[data-boot="app"] .landing .label,
+      html[data-boot="app"] .landing .title-group,
+      html[data-boot="app"] .landing .countdown,
+      html[data-boot="app"] .landing .enter-button {
+        animation: none !important;
+      }
+    </style>
     <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="../assets/icon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="../assets/icon-128.png" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="app-screens.css" />
     <script>
-      (function applyStoredTheme() {
+      (function bootLockIn() {
+        var APP = {
+          "command-center-screen": true,
+          "goals-screen": true,
+          "arc-screen": true,
+          "daily-audit-screen": true,
+        };
+        var HASH = {
+          begin: "landing-screen",
+          identity: "identity-screen",
+          focus: "fixing-screen",
+          blueprint: "blueprint-screen",
+          today: "command-center-screen",
+          goals: "goals-screen",
+          arc: "arc-screen",
+          audit: "daily-audit-screen",
+          review: "daily-audit-screen",
+          week: "daily-audit-screen",
+          progress: "daily-audit-screen",
+          evidence: "daily-audit-screen",
+          events: "event-debug-screen",
+        };
+        var theme = "system";
+        var onboarded = false;
         try {
-          var stored = localStorage.getItem("lock-in-theme");
-          var theme = stored ? JSON.parse(stored) : "system";
-          if (theme !== "light" && theme !== "dark" && theme !== "system") theme = "system";
-          document.documentElement.dataset.theme = theme;
+          var storedTheme = localStorage.getItem("lock-in-theme");
+          theme = storedTheme ? JSON.parse(storedTheme) : "system";
+          var onboardedRaw = JSON.parse(localStorage.getItem("lock-in-onboarding-complete"));
+          onboarded = onboardedRaw === true || onboardedRaw === "true" || onboardedRaw === 1;
         } catch (error) {
-          document.documentElement.dataset.theme = "system";
+          theme = "system";
         }
+        if (theme !== "light" && theme !== "dark" && theme !== "system") theme = "system";
+        var requested = HASH[(location.hash || "").replace(/^#/, "")] || "";
+        var screenId = "landing-screen";
+        if (onboarded) {
+          screenId = APP[requested] || requested === "event-debug-screen"
+            ? requested
+            : "command-center-screen";
+        } else if (requested && !APP[requested] && requested !== "event-debug-screen") {
+          screenId = requested;
+        }
+        var light =
+          theme === "light" ||
+          (theme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.screen = screenId;
+        document.documentElement.dataset.boot = APP[screenId] ? "app" : "onboarding";
+        document.documentElement.style.setProperty("--boot-bg", light ? "#f3eee7" : "#090a0e");
+        var themeColor = document.querySelector('meta[name="theme-color"]');
+        if (themeColor) themeColor.setAttribute("content", light ? "#f7f2ec" : "#101118");
       })();
     </script>
   </head>
   <body>
+    <script>
+      if (document.documentElement.dataset.boot === "app") {
+        document.body.classList.add("app-ready");
+      }
+    </script>
     <nav id="app-nav" class="app-nav" hidden aria-label="Main">
       <button type="button" class="command-brand" data-nav="command-center-screen">
         <img src="../assets/icon.svg" width="22" height="22" alt="" />
@@ -58,7 +162,7 @@
       </article>
     </aside>
 
-    <main class="screen landing" id="landing-screen">
+    <main class="screen landing" id="landing-screen" hidden>
       <section class="hero hero-card" aria-labelledby="arc-title">
         <p class="label">
           <img src="../assets/icon-48.png" width="28" height="28" alt="" />

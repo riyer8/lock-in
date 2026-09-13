@@ -84,3 +84,18 @@ test("Audit is the evidence surface, including past browser time", () => {
     assert.match(html, new RegExp(`id="${id}"`));
   }
 });
+
+test("first paint restores the last screen instead of flashing landing", () => {
+  assert.match(html, /function bootLockIn/);
+  assert.match(html, /html:not\(\.is-ready\) body/);
+  assert.match(html, /html\.is-ready body/);
+  assert.match(html, /transition: opacity 560ms/);
+  assert.match(html, /id="landing-screen" hidden/);
+  assert.match(html, /lock-in-onboarding-complete/);
+  assert.match(html, /dataset\.screen/);
+  assert.match(html, /dataset\.boot = APP\[screenId\] \? "app" : "onboarding"/);
+  assert.match(html, /today: "command-center-screen"/);
+  assert.doesNotMatch(html, /setTimeout\(function \(\) \{\s*document\.documentElement\.classList\.add\("is-ready"\)/);
+  assert.match(appJs, /function revealApp/);
+  assert.match(appJs, /document\.documentElement\.dataset\.screen = screenId/);
+});

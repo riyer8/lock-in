@@ -19,5 +19,6 @@
   },
   "chrome_url_overrides": {
     "newtab": "src/newtab/newtab.html"
-  }
+  },
+  "offline_enabled": true
 }

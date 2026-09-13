@@ -2370,3 +2370,53 @@ html[data-theme="light"] .loop-screen .audit-card {
     box-shadow: 0 16px 36px rgba(40, 32, 52, 0.07);
   }
 }
+
+/* First paint: show the restored screen before newtab.js finishes loading. */
+html[data-screen]:not([data-screen="landing-screen"]) #landing-screen {
+  display: none !important;
+}
+
+html[data-boot="app"] #app-nav {
+  display: grid !important;
+}
+
+html[data-screen="command-center-screen"] #command-center-screen {
+  display: grid !important;
+}
+
+html[data-screen="goals-screen"] #goals-screen,
+html[data-screen="arc-screen"] #arc-screen,
+html[data-screen="daily-audit-screen"] #daily-audit-screen,
+html[data-screen="identity-screen"] #identity-screen,
+html[data-screen="fixing-screen"] #fixing-screen,
+html[data-screen="blueprint-screen"] #blueprint-screen,
+html[data-screen="event-debug-screen"] #event-debug-screen {
+  display: block !important;
+}
+
+html[data-boot="app"] .command-center,
+html[data-boot="app"] .goals-screen,
+html[data-boot="app"] .daily-audit,
+html[data-boot="app"] .weekly-review,
+html[data-boot="app"] .event-debug,
+body.app-ready .command-center,
+body.app-ready .goals-screen,
+body.app-ready .daily-audit,
+body.app-ready .weekly-review {
+  animation: none;
+}
+
+html:not(.is-ready) body {
+  opacity: 0 !important;
+}
+
+html.is-ready body {
+  opacity: 1 !important;
+  transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-ready body {
+    transition: none;
+  }
+}

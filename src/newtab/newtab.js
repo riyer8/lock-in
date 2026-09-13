@@ -76,6 +76,7 @@ let focusMissionId = null;
 let renderedTodayDateKey = getDateKey();
 let selectedLifeAreaFilter = "all";
 let appearanceTheme = "system";
+let allowCueMotion = false;
 
 const eventPersistence = globalThis.chrome?.storage?.local
   ? new LockInEvents.ChromeStorageEventAdapter(chrome.storage.local)
@@ -741,12 +742,11 @@ function formValue(id) {
 function applyTheme(theme) {
   appearanceTheme = THEME_CHOICES.has(theme) ? theme : "system";
   document.documentElement.dataset.theme = appearanceTheme;
+  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+  const light = appearanceTheme === "light" || (appearanceTheme === "system" && prefersLight);
+  document.documentElement.style.setProperty("--boot-bg", light ? "#f3eee7" : "#090a0e");
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) {
-    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-    const light = appearanceTheme === "light" || (appearanceTheme === "system" && prefersLight);
-    meta.setAttribute("content", light ? "#f7f2ec" : "#101118");
-  }
+  if (meta) meta.setAttribute("content", light ? "#f7f2ec" : "#101118");
   document.querySelectorAll("[data-theme-choice]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.themeChoice === appearanceTheme));
   });
@@ -1721,7 +1721,7 @@ function showCueCard(card, cue) {
   card.dataset.cueId = cue.id;
   const title = $("today-cue-title");
   if (title) title.textContent = cue.title;
-  if (!entering || prefersReducedMotion()) {
+  if (!entering || prefersReducedMotion() || !allowCueMotion) {
     card.classList.remove("is-entering", "is-leaving");
     return;
   }
@@ -2383,14 +2383,19 @@ function closeEventDebug() {
 }
 
 function showScreen(screenId) {
+  const switched = document.documentElement.dataset.screen !== screenId;
+  document.documentElement.dataset.screen = screenId;
+  document.documentElement.dataset.boot = APP_SCREENS.has(screenId) ? "app" : "onboarding";
   let activeScreen = null;
   screens.forEach((screen) => {
     const isActive = screen.id === screenId;
     screen.hidden = !isActive;
     if (isActive) activeScreen = screen;
   });
-  if (activeScreen) activeScreen.scrollTop = 0;
-  window.scrollTo({ top: 0, left: 0 });
+  if (switched) {
+    if (activeScreen) activeScreen.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0 });
+  }
   celebrateRoot?.classList.remove("is-on");
   if (celebrateRoot) celebrateRoot.hidden = true;
   const inApp = APP_SCREENS.has(screenId);
@@ -2402,7 +2407,7 @@ function showScreen(screenId) {
     if (current) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
-  if (inApp) void renderCueRail();
+  if (inApp && document.documentElement.classList.contains("is-ready")) void renderCueRail();
   else {
     const rail = $("today-cue-rail");
     if (rail) rail.hidden = true;
@@ -2999,55 +3004,83 @@ window.addEventListener("hashchange", () => {
   if (location.hash === "#events") openEventDebug();
 });
 
+function revealApp() {
+  if (document.documentElement.classList.contains("is-ready")) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add("is-ready");
+      window.setTimeout(() => {
+        allowCueMotion = true;
+        if (document.body.classList.contains("app-ready")) void renderCueRail();
+      }, 600);
+    });
+  });
+}
+
 async function initializeApp() {
-  const [storedGoals, storedBehaviors, storedHistory, storedExperiments, storedArcStart, storedTheme] =
-    await Promise.all([
+  try {
+    const [
+      storedGoals,
+      storedBehaviors,
+      storedHistory,
+      storedExperiments,
+      storedArcStart,
+      storedTheme,
+      storedOnboarded,
+    ] = await Promise.all([
       privateStorage.read(GOALS_STORAGE_KEY, []),
       privateStorage.read(BEHAVIORS_STORAGE_KEY, []),
       privateStorage.read(MISSION_HISTORY_STORAGE_KEY, []),
       privateStorage.read(EXPERIMENTS_STORAGE_KEY, []),
       privateStorage.read(ARC_START_OVERRIDE_KEY, ""),
       privateStorage.read(THEME_STORAGE_KEY, storage.readJson(THEME_STORAGE_KEY, "system")),
+      privateStorage.read(ONBOARDING_COMPLETE_STORAGE_KEY, isOnboarded()),
     ]);
-  const migrated = LockInGoals.migrateGoalCollection(Array.isArray(storedGoals) ? storedGoals : []);
-  activeGoals = migrated.goals;
-  activeBehaviors = Array.isArray(storedBehaviors) && storedBehaviors.length
-    ? storedBehaviors.map((behavior) => LockInGoals.normalizeBehaviorRecord(behavior))
-    : migrated.behaviors;
-  missionHistory = Array.isArray(storedHistory) ? storedHistory : [];
-  experiments = Array.isArray(storedExperiments)
-    ? storedExperiments.map((item) => LockInExperiments.normalizeExperiment(item))
-    : [];
-  applyTheme(storedTheme);
-  storage.writeJson(THEME_STORAGE_KEY, appearanceTheme);
-  const overrideStart = LockInGoals.parseDate(storedArcStart);
-  applyArcStart(overrideStart || CONFIGURED_ARC_START);
-  await persistGoals();
-  populateCategorySelect([...selectedIdentities][0]);
-  populateLifeAreaSelect(LockInGoals.DEFAULT_LIFE_AREA);
+    if (storedOnboarded) storage.writeJson(ONBOARDING_COMPLETE_STORAGE_KEY, true);
+    const migrated = LockInGoals.migrateGoalCollection(Array.isArray(storedGoals) ? storedGoals : []);
+    activeGoals = migrated.goals;
+    activeBehaviors = Array.isArray(storedBehaviors) && storedBehaviors.length
+      ? storedBehaviors.map((behavior) => LockInGoals.normalizeBehaviorRecord(behavior))
+      : migrated.behaviors;
+    missionHistory = Array.isArray(storedHistory) ? storedHistory : [];
+    experiments = Array.isArray(storedExperiments)
+      ? storedExperiments.map((item) => LockInExperiments.normalizeExperiment(item))
+      : [];
+    applyTheme(storedTheme);
+    storage.writeJson(THEME_STORAGE_KEY, appearanceTheme);
+    const overrideStart = LockInGoals.parseDate(storedArcStart);
+    applyArcStart(overrideStart || CONFIGURED_ARC_START);
+    await persistGoals();
+    populateCategorySelect([...selectedIdentities][0]);
+    populateLifeAreaSelect(LockInGoals.DEFAULT_LIFE_AREA);
 
-  renderArcState();
-  renderIdentitySelections();
-  renderStartingPoint();
-  renderBlueprint();
-
-  if (location.hash === "#events") {
-    if (isOnboarded()) {
-      await CommandCenter();
-      showScreen("command-center-screen");
+    renderArcState();
+    if (!isOnboarded()) {
+      renderIdentitySelections();
+      renderStartingPoint();
+      renderBlueprint();
     }
-    openEventDebug();
-    return;
-  }
 
-  const requested = screenFromHash();
-  if (isOnboarded()) {
-    const screenId = APP_SCREENS.has(requested) ? requested : "command-center-screen";
-    await loadAppScreen(screenId);
-    navigateTo(screenId, { replace: true });
-  } else {
-    const screenId = ONBOARDING_SCREENS.has(requested) ? requested : "landing-screen";
-    navigateTo(screenId, { replace: true });
+    if (location.hash === "#events") {
+      if (isOnboarded()) {
+        await CommandCenter();
+        showScreen("command-center-screen");
+      }
+      openEventDebug();
+      return;
+    }
+
+    const requested = screenFromHash();
+    if (isOnboarded()) {
+      const screenId = APP_SCREENS.has(requested) ? requested : "command-center-screen";
+      await loadAppScreen(screenId);
+      navigateTo(screenId, { replace: true });
+    } else {
+      const screenId = ONBOARDING_SCREENS.has(requested) ? requested : "landing-screen";
+      navigateTo(screenId, { replace: true });
+    }
+  } finally {
+    revealApp();
   }
 }
 
