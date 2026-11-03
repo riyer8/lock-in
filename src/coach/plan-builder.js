@@ -145,9 +145,10 @@
     recentOutcomes = [],
     preserved = [],
     areaLabels = {},
+    difficulty = null,
   } = {}) {
-    const difficulty = choosePlanDifficulty(recentOutcomes);
-    const limit = Math.min(5, Math.max(3, planSize(difficulty)));
+    const resolvedDifficulty = text(difficulty) || choosePlanDifficulty(recentOutcomes);
+    const limit = Math.min(5, Math.max(3, planSize(resolvedDifficulty)));
     const todayKey = formatDateKey(date);
     const kept = (Array.isArray(preserved) ? preserved : [])
       .filter((mission) => mission && text(mission.title))
@@ -183,13 +184,13 @@
         item,
         matchedGoal,
         todayKey,
-        difficulty,
+        resolvedDifficulty,
         areaLabels,
       );
       const duplicates = [...kept, ...generated];
       if (duplicates.some((existing) => sameMission(existing, mission))) {
         if (!matchedGoal) return;
-        mission = toMission(item, null, todayKey, difficulty, areaLabels);
+        mission = toMission(item, null, todayKey, resolvedDifficulty, areaLabels);
         if (duplicates.some((existing) => sameMission(existing, mission))) {
           return;
         }
@@ -210,6 +211,7 @@
     preserved = [],
     areaLabels = {},
     proposal = null,
+    difficulty = null,
   } = {}) {
     const reason = text(proposal?.changes) || text(proposal?.reason);
     const adapted = (Array.isArray(proposed) ? proposed : []).map((mission) => ({
@@ -225,6 +227,7 @@
       recentOutcomes,
       preserved,
       areaLabels,
+      difficulty,
     });
     return missions.map((mission) => ({
       ...mission,
@@ -238,6 +241,25 @@
       insight?.proposedAdaptation && typeof insight.proposedAdaptation === "object"
         ? insight.proposedAdaptation
         : {};
+    if (!text(adaptation.type) && insight?.type === "PLAN_UNREALISTIC") {
+      return {
+        type: "shrink",
+        changes: "Shrink tomorrow to minimum actions",
+        reason:
+          text(insight.copy) ||
+          "Repeated misses — the plan needs to get smaller, not louder.",
+        goalId: text(insight.goalId) || "",
+      };
+    }
+    if (!text(adaptation.type) && insight?.type === "DEEP_WORK_AFTER_LATE_DAYS") {
+      return {
+        type: "protect-slot",
+        changes: "Protect an earlier slot for deep work tomorrow",
+        reason:
+          text(insight.copy) ||
+          "Deep work slips when the workday runs late.",
+      };
+    }
     const placeholder = "Use Try this to adjust the plan.";
     const shown = text(displayed) === placeholder ? "" : text(displayed);
     const next =
@@ -259,6 +281,7 @@
     proposal = null,
   } = {}) {
     const action = text(nextAction);
+    const looksLikeQuestion = /\?\s*$/.test(action);
     const dateKey = formatDateKey(date);
     const adaptedFrom = text(proposal?.type) || "next-action";
     const reason = text(proposal?.reason) || action;
@@ -268,7 +291,7 @@
         text(mission.title) &&
         normalizeLabel(mission.title) !== normalizeLabel(action),
     );
-    const lead = action
+    const lead = action && !looksLikeQuestion
       ? [
           {
             id: `${dateKey}:next-action`,
@@ -281,7 +304,7 @@
           },
         ]
       : [];
-    return [...lead, ...rest].slice(0, 3).map((mission) => ({
+    return [...lead, ...rest].slice(0, 5).map((mission) => ({
       ...mission,
       source: "adapted-plan",
       adaptedFrom,

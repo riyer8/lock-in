@@ -16,6 +16,6 @@ That's the app, not a slogan. Here's how it shows up.
 
 What you *meant* to do is not the source of truth. What got written as an event is.
 
-There is no Coach tab and no model call. Adaptation is local. Food is a goal area, not a meal log. Today currently shows up to three saved plan items even though the planner can do 3–5.
+There is no Coach tab and no model call. Adaptation is local. Food is a goal area, not a meal log. Today renders 3–5 plan items by plan difficulty (minimum 3, standard 4, stretch 5).
 
 The longer "what this is trying to be": [PRODUCT.md](PRODUCT.md).

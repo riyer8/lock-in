@@ -45,10 +45,16 @@
     });
 
     const engine = globalScope.LockInGoals;
+    const missedDays = new Set();
+    (Array.isArray(events) ? events : []).forEach((event) => {
+      if (event?.type !== "DAY_MISSED") return;
+      const key = text(event?.metadata?.dateKey) || dateKey(event?.timestamp);
+      if (key) missedDays.add(key);
+    });
     byGoal.forEach((entries, goalId) => {
       const goal = (Array.isArray(goals) ? goals : []).find((item) => item.id === goalId);
       const misses = engine?.countConsecutiveMisses
-        ? engine.countConsecutiveMisses(entries, goalId, asOf)
+        ? engine.countConsecutiveMisses(entries, goalId, asOf, { missedDays })
         : 0;
       if (misses >= 3) {
         patterns.push({

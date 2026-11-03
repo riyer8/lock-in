@@ -25,64 +25,31 @@ test("Coach tab and screen are gone", () => {
   assert.ok(!manifest.host_permissions);
 });
 
-test("settings gear opens an in-app Winter Arc reset with a second confirm", () => {
-  for (const id of [
-    "open-settings",
-    "settings-overlay",
-    "settings-home",
-    "settings-reset",
-    "settings-confirm",
-    "settings-confirm-reset",
-    "settings-confirm-cancel",
-    "settings-close",
-  ]) {
-    assert.match(html, new RegExp(`id="${id}"`));
+test("no top navigation or settings, and the page is dark only", () => {
+  assert.doesNotMatch(html, /id="app-nav"/);
+  assert.doesNotMatch(html, /id="open-settings"/);
+  assert.doesNotMatch(html, /id="settings-overlay"/);
+  assert.doesNotMatch(html, /data-theme-choice/);
+  assert.doesNotMatch(html, /prefers-color-scheme/);
+  assert.match(html, /dataset\.theme = "dark"/);
+  assert.doesNotMatch(appJs, /function applyTheme/);
+  assert.doesNotMatch(appJs, /prefers-color-scheme: light/);
+  for (const file of ["styles.css", "app-screens.css", "lock-in.css"]) {
+    const css = fs.readFileSync(path.join(__dirname, "../src/newtab", file), "utf8");
+    assert.doesNotMatch(css, /data-theme="(light|system)"/, file);
   }
-  assert.match(html, />Reset Winter Arc</);
-  assert.match(html, />Yes, reset</);
-  assert.match(html, />No, keep this arc</);
-  assert.match(html, /id="theme-toggle"/);
-  assert.match(html, /data-theme-choice="system"/);
-  assert.match(html, /data-theme-choice="light"/);
-  assert.match(html, /data-theme-choice="dark"/);
-  assert.match(appJs, /function applyTheme/);
-  assert.match(appJs, /function previewResetArc/);
-  assert.match(appJs, /async function confirmResetArc/);
-  const settingsJs = appJs.slice(
-    appJs.indexOf("function settingsOverlay"),
-    appJs.indexOf("enterArcButton.addEventListener"),
-  );
-  assert.match(settingsJs, /confirmResetArc/);
-  assert.doesNotMatch(settingsJs, /window\.confirm/);
 });
 
-test("audit Try next exposes Try this and a status line", () => {
-  for (const id of [
-    "audit-coach-title",
-    "audit-coach-copy",
-    "try-this",
-    "audit-adapt-status",
-  ]) {
-    assert.match(html, new RegExp(`id="${id}"`));
-  }
-  assert.match(html, />Try next</);
-  assert.match(html, />Try this</);
-  assert.doesNotMatch(html, /id="yes-fix-it"/);
-});
-
-test("Audit is the evidence surface, including past browser time", () => {
-  assert.match(html, /data-nav="daily-audit-screen"/);
+test("Audit tab is gone and past browser days live on Today", () => {
+  assert.doesNotMatch(html, /data-nav="daily-audit-screen"/);
+  assert.doesNotMatch(html, /id="daily-audit-screen"/);
   assert.doesNotMatch(html, /data-nav="progress-screen"/);
   assert.doesNotMatch(html, /id="progress-screen"/);
-  for (const id of [
-    "audit-browser-card",
-    "audit-browser-title",
-    "audit-browser-total",
-    "audit-browser-list",
-    "audit-browser-days",
-  ]) {
-    assert.match(html, new RegExp(`id="${id}"`));
-  }
+  assert.doesNotMatch(html, /id="try-this"/);
+  assert.match(html, /id="lockin-browser-week"/);
+  assert.match(html, /id="lockin-browser-today"/);
+  assert.match(appJs, /selectedBrowserDateKey/);
+  assert.match(appJs, /dataset\.browserDay/);
 });
 
 test("first paint restores the last screen instead of flashing landing", () => {

@@ -929,7 +929,7 @@
       });
     });
 
-    const max = clamp(Math.floor(finiteNumber(limit, 3)), 0, 3);
+    const max = clamp(Math.floor(finiteNumber(limit, 3)), 0, 5);
     const ranked = candidates.sort(
       (a, b) =>
         b.score - a.score ||
@@ -1042,11 +1042,14 @@
     );
   }
 
-  function calculateFollowThrough(history, date = new Date()) {
+  function calculateFollowThrough(history, date = new Date(), options = {}) {
     const today = startOfDay(date);
     if (!today) return { days: 0, ended: false };
+    const missedDays =
+      options?.missedDays instanceof Set ? options.missedDays : null;
     const entries = Array.isArray(history) ? history : [];
     let days = 0;
+    let ended = false;
     for (let offset = 0; offset < 120; offset += 1) {
       const cursor = addDays(today, -offset);
       const key = formatDateKey(cursor);
@@ -1055,20 +1058,24 @@
       );
       if (!dayEntries.length) {
         if (offset === 0) continue;
+        if (missedDays?.has(key)) ended = true;
         break;
       }
       if (dayEntries.some(wasRecoveryOrComplete)) {
         days += 1;
         continue;
       }
+      ended = true;
       break;
     }
-    return { days, ended: false };
+    return { days, ended };
   }
 
-  function countConsecutiveMisses(history, goalId, date = new Date()) {
+  function countConsecutiveMisses(history, goalId, date = new Date(), options = {}) {
     const today = startOfDay(date);
     if (!today) return 0;
+    const missedDays =
+      options?.missedDays instanceof Set ? options.missedDays : null;
     const entries = (Array.isArray(history) ? history : []).filter(
       (entry) => historyGoalId(entry) === goalId && wasPlannedOpportunity(entry),
     );
@@ -1078,6 +1085,10 @@
       const dayEntries = entries.filter((entry) => formatDateKey(historyDate(entry)) === key);
       if (!dayEntries.length) {
         if (offset === 0) continue;
+        if (missedDays?.has(key)) {
+          missed += 1;
+          continue;
+        }
         break;
       }
       if (dayEntries.some(wasCompleted)) break;

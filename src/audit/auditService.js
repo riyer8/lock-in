@@ -116,6 +116,7 @@
           missions: missionAnalysis,
           browser,
           mood,
+          dayMissed: categories.dayMissedEvents.length > 0,
         }),
         generatedAt: this.now().toISOString(),
       };

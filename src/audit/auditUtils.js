@@ -45,6 +45,7 @@
       goalEvents: [],
       weeklyReviewEvents: [],
       checkinEvents: [],
+      dayMissedEvents: [],
     };
 
     events.forEach((event) => {
@@ -79,6 +80,9 @@
         case eventTypes.ENERGY_CHECKIN:
         case eventTypes.EXPERIMENT_MEASURE:
           categories.checkinEvents.push(event);
+          break;
+        case eventTypes.DAY_MISSED:
+          categories.dayMissedEvents.push(event);
           break;
         default:
           break;
@@ -408,7 +412,10 @@
     return { focus, addMore, makeItInteresting };
   }
 
-  function determineVerdict({ eventCount, missions, browser, mood }) {
+  function determineVerdict({ eventCount, missions, browser, mood, dayMissed = false }) {
+    if (dayMissed) {
+      return "MISSED_DAY";
+    }
     const hasMeaningfulActivity =
       missions.total > 0 ||
       missions.activityCount > 0 ||

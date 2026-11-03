@@ -1,0 +1,493 @@
+/* LOCK IN Today: year countdown, next action, observed browser time. Loaded last. */
+
+body.app-ready .command-center.loop-screen {
+  padding: 44px 24px 48px;
+}
+
+body.app-ready .command-center.loop-screen .lockin-shell {
+  width: min(1040px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 34px;
+  min-height: unset;
+  padding: 0;
+}
+
+.lockin-top {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.loop-screen .lockin-greeting {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.lockin-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Countdown dial */
+
+.lockin-clock {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+}
+
+.lockin-dial {
+  position: relative;
+  width: clamp(260px, 36vw, 360px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.lockin-dial::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--wash), transparent 70%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.lockin-dial__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.lockin-dial stop:first-child {
+  stop-color: var(--mint);
+}
+
+.lockin-dial stop:last-child {
+  stop-color: var(--lavender-dark);
+}
+
+.lockin-dial__ticks {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 0 1;
+}
+
+.lockin-dial__track {
+  fill: none;
+  stroke: var(--wash);
+  stroke-width: 9;
+}
+
+.lockin-dial__fill {
+  fill: none;
+  stroke: url(#lockin-daylight-gradient);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 0 100;
+  transform: rotate(-90deg);
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 10px rgba(216, 210, 236, 0.28));
+  transition: stroke-dasharray 700ms var(--ease-out);
+}
+
+.lockin-dial__now {
+  transform: rotate(calc(var(--day-turn, 0) * 360deg));
+  transform-origin: 110px 110px;
+  transition: transform 700ms var(--ease-out);
+}
+
+.lockin-dial__now circle {
+  fill: var(--ink);
+  stroke: var(--page-b);
+  stroke-width: 3;
+}
+
+.lockin-dial__core {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.lockin-dial__core strong {
+  padding: 0.04em 0.1em 0.06em;
+  font-size: clamp(92px, 12vw, 150px);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: transparent;
+  background: linear-gradient(180deg, var(--ink) 30%, var(--lavender-dark));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.lockin-dial__core span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lockin-daylight {
+  display: inline-block;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--wash);
+  font-size: 13px;
+  text-align: center;
+}
+
+.lockin-daylight strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lockin-daylight__label {
+  margin-right: 4px;
+  color: var(--mint);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.lockin-daylight__left {
+  color: var(--ink);
+}
+
+/* Panels */
+
+.lockin-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.loop-screen .lockin-panel {
+  display: grid;
+  gap: 16px;
+  padding: 22px 22px 20px;
+  border-radius: 22px;
+}
+
+.lockin-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lockin-panel__head .aside-kicker {
+  margin: 0 0 6px;
+}
+
+.lockin-panel__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.lockin-panel__head .text-button {
+  flex: none;
+  padding-top: 2px;
+}
+
+/* Lock in on */
+
+.lockin-task-list {
+  gap: 6px;
+}
+
+.lockin-task-list li {
+  min-height: 44px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.lockin-task-list li.is-next {
+  border-color: var(--line);
+  background: var(--wash);
+}
+
+.lockin-task-list li.is-next .today-task-title {
+  font-weight: 600;
+}
+
+.lockin-task-list li.is-next .today-task-title::before {
+  content: "Next";
+  display: inline-block;
+  margin-right: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--chip-on-ink);
+  background: var(--chip-on);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+.lockin-task-list .today-task-delete {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.lockin-task-list li:hover .today-task-delete,
+.lockin-task-list .today-task-delete:focus-visible {
+  opacity: 1;
+}
+
+.lockin-task-list li.today-task-empty {
+  display: block;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+.lockin-task-form {
+  margin: 0;
+}
+
+.lockin-dailies {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.lockin-daily-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lockin-daily-list li {
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.lockin-daily-list li.today-daily-empty {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+
+.lockin-daily-list .today-task-delete {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  opacity: 0.5;
+}
+
+.lockin-daily-list li:hover .today-task-delete {
+  opacity: 1;
+}
+
+.lockin-now .today-cue-settings {
+  margin-top: 0;
+}
+
+/* Where the browser went */
+
+.lockin-browser-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lockin-browser-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: baseline;
+  font-size: 14px;
+}
+
+.lockin-browser-domain {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lockin-browser-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lockin-browser-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--wash);
+  overflow: hidden;
+}
+
+.lockin-browser-bar::before {
+  content: "";
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lavender), var(--lavender-dark));
+  transform: scaleX(var(--share, 0));
+  transform-origin: left;
+  transition: transform 500ms var(--ease-out);
+}
+
+.lockin-browser-list li:first-child .lockin-browser-bar::before {
+  background: linear-gradient(90deg, var(--peach), var(--lavender-dark));
+}
+
+.lockin-browser-list li.is-rest .lockin-browser-domain {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lockin-browser-list li.is-rest .lockin-browser-bar::before {
+  background: var(--line);
+}
+
+.lockin-browser-list li.lockin-browser-empty {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lockin-week {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.lockin-week__bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  height: 104px;
+}
+
+.lockin-week__day {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 5px;
+  padding: 6px 0 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.lockin-week__time {
+  min-height: 1.2em;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lockin-week__bar {
+  align-self: end;
+  width: min(20px, 70%);
+  height: max(3px, calc(var(--height, 0) * 100%));
+  border-radius: 6px;
+  background: var(--line);
+  transition: background 160ms ease;
+}
+
+.lockin-week__day:hover,
+.lockin-week__day:focus-visible {
+  background: var(--hover);
+}
+
+.lockin-week__day:hover .lockin-week__bar,
+.lockin-week__day:focus-visible .lockin-week__bar {
+  background: var(--lavender);
+}
+
+.lockin-week__day[aria-pressed="true"] {
+  border-color: var(--line);
+  background: var(--wash);
+}
+
+.lockin-week__day[aria-pressed="true"] .lockin-week__bar {
+  background: linear-gradient(180deg, var(--lavender-dark), var(--mint));
+}
+
+.lockin-week__day[aria-pressed="true"] .lockin-week__time,
+.lockin-week__day[aria-pressed="true"] .lockin-week__label {
+  color: var(--ink);
+}
+
+.lockin-week__label {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.lockin-week__day.is-today .lockin-week__label::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 4px;
+  margin: 3px auto 0;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
+.lockin-browser-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 820px) {
+  .lockin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lockin-dial__fill,
+  .lockin-dial__now,
+  .lockin-browser-bar::before {
+    transition: none;
+  }
+}

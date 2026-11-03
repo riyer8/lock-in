@@ -1088,14 +1088,8 @@ body.app-ready .command-center.loop-screen .today-shell {
   opacity: 0.7;
 }
 
-html[data-theme="dark"] .loop-screen input[type="date"]::-webkit-calendar-picker-indicator {
+.loop-screen input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
-}
-
-@media (prefers-color-scheme: dark) {
-  html[data-theme="system"] .loop-screen input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-  }
 }
 
 .focus-mode [hidden] {
@@ -2357,18 +2351,6 @@ body.app-ready .command-center.loop-screen .command-layout {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
-}
-
-html[data-theme="light"] .loop-screen .surface-card,
-html[data-theme="light"] .loop-screen .audit-card {
-  box-shadow: 0 16px 36px rgba(40, 32, 52, 0.07);
-}
-
-@media (prefers-color-scheme: light) {
-  html[data-theme="system"] .loop-screen .surface-card,
-  html[data-theme="system"] .loop-screen .audit-card {
-    box-shadow: 0 16px 36px rgba(40, 32, 52, 0.07);
-  }
 }
 
 /* First paint: show the restored screen before newtab.js finishes loading. */

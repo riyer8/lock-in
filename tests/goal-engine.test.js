@@ -229,7 +229,7 @@ test("selects milestone tasks only inside inclusive preparation windows", () => 
   assert.deepEqual(Goals.chooseMilestoneTasks(milestones, "2030-08-21"), []);
 });
 
-test("daily mission scheduling is deterministic, capped at three, and rotates areas", () => {
+test("daily mission scheduling is deterministic, capped at five, and rotates areas", () => {
   const goals = [
     goal({ id: "goal-d", area: "Area D" }),
     goal({ id: "goal-b", area: "Area B" }),
@@ -254,13 +254,13 @@ test("daily mission scheduling is deterministic, capped at three, and rotates ar
     9,
   );
 
-  assert.equal(first.length, 3);
+  assert.equal(first.length, 4);
   assert.deepEqual(
     first.map((mission) => mission.goalId),
     second.map((mission) => mission.goalId),
   );
-  assert.equal(first.some((mission) => mission.goalId === "goal-a"), false);
-  assert.equal(new Set(first.map((mission) => mission.id)).size, 3);
+  assert.equal(first.some((mission) => mission.goalId === "goal-a"), true);
+  assert.equal(new Set(first.map((mission) => mission.id)).size, 4);
 });
 
 test("daily mission scheduling reflects frequency neglect and milestone urgency", () => {

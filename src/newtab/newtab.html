@@ -7,15 +7,7 @@
     <title>LOCK IN</title>
     <style>
       html {
-        background: var(--boot-bg, #090a0e);
-      }
-      html[data-theme="light"] {
-        background: var(--boot-bg, #f3eee7);
-      }
-      @media (prefers-color-scheme: light) {
-        html[data-theme="system"] {
-          background: var(--boot-bg, #f3eee7);
-        }
+        background: #090a0e;
       }
       html:not(.is-ready) body {
         opacity: 0 !important;
@@ -40,15 +32,11 @@
       }
       html[data-screen="goals-screen"] #goals-screen,
       html[data-screen="arc-screen"] #arc-screen,
-      html[data-screen="daily-audit-screen"] #daily-audit-screen,
       html[data-screen="identity-screen"] #identity-screen,
       html[data-screen="fixing-screen"] #fixing-screen,
       html[data-screen="blueprint-screen"] #blueprint-screen,
       html[data-screen="event-debug-screen"] #event-debug-screen {
         display: block !important;
-      }
-      html[data-boot="app"] #app-nav {
-        display: grid !important;
       }
       html[data-boot="app"] .command-center,
       html[data-boot="app"] .goals-screen,
@@ -67,13 +55,13 @@
     <link rel="apple-touch-icon" href="../assets/icon-128.png" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="app-screens.css" />
+    <link rel="stylesheet" href="lock-in.css" />
     <script>
       (function bootLockIn() {
         var APP = {
           "command-center-screen": true,
           "goals-screen": true,
           "arc-screen": true,
-          "daily-audit-screen": true,
         };
         var HASH = {
           begin: "landing-screen",
@@ -83,24 +71,15 @@
           today: "command-center-screen",
           goals: "goals-screen",
           arc: "arc-screen",
-          audit: "daily-audit-screen",
-          review: "daily-audit-screen",
-          week: "daily-audit-screen",
-          progress: "daily-audit-screen",
-          evidence: "daily-audit-screen",
           events: "event-debug-screen",
         };
-        var theme = "system";
         var onboarded = false;
         try {
-          var storedTheme = localStorage.getItem("lock-in-theme");
-          theme = storedTheme ? JSON.parse(storedTheme) : "system";
           var onboardedRaw = JSON.parse(localStorage.getItem("lock-in-onboarding-complete"));
           onboarded = onboardedRaw === true || onboardedRaw === "true" || onboardedRaw === 1;
         } catch (error) {
-          theme = "system";
+          onboarded = false;
         }
-        if (theme !== "light" && theme !== "dark" && theme !== "system") theme = "system";
         var requested = HASH[(location.hash || "").replace(/^#/, "")] || "";
         var screenId = "landing-screen";
         if (onboarded) {
@@ -110,15 +89,9 @@
         } else if (requested && !APP[requested] && requested !== "event-debug-screen") {
           screenId = requested;
         }
-        var light =
-          theme === "light" ||
-          (theme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
-        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.theme = "dark";
         document.documentElement.dataset.screen = screenId;
         document.documentElement.dataset.boot = APP[screenId] ? "app" : "onboarding";
-        document.documentElement.style.setProperty("--boot-bg", light ? "#f3eee7" : "#090a0e");
-        var themeColor = document.querySelector('meta[name="theme-color"]');
-        if (themeColor) themeColor.setAttribute("content", light ? "#f7f2ec" : "#101118");
       })();
     </script>
   </head>
@@ -128,27 +101,6 @@
         document.body.classList.add("app-ready");
       }
     </script>
-    <nav id="app-nav" class="app-nav" hidden aria-label="Main">
-      <button type="button" class="command-brand" data-nav="command-center-screen">
-        <img src="../assets/icon.svg" width="22" height="22" alt="" />
-        LOCK IN
-      </button>
-      <div class="app-nav__links">
-        <button type="button" data-nav="command-center-screen">Today</button>
-        <button type="button" data-nav="goals-screen">Goals</button>
-        <button type="button" data-nav="arc-screen">Arc</button>
-        <button type="button" data-nav="daily-audit-screen">Audit</button>
-      </div>
-      <div class="app-nav__meta">
-        <p id="command-arc-day">Day 1 of 116</p>
-        <button type="button" class="app-nav__settings" id="open-settings" aria-label="Settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
-      </div>
-    </nav>
 
     <div id="celebrate" class="celebrate" hidden role="status">
       <div class="celebrate__burst" aria-hidden="true"></div>
@@ -514,51 +466,69 @@
     </main>
 
     <main class="screen command-center loop-screen" id="command-center-screen" hidden>
-      <div class="command-shell today-shell">
-        <section class="today-hero" aria-labelledby="command-greeting">
-          <h1 id="command-greeting">
+      <div class="command-shell today-shell lockin-shell">
+        <header class="lockin-top">
+          <h1 id="command-greeting" class="lockin-greeting">
             <span class="today-greeting-emoji" aria-hidden="true">☀️</span>
             Good morning
           </h1>
-          <hr class="today-rule" />
-          <p id="today-focus-kicker" class="aside-kicker">Today's focus</p>
-          <ol class="today-focus-list" id="today-focus-list"></ol>
-          <div class="today-hero-actions">
-            <button type="button" class="continue-button today-start" id="start-focus">Start</button>
-            <button type="button" class="continue-button" id="write-goal" hidden>Write a goal</button>
+          <p class="lockin-date" id="lockin-date"></p>
+        </header>
+
+        <section class="lockin-clock" aria-labelledby="lockin-days-label">
+          <div class="lockin-dial" id="lockin-dial" style="--day-turn: 0">
+            <svg class="lockin-dial__ring" viewBox="0 0 220 220" aria-hidden="true">
+              <defs>
+                <linearGradient id="lockin-daylight-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#b8d8c3" />
+                  <stop offset="100%" stop-color="#d8d2ec" />
+                </linearGradient>
+              </defs>
+              <circle class="lockin-dial__ticks" cx="110" cy="110" r="103" pathLength="24" />
+              <circle class="lockin-dial__track" cx="110" cy="110" r="94" />
+              <circle class="lockin-dial__fill" id="today-day-progress" cx="110" cy="110" r="94" pathLength="100" />
+              <g class="lockin-dial__now">
+                <circle cx="110" cy="16" r="5.5" />
+              </g>
+            </svg>
+            <div class="lockin-dial__core">
+              <strong id="lockin-days">—</strong>
+              <span id="lockin-days-label">days left in the year</span>
+            </div>
           </div>
-          <section class="today-dailies" aria-labelledby="today-dailies-title">
-            <p class="aside-kicker" id="today-dailies-title">Every day</p>
-            <ul class="today-daily-list" id="today-daily-list"></ul>
-            <form class="today-daily-form" id="today-daily-form">
-              <label class="sr-only" for="today-daily-input">Add something you repeat every day</label>
-              <input id="today-daily-input" maxlength="80" placeholder="Add something you repeat every day" />
+          <p class="lockin-daylight" id="today-day-copy">
+            <span class="lockin-daylight__label">Today</span>
+            <strong id="today-day-percent">100%</strong> still ahead
+          </p>
+        </section>
+
+        <div class="lockin-grid">
+          <section class="lockin-panel lockin-now surface-card" aria-labelledby="today-tasks-title">
+            <div class="lockin-panel__head">
+              <div>
+                <p class="aside-kicker" id="today-tasks-title">Lock in on</p>
+                <h2 class="lockin-panel__title" id="lockin-next">What has to happen today?</h2>
+              </div>
+              <button type="button" class="text-button" id="clear-today-tasks">Clear done</button>
+            </div>
+            <ul class="today-task-list lockin-task-list" id="today-task-list"></ul>
+            <form class="today-task-form lockin-task-form" id="today-task-form">
+              <label class="sr-only" for="today-task-input">Add something for today</label>
+              <input id="today-task-input" maxlength="120" placeholder="Add one thing that matters today" />
               <button type="submit" class="ghost-button">Add</button>
             </form>
-          </section>
-          <div class="today-context-grid" aria-label="Today context">
-            <section class="today-day-card surface-card" aria-labelledby="today-day-title">
-              <div class="today-card-heading">
-                <p class="aside-kicker" id="today-day-title">Daylight</p>
-                <strong id="today-day-percent">0%</strong>
-              </div>
-              <div class="today-day-track" aria-hidden="true">
-                <span id="today-day-progress"></span>
-              </div>
-              <p id="today-day-copy">Your day is loading.</p>
-            </section>
-            <section class="today-tasks-card surface-card" aria-labelledby="today-tasks-title">
-              <div class="today-card-heading">
-                <p class="aside-kicker" id="today-tasks-title">Also today</p>
-                <button type="button" class="text-button" id="clear-today-tasks">Clear done</button>
-              </div>
-              <form class="today-task-form" id="today-task-form">
-                <label class="sr-only" for="today-task-input">Add something else for today</label>
-                <input id="today-task-input" maxlength="120" placeholder="Add something else for today" />
+
+            <section class="today-dailies lockin-dailies" aria-labelledby="today-dailies-title">
+              <p class="aside-kicker" id="today-dailies-title">Every day</p>
+              <ul class="today-daily-list lockin-daily-list" id="today-daily-list"></ul>
+              <form class="today-daily-form" id="today-daily-form">
+                <label class="sr-only" for="today-daily-input">Add something you repeat every day</label>
+                <input id="today-daily-input" maxlength="80" placeholder="Add something you repeat every day" />
                 <button type="submit" class="ghost-button">Add</button>
               </form>
-              <ul class="today-task-list" id="today-task-list"></ul>
-              <details class="today-cue-settings" id="today-cue-settings">
+            </section>
+
+            <details class="today-cue-settings" id="today-cue-settings">
                 <summary>Cues</summary>
                 <p class="today-cue-hint">Little reminders while Chrome is open. Quiet from 11pm to 7am. Dismiss from the top left.</p>
                 <form class="today-cue-form" id="today-cue-form">
@@ -573,16 +543,23 @@
                 </form>
                 <ul class="today-cue-list" id="today-cue-list"></ul>
               </details>
-            </section>
-          </div>
-        </section>
-        <footer class="today-meta">
-          <p>Today I'm optimizing for <strong id="today-theme">FOCUS</strong></p>
-          <p>
-            Follow-through: <strong id="today-follow-through">0 days</strong>
-            <span id="command-arc-inline"></span>
-          </p>
-        </footer>
+          </section>
+
+          <section class="lockin-panel lockin-browser surface-card" aria-labelledby="lockin-browser-title">
+            <div class="lockin-panel__head">
+              <div>
+                <p class="aside-kicker" id="lockin-browser-title">Where the browser went</p>
+                <h2 class="lockin-panel__title" id="lockin-browser-total">Nothing yet today</h2>
+              </div>
+              <button type="button" class="text-button" id="lockin-browser-today" hidden>Back to today</button>
+            </div>
+            <ol class="lockin-browser-list" id="lockin-browser-list"></ol>
+            <div class="lockin-week" aria-label="Browser time, last 7 days. Pick a day to see its sites.">
+              <div class="lockin-week__bars" id="lockin-browser-week" role="group"></div>
+            </div>
+            <p class="lockin-browser-note">Observed active tabs only. Fact, not a score.</p>
+          </section>
+        </div>
       </div>
     </main>
 
@@ -633,155 +610,6 @@
       </div>
     </main>
 
-    <main class="screen daily-audit loop-screen" id="daily-audit-screen" hidden>
-      <div class="audit-shell audit-reflection">
-        <nav class="audit-date-nav" aria-label="Reflection date">
-          <button type="button" class="ghost-button" id="audit-previous" aria-label="View previous day">Previous</button>
-          <div class="audit-date-nav__current">
-            <p id="audit-date-label">Yesterday</p>
-            <time id="audit-date"></time>
-          </div>
-          <div class="audit-date-nav__forward">
-            <button type="button" class="ghost-button" id="audit-today">Today</button>
-            <button type="button" class="ghost-button" id="audit-next" aria-label="View next day">Next</button>
-          </div>
-        </nav>
-
-        <section class="audit-empty surface-card" id="audit-empty" hidden>
-          <p class="aside-kicker">Reflection</p>
-          <h1>Nothing to reflect on yet</h1>
-          <p>No signal yet. Complete an action or log what happened.</p>
-        </section>
-
-        <article class="audit-content" id="audit-content">
-          <header class="audit-hero audit-card">
-            <div class="audit-hero__copy">
-              <p class="aside-kicker" id="audit-view-title">Yesterday</p>
-              <h1 id="audit-verdict">What happened?</h1>
-              <p class="audit-verdict-copy" id="audit-verdict-copy"></p>
-            </div>
-            <button type="button" class="ghost-button" id="refresh-audit">Refresh</button>
-            <div class="audit-glance" aria-label="Day summary">
-              <p>
-                <span>Kept</span>
-                <strong id="audit-kept-count">0/0</strong>
-              </p>
-              <p>
-                <span>Missed</span>
-                <strong id="audit-missed-count">0</strong>
-              </p>
-              <p>
-                <span>Signal</span>
-                <strong id="audit-signal-count">Learning</strong>
-              </p>
-            </div>
-          </header>
-          <div class="audit-outcome-grid">
-            <section class="audit-card" aria-labelledby="audit-happened-title">
-              <h2 id="audit-happened-title">What happened</h2>
-              <div class="audit-list" id="audit-happened" role="list"></div>
-            </section>
-            <section class="audit-card audit-card--warm" aria-labelledby="audit-missed-title">
-              <h2 id="audit-missed-title">What slipped</h2>
-              <div class="audit-list" id="audit-misses" role="list"></div>
-            </section>
-          </div>
-          <section class="audit-card" aria-labelledby="audit-pattern-title">
-            <h2 id="audit-pattern-title">Pattern</h2>
-            <p id="audit-pattern-copy"></p>
-          </section>
-          <section class="audit-card coach-take" aria-labelledby="audit-coach-title">
-            <h2 id="audit-coach-title">Try next</h2>
-            <p id="audit-coach-copy"></p>
-            <button type="button" class="continue-button" id="try-this">Try this</button>
-            <p id="audit-adapt-status" class="goal-detail__hint" hidden></p>
-          </section>
-          <section class="audit-card" id="experiment-result-card" hidden>
-            <h2>Experiment result</h2>
-            <p id="experiment-result-copy"></p>
-            <div class="experiment-result-actions">
-              <button type="button" class="continue-button" id="keep-experiment">Keep this behavior</button>
-              <button type="button" class="ghost-button" id="discard-experiment">Let it go</button>
-            </div>
-          </section>
-        </article>
-
-        <section class="audit-card" id="audit-browser-card" aria-labelledby="audit-browser-title">
-          <h2 id="audit-browser-title">Where the browser went</h2>
-          <p class="goal-detail__hint">Fact from observed tabs that day. Not a score.</p>
-          <p id="audit-browser-total"></p>
-          <div id="audit-browser-list" class="audit-browser-list"></div>
-          <p class="aside-kicker audit-browser-recent-title">Past days</p>
-          <div id="audit-browser-days" class="audit-browser-days"></div>
-        </section>
-
-        <details class="audit-checkins surface-card" id="audit-checkins">
-          <summary id="checkin-title">Sleep, energy, fitness</summary>
-          <p class="goal-detail__hint">Manual check-ins belong to this day. No streaks.</p>
-          <div class="checkin-grid">
-            <label>Sleep (hours)
-              <input id="sleep-hours" type="number" min="0" max="14" step="0.1" />
-            </label>
-            <label>Energy (1–5)
-              <input id="energy-score" type="number" min="1" max="5" step="1" />
-            </label>
-            <label>Energy at
-              <input id="energy-at" placeholder="6 PM" />
-            </label>
-            <label>Fitness
-              <input id="fitness-activity" placeholder="Run" />
-            </label>
-            <label>Minutes
-              <input id="fitness-minutes" type="number" min="0" step="1" />
-            </label>
-          </div>
-          <button type="button" class="continue-button" id="save-checkins">Save check-ins</button>
-        </details>
-      </div>
-    </main>
-
-    <div id="settings-overlay" class="settings-overlay" hidden>
-      <article class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <header class="settings-sheet__head">
-          <div>
-            <p class="aside-kicker">Settings</p>
-            <h2 id="settings-title">Your space</h2>
-          </div>
-          <button type="button" class="settings-sheet__close" id="settings-close" aria-label="Close">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        </header>
-        <div id="settings-home">
-          <section class="settings-block" aria-labelledby="settings-theme-title">
-            <p class="aside-kicker" id="settings-theme-title">Appearance</p>
-            <div id="theme-toggle" class="theme-toggle" role="radiogroup" aria-label="Theme">
-              <button type="button" data-theme-choice="system">System</button>
-              <button type="button" data-theme-choice="light">Light</button>
-              <button type="button" data-theme-choice="dark">Dark</button>
-            </div>
-          </section>
-          <section class="settings-block" aria-labelledby="settings-arc-heading">
-            <p class="aside-kicker" id="settings-arc-heading">Winter Arc</p>
-            <p id="settings-arc-copy" class="settings-sheet__day">Day 1 of 116</p>
-            <p class="settings-sheet__hint">Reset starts the count at day 1 from today through the arc end, and removes archived and reached goals. Active and paused goals stay.</p>
-            <button type="button" class="settings-sheet__danger" id="settings-reset">Reset Winter Arc</button>
-          </section>
-        </div>
-        <div id="settings-confirm" hidden>
-          <section class="settings-block">
-            <p class="aside-kicker">Confirm</p>
-            <h3 id="settings-confirm-title">Start over from today?</h3>
-            <p id="settings-confirm-copy" class="settings-sheet__hint"></p>
-            <div class="settings-sheet__actions">
-              <button type="button" class="settings-sheet__danger" id="settings-confirm-reset">Yes, reset</button>
-              <button type="button" class="settings-sheet__quiet" id="settings-confirm-cancel">No, keep this arc</button>
-            </div>
-          </section>
-        </div>
-      </article>
-    </div>
 
     <main class="screen event-debug" id="event-debug-screen" hidden>
       <section class="event-debug-panel" aria-labelledby="event-debug-title">
@@ -827,15 +655,13 @@
     </main>
 
     <script src="../config/personal.js"></script>
+    <script src="../core/day-clock.js"></script>
     <script src="../core/event-engine.js"></script>
     <script src="../core/cue-engine.js"></script>
     <script src="../core/daily-engine.js"></script>
     <script src="../core/goal-engine.js"></script>
     <script src="../core/experiment-engine.js"></script>
     <script src="../observer/browser-observer.js"></script>
-    <script src="../audit/auditUtils.js"></script>
-    <script src="../audit/auditService.js"></script>
-    <script src="../audit/pattern-engine.js"></script>
     <script src="../coach/plan-builder.js"></script>
     <script src="newtab.js"></script>
   </body>

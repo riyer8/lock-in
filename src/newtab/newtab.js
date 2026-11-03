@@ -1,4 +1,3 @@
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const PERSONAL_CONFIG = LockInGoals.validatePersonalConfig(
   globalThis.LOCK_IN_PERSONAL_CONFIG ?? {
     schemaVersion: 1,
@@ -29,8 +28,6 @@ const CUE_STATE_STORAGE_KEY = LockInCues.CUE_STATE_STORAGE_KEY;
 const ADAPTIVE_PLAN_STORAGE_NAME = "adaptive-plan";
 const IDENTITY_CATALOG = LockInGoals.IDENTITY_CATALOG;
 const LIFE_AREAS = LockInGoals.LIFE_AREAS;
-const THEME_STORAGE_KEY = "lock-in-theme";
-const THEME_CHOICES = new Set(["system", "light", "dark"]);
 
 const storage = {
   readJson(key, fallback) {
@@ -71,11 +68,10 @@ let activeGoals = [];
 let activeBehaviors = [];
 let experiments = [];
 let missionHistory = [];
-let selectedAuditDate = new Date();
+let selectedBrowserDateKey = null;
 let focusMissionId = null;
 let renderedTodayDateKey = getDateKey();
 let selectedLifeAreaFilter = "all";
-let appearanceTheme = "system";
 let allowCueMotion = false;
 
 const eventPersistence = globalThis.chrome?.storage?.local
@@ -84,10 +80,6 @@ const eventPersistence = globalThis.chrome?.storage?.local
 const eventStore = new LockInEvents.EventStore(eventPersistence);
 const eventApi = new LockInEvents.EventApi(eventStore);
 const { EventTypes } = LockInEvents;
-const auditService = new LockInAudit.AuditService({
-  eventStore,
-  persistence: eventPersistence,
-});
 
 const IDENTITY_LABELS = Object.fromEntries(
   Object.entries(IDENTITY_CATALOG).map(([id, identity]) => [id, identity.label]),
@@ -123,9 +115,6 @@ const arcDayElement = document.querySelector("#arc-day");
 const arcTitleElement = document.querySelector("#arc-title");
 const arcDateRangeElement = document.querySelector("#arc-date-range");
 const screens = document.querySelectorAll(".screen");
-const appNav = document.querySelector("#app-nav");
-const appNavLinks = [...document.querySelectorAll(".app-nav__links [data-nav]")];
-const appNavTriggers = [...document.querySelectorAll("[data-nav]")];
 const celebrateRoot = document.querySelector("#celebrate");
 const celebrateBurst = document.querySelector(".celebrate__burst");
 const celebrateMessage = document.querySelector("#celebrate-message");
@@ -133,7 +122,6 @@ const APP_SCREENS = new Set([
   "command-center-screen",
   "goals-screen",
   "arc-screen",
-  "daily-audit-screen",
 ]);
 const SCREEN_HASH = {
   "landing-screen": "begin",
@@ -143,14 +131,10 @@ const SCREEN_HASH = {
   "command-center-screen": "today",
   "goals-screen": "goals",
   "arc-screen": "arc",
-  "daily-audit-screen": "audit",
 };
 const HASH_SCREEN = Object.fromEntries(
   Object.entries(SCREEN_HASH).map(([screenId, hash]) => [hash, screenId]),
 );
-HASH_SCREEN.progress = "daily-audit-screen";
-HASH_SCREEN.evidence = "daily-audit-screen";
-HASH_SCREEN.coach = "daily-audit-screen";
 const ONBOARDING_SCREENS = new Set([
   "landing-screen",
   "identity-screen",
@@ -172,13 +156,7 @@ const blueprintAreas = document.querySelector("#blueprint-areas");
 const blueprintObstacles = document.querySelector("#blueprint-obstacles");
 const blueprintBackButton = document.querySelector("#blueprint-back");
 const startArcButton = document.querySelector("#start-arc");
-const commandArcDay = document.querySelector("#command-arc-day");
 const commandGreeting = document.querySelector("#command-greeting");
-const todayFocusList = document.querySelector("#today-focus-list");
-const startFocusButton = document.querySelector("#start-focus");
-const todayTheme = document.querySelector("#today-theme");
-const todayFollowThrough = document.querySelector("#today-follow-through");
-const commandArcInline = document.querySelector("#command-arc-inline");
 const todayDayPercent = document.querySelector("#today-day-percent");
 const todayDayProgress = document.querySelector("#today-day-progress");
 const todayDayCopy = document.querySelector("#today-day-copy");
@@ -250,7 +228,6 @@ function renderArcState() {
     day: "numeric",
     year: "numeric",
   })}`;
-  if (commandArcDay) commandArcDay.textContent = getArcDayLabel(arcState);
 }
 
 function loadSavedSet(storageKey) {
@@ -394,25 +371,6 @@ function missionActionLabel(entry, events = []) {
     cleanActionLabel(goal?.actions?.standard) ||
     cleanActionLabel(LockInGoals.goalTitle(goal))
   );
-}
-
-function completedActionLabels(dateKey, events) {
-  const labels = [];
-  const seen = new Set();
-  const add = (value) => {
-    const label = cleanActionLabel(value);
-    const key = label.toLowerCase();
-    if (!label || seen.has(key)) return;
-    seen.add(key);
-    labels.push(label);
-  };
-  events
-    .filter((event) => event.type === EventTypes.MISSION_COMPLETED)
-    .forEach((event) => add(event.metadata?.title));
-  missionHistory
-    .filter((entry) => entry.date === dateKey && entry.completed)
-    .forEach((entry) => add(missionActionLabel(entry, events)));
-  return labels;
 }
 
 function livingGoals() {
@@ -737,25 +695,6 @@ function createBehaviorRow(behavior = {}) {
 
 function formValue(id) {
   return ($(id)?.value ?? "").trim();
-}
-
-function applyTheme(theme) {
-  appearanceTheme = THEME_CHOICES.has(theme) ? theme : "system";
-  document.documentElement.dataset.theme = appearanceTheme;
-  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-  const light = appearanceTheme === "light" || (appearanceTheme === "system" && prefersLight);
-  document.documentElement.style.setProperty("--boot-bg", light ? "#f3eee7" : "#090a0e");
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", light ? "#f7f2ec" : "#101118");
-  document.querySelectorAll("[data-theme-choice]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.themeChoice === appearanceTheme));
-  });
-}
-
-async function persistTheme(theme) {
-  applyTheme(theme);
-  storage.writeJson(THEME_STORAGE_KEY, appearanceTheme);
-  await privateStorage.write(THEME_STORAGE_KEY, appearanceTheme);
 }
 
 function populateLifeAreaSelect(selectedId) {
@@ -1298,6 +1237,10 @@ function mapMission(mission, goal) {
 }
 
 function buildDefaultMissions(date = new Date()) {
+  const difficulty = LockInPlanBuilder.choosePlanDifficulty(
+    missionHistory.slice(-60),
+  );
+  const limit = LockInPlanBuilder.planSize(difficulty);
   const selected = LockInGoals.selectDailyMissions(
     activeGoals.map((goal) => ({
       ...goal,
@@ -1306,7 +1249,7 @@ function buildDefaultMissions(date = new Date()) {
     missionHistory,
     PERSONAL_CONFIG.milestones ?? [],
     date,
-    3,
+    limit,
   ).map((mission) => {
     const goal = activeGoals.find((item) => item.id === mission.goalId);
     return mapMission(mission, goal);
@@ -1340,13 +1283,22 @@ function buildDefaultMissions(date = new Date()) {
       merged.push(mission);
     }
   });
-  return merged.slice(0, 3);
+  return merged.slice(0, limit);
 }
 
 async function buildTodayMissions(date = new Date()) {
+  const missions = await buildTodayMissionsCore(date);
+  if (getDateKey(date) !== getDateKey()) return missions;
+  if (missions.some((mission) => mission?.source === "recovery")) return missions;
+  const missedDays = await loadMissedDayKeys();
+  const recovery = await buildRecoveryMission(missedDays);
+  return recovery ? [recovery, ...missions] : missions;
+}
+
+async function buildTodayMissionsCore(date = new Date()) {
   const saved = await readAdaptivePlan(date);
   if (Array.isArray(saved?.missions) && saved.missions.length) {
-    const kept = saved.missions.slice(0, 3).map((mission) => {
+    const kept = saved.missions.slice(0, 5).map((mission) => {
       const goal = activeGoals.find((item) => item.id === mission.goalId);
       if (goal && !LockInGoals.isPlannableGoal(goal)) return null;
       const behavior = mission.behaviorId
@@ -1364,8 +1316,10 @@ async function buildTodayMissions(date = new Date()) {
   return buildDefaultMissions(date);
 }
 
-function followThroughCopy() {
-  const result = LockInGoals.calculateFollowThrough(missionHistory, new Date());
+function followThroughCopy(missedDays) {
+  const result = LockInGoals.calculateFollowThrough(missionHistory, new Date(), {
+    missedDays,
+  });
   const days = result.days;
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
@@ -1385,10 +1339,16 @@ async function recentCheckinSignals(date = new Date()) {
   };
 }
 
-async function currentTheme(date = new Date()) {
+async function currentTheme(date = new Date(), missedDays = null) {
+  const missed = missedDays ?? (await loadMissedDayKeys());
   const misses = activeGoals.reduce(
     (highest, goal) =>
-      Math.max(highest, LockInGoals.countConsecutiveMisses(missionHistory, goal.id, date)),
+      Math.max(
+        highest,
+        LockInGoals.countConsecutiveMisses(missionHistory, goal.id, date, {
+          missedDays: missed,
+        }),
+      ),
     0,
   );
   const { recentEnergy, recentSleep } = await recentCheckinSignals(date);
@@ -1405,28 +1365,120 @@ async function completedMissionIds(date = new Date()) {
   return new Set(Array.isArray(saved) ? saved : []);
 }
 
-function getDayProgressState(date = new Date()) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  const elapsedMs = Math.max(0, date.getTime() - start.getTime());
-  const remainingMs = Math.max(0, end.getTime() - date.getTime());
-  const percent = Math.min(100, Math.max(0, Math.round((elapsedMs / MILLISECONDS_PER_DAY) * 100)));
-  const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
-  const remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
-  const remaining = remainingHours
-    ? `${remainingHours}h ${remainingMinutes}m left`
-    : `${remainingMinutes}m left`;
-  return { percent, remaining };
+function renderDayProgress(date = new Date()) {
+  const { percent, fraction, remaining } = LockInClock.describeDayProgress(date);
+  const ahead = 100 - percent;
+  if (todayDayPercent) todayDayPercent.textContent = `${ahead}%`;
+  if (todayDayProgress) todayDayProgress.style.strokeDasharray = `${fraction * 100} 100`;
+  $("lockin-dial")?.style.setProperty("--day-turn", String(fraction));
+  if (todayDayCopy) {
+    todayDayCopy.replaceChildren(
+      createTextElement("span", "lockin-daylight__label", "Today"),
+      createTextElement("strong", "", `${ahead}%`),
+      document.createTextNode(" still ahead · "),
+      createTextElement("span", "lockin-daylight__left", remaining.replace(/ left$/, " to make it count")),
+    );
+  }
 }
 
-function renderDayProgress() {
-  if (!todayDayPercent || !todayDayProgress || !todayDayCopy) return;
-  const { percent, remaining } = getDayProgressState();
-  todayDayPercent.textContent = `${percent}%`;
-  todayDayProgress.style.width = `${percent}%`;
-  todayDayCopy.textContent = `${percent}% of today has passed · ${remaining}`;
+function renderYearCountdown(date = new Date()) {
+  const { daysLeft, year, isLastDay } = LockInClock.describeYearCountdown(date);
+  const days = $("lockin-days");
+  const label = $("lockin-days-label");
+  if (days) days.textContent = String(daysLeft);
+  if (label) {
+    label.textContent = isLastDay
+      ? `last day of ${year}`
+      : `days left in ${year}`;
+  }
+  const dateLabel = $("lockin-date");
+  if (dateLabel) {
+    dateLabel.textContent = date.toLocaleDateString([], {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }
+}
+
+function renderBrowserDomainRows(list, rows, emptyCopy) {
+  if (!rows.length) {
+    list.replaceChildren(createTextElement("li", "lockin-browser-empty", emptyCopy));
+    return;
+  }
+  const topShare = rows[0].share || 1;
+  list.replaceChildren(
+    ...rows.map((row) => {
+      const item = document.createElement("li");
+      if (row.isRest) item.classList.add("is-rest");
+      const bar = document.createElement("span");
+      bar.className = "lockin-browser-bar";
+      bar.style.setProperty("--share", String(row.share / topShare));
+      item.append(
+        createTextElement("span", "lockin-browser-domain", row.domain),
+        createTextElement("span", "lockin-browser-time", formatQuietDuration(row.durationMs)),
+        bar,
+      );
+      return item;
+    }),
+  );
+}
+
+async function renderTodayBrowser(now = new Date()) {
+  const list = $("lockin-browser-list");
+  const week = $("lockin-browser-week");
+  const total = $("lockin-browser-total");
+  if (!list || !week || !total) return;
+  const todayKey = getDateKey(now);
+  const events = await eventApi.getEventsBetween(
+    LockInGoals.startOfDay(LockInGoals.addDays(now, -6)),
+    LockInGoals.endOfDay(now),
+  );
+  const days = LockInBrowserObserver.getBrowserDaySummaries(events, now, 7).reverse();
+  if (!days.some((day) => day.dateKey === selectedBrowserDateKey)) selectedBrowserDateKey = null;
+  const selectedKey = selectedBrowserDateKey || todayKey;
+  const selectedDay = days.find((day) => day.dateKey === selectedKey);
+  const isToday = selectedKey === todayKey;
+  const dayName = isToday
+    ? "today"
+    : selectedKey === getDateKey(LockInGoals.addDays(now, -1))
+      ? "yesterday"
+      : `on ${LockInGoals.parseDate(selectedKey).toLocaleDateString([], { weekday: "long" })}`;
+  const { totalMs, rows } = LockInClock.summarizeBrowserDomains(selectedDay?.domains, 8);
+  total.textContent = totalMs
+    ? `${formatQuietDuration(totalMs)} ${dayName}`
+    : `Nothing ${dayName}`;
+  renderBrowserDomainRows(
+    list,
+    rows,
+    isToday
+      ? "Time on sites shows up here after you leave a tab."
+      : "No browser time recorded that day.",
+  );
+  $("lockin-browser-today")?.toggleAttribute("hidden", isToday);
+  const maxMs = Math.max(...days.map((day) => day.totalMs), 1);
+  week.replaceChildren(
+    ...days.map((day) => {
+      const parsed = LockInGoals.parseDate(day.dateKey);
+      const weekday = parsed ? parsed.toLocaleDateString([], { weekday: "narrow" }) : "";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "lockin-week__day";
+      button.dataset.browserDay = day.dateKey;
+      button.setAttribute("aria-pressed", String(day.dateKey === selectedKey));
+      if (day.dateKey === todayKey) button.classList.add("is-today");
+      button.style.setProperty("--height", String(day.totalMs / maxMs));
+      const time = day.totalMs ? formatQuietDuration(day.totalMs) : "no time";
+      button.title = `${parsed?.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) ?? day.dateKey}: ${time}`;
+      button.setAttribute("aria-label", button.title);
+      button.append(
+        createTextElement("span", "lockin-week__time", day.totalMs ? formatQuietDuration(day.totalMs) : ""),
+        createTextElement("span", "lockin-week__bar", ""),
+        createTextElement("span", "lockin-week__label", weekday),
+      );
+      return button;
+    }),
+  );
 }
 
 function normalizeTodayTasks(tasks) {
@@ -1476,13 +1528,29 @@ function todayTaskElement(task) {
 async function renderTodayTasks() {
   if (!todayTaskList) return;
   const tasks = await readTodayTasks();
+  const heading = $("lockin-next");
+  const next = tasks.find((task) => !task.completed);
+  if (heading) {
+    heading.textContent = !tasks.length
+      ? "What has to happen today?"
+      : next
+        ? next.title
+        : "All done. That counts.";
+  }
+  $("clear-today-tasks")?.toggleAttribute("hidden", !tasks.some((task) => task.completed));
   if (!tasks.length) {
     todayTaskList.replaceChildren(
-      createTextElement("li", "today-task-empty", "Errands, admin, or anything else that isn't a mission."),
+      createTextElement("li", "today-task-empty", "Pick three things. The first one is your next move."),
     );
     return;
   }
-  todayTaskList.replaceChildren(...tasks.map(todayTaskElement));
+  todayTaskList.replaceChildren(
+    ...tasks.map((task) => {
+      const item = todayTaskElement(task);
+      if (task === next) item.classList.add("is-next");
+      return item;
+    }),
+  );
 }
 
 async function loadDailies() {
@@ -1541,69 +1609,28 @@ async function renderTodayDailies() {
 }
 
 async function renderToday() {
-  const missions = await buildTodayMissions();
-  const completed = await completedMissionIds();
-  const arcState = calculateArcState(new Date());
-  renderedTodayDateKey = getDateKey();
-  renderGreeting();
-  todayTheme.textContent = await currentTheme();
-  todayFollowThrough.textContent = followThroughCopy();
-  commandArcInline.textContent = ` · ${getArcDayLabel(arcState)}`;
-  if (!missions.length) {
-    todayFocusList.replaceChildren(
-      createTextElement("li", "today-focus-empty", "Add a goal to generate today’s focus."),
-    );
-    startFocusButton.hidden = true;
-    startFocusButton.disabled = true;
-    if ($("write-goal")) $("write-goal").hidden = false;
-  } else {
-    startFocusButton.hidden = false;
-    startFocusButton.disabled = false;
-    if ($("write-goal")) $("write-goal").hidden = true;
-    todayFocusList.replaceChildren(
-      ...missions.map((mission, index) => {
-        const item = document.createElement("li");
-        const done = completed.has(mission.id);
-        if (done) item.classList.add("is-complete");
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "today-focus-item";
-        button.dataset.missionId = mission.id;
-        button.dataset.missionAction = done ? "undo" : "start";
-        button.setAttribute(
-          "aria-label",
-          done ? `Undo ${mission.title}` : `Start ${mission.title}`,
-        );
-        button.append(
-          createTextElement("span", "focus-index", String(index + 1).padStart(2, "0")),
-          (() => {
-            const copy = document.createElement("span");
-            copy.className = "focus-copy-wrap";
-            copy.append(createTextElement("span", "focus-copy", mission.title));
-            if (mission.goalTitle) {
-              copy.append(createTextElement("small", "focus-goal", mission.goalTitle));
-            }
-            return copy;
-          })(),
-        );
-        item.append(button);
-        return item;
-      }),
-    );
-  }
-  renderDayProgress();
-  await renderTodayDailies();
+  const now = new Date();
+  renderedTodayDateKey = getDateKey(now);
+  renderGreeting(now);
+  renderYearCountdown(now);
+  renderDayProgress(now);
   await renderTodayTasks();
+  await renderTodayDailies();
+  await renderTodayBrowser(now);
   await renderCueRail();
 }
 
 async function tickTodayClock() {
-  renderDayProgress();
-  renderGreeting();
-  const currentDateKey = getDateKey();
+  const now = new Date();
+  renderDayProgress(now);
+  renderGreeting(now);
+  const currentDateKey = getDateKey(now);
   const todayVisible = !document.querySelector("#command-center-screen")?.hidden;
   if (todayVisible && currentDateKey !== renderedTodayDateKey) {
     await renderToday();
+  } else if (todayVisible) {
+    await renderTodayBrowser(now);
+    await renderCueRail();
   } else if (document.body.classList.contains("app-ready")) {
     await renderCueRail();
   }
@@ -1822,9 +1849,141 @@ async function syncPlannedHistory(missions) {
   });
 }
 
+function missedDayKeyFromEvent(event) {
+  if (!event) return "";
+  const fromMetadata =
+    typeof event.metadata?.dateKey === "string" ? event.metadata.dateKey : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromMetadata)) return fromMetadata;
+  return getDateKey(new Date(event.timestamp));
+}
+
+async function loadMissedDayKeys() {
+  const today = LockInGoals.startOfDay(new Date());
+  const start = LockInGoals.addDays(today, -120);
+  const events = await eventApi.getEventsBetween(start, LockInGoals.endOfDay(today));
+  const keys = new Set();
+  events.forEach((event) => {
+    if (event?.type !== EventTypes.DAY_MISSED) return;
+    const key = missedDayKeyFromEvent(event);
+    if (key) keys.add(key);
+  });
+  return keys;
+}
+
+function yesterdayMissed(missedDays) {
+  const yesterday = LockInGoals.addDays(new Date(), -1);
+  const key = getDateKey(yesterday);
+  if (missedDays?.has(key)) return { key, date: yesterday };
+  const entries = missionHistory.filter(
+    (entry) => entry?.date === key && entry?.planned !== false,
+  );
+  if (entries.length && !entries.some((entry) => entry.completed || entry.recovery)) {
+    return { key, date: yesterday };
+  }
+  return null;
+}
+
+async function buildRecoveryMission(missedDays) {
+  const missed = yesterdayMissed(missedDays);
+  const plannable = activeGoals.filter((goal) => LockInGoals.isPlannableGoal(goal));
+  if (!missed || !plannable.length) return null;
+  let bestGoal = null;
+  let bestMisses = 0;
+  plannable.forEach((goal) => {
+    const misses = LockInGoals.countConsecutiveMisses(missionHistory, goal.id, new Date(), {
+      missedDays,
+    });
+    if (misses > bestMisses) {
+      bestMisses = misses;
+      bestGoal = goal;
+    }
+  });
+  const goal = bestGoal || plannable[0];
+  if (!goal) return null;
+  const todayKey = getDateKey();
+  const recoveryId = `${todayKey}:recovery:${goal.id}`;
+  if (
+    missionHistory.some(
+      (entry) => entry.missionId === recoveryId && entry.date === todayKey,
+    )
+  ) {
+    return null;
+  }
+  const recovery = LockInGoals.buildLapseRecovery(goal, {
+    missedCount: Math.max(1, bestMisses),
+    date: missed.date,
+  });
+  const nextAction =
+    recovery.nextAction || goal?.actions?.minimum || goal?.actions?.standard;
+  if (!nextAction) return null;
+  return {
+    id: recoveryId,
+    goalId: goal.id,
+    identityId: goal.identityId,
+    area: goal.area,
+    category: "RECOVERY",
+    title: nextAction,
+    description: recovery.message,
+    goalTitle: goal.title || goal.outcome,
+    minimumAction: nextAction,
+    reason: "Minimum step to restart after a missed day.",
+    source: "recovery",
+  };
+}
+
+async function backfillMissedDays() {
+  if (!isOnboarded()) return;
+  const today = LockInGoals.startOfDay(new Date());
+  const arcStart = ARC_START_DATE;
+  if (!today || !arcStart || arcStart >= today) return;
+  const yesterday = LockInGoals.addDays(today, -1);
+  const events = await eventApi.getEventsBetween(
+    new Date(0),
+    LockInGoals.endOfDay(yesterday),
+  );
+  let firstDay = arcStart;
+  const onboarding = events.find(
+    (event) => event.type === EventTypes.ONBOARDING_COMPLETED,
+  );
+  if (onboarding?.timestamp) {
+    const onboardDay = LockInGoals.startOfDay(new Date(onboarding.timestamp));
+    if (onboardDay && onboardDay > firstDay) firstDay = onboardDay;
+  }
+  const engaged = new Set();
+  const recorded = new Set();
+  events.forEach((event) => {
+    if (!event || !event.timestamp) return;
+    if (event.type === EventTypes.DAY_MISSED) {
+      const key = missedDayKeyFromEvent(event);
+      if (key) recorded.add(key);
+      return;
+    }
+    engaged.add(getDateKey(new Date(event.timestamp)));
+  });
+  const historyDays = new Set(
+    (Array.isArray(missionHistory) ? missionHistory : [])
+      .map((entry) => entry?.date)
+      .filter(Boolean),
+  );
+  for (
+    let cursor = new Date(firstDay);
+    cursor < today;
+    cursor = LockInGoals.addDays(cursor, 1)
+  ) {
+    const key = getDateKey(cursor);
+    if (engaged.has(key) || historyDays.has(key) || recorded.has(key)) continue;
+    const stamp = new Date(cursor);
+    stamp.setHours(12, 0, 0, 0);
+    await eventApi.record(
+      EventTypes.DAY_MISSED,
+      { dateKey: key, arcDay: calculateArcState(cursor).currentDay },
+      "lock-in",
+      stamp.toISOString(),
+    );
+  }
+}
+
 async function CommandCenter() {
-  const missions = await buildTodayMissions();
-  await syncPlannedHistory(missions);
   await renderToday();
 }
 
@@ -1902,63 +2061,6 @@ async function completeMission(mission, { level = "standard", skipped = false, r
   await renderToday();
 }
 
-async function applyAdaptation(proposal) {
-  const tomorrow = LockInGoals.addDays(new Date(), 1);
-  const missions = LockInPlanBuilder.missionsFromNextAction({
-    nextAction: proposal?.changes || proposal?.reason,
-    fallbackMissions: buildDefaultMissions(tomorrow),
-    date: tomorrow,
-    proposal,
-  });
-  if (!missions.length) {
-    throw new Error("No action to put on tomorrow’s plan.");
-  }
-  if (proposal?.type === "shrink") {
-    activeBehaviors = LockInGoals.applyBehaviorAdaptation(activeBehaviors, {
-      changes: activeBehaviors.map((behavior) => ({
-        behaviorId: behavior.id,
-        standard: behavior.minimum || behavior.standard,
-      })),
-    });
-    await persistGoals();
-  }
-  if (proposal?.type === "experiment") {
-    const experiment = LockInExperiments.normalizeExperiment(
-      {
-        hypothesis: proposal.changes,
-        startDate: getDateKey(),
-        endDate: LockInGoals.formatDateKey(LockInGoals.addDays(new Date(), 6)),
-        status: "active",
-        protocol: [
-          { title: proposal.changes, measureKey: "completion" },
-          { title: "Record evening energy", measureKey: "energy", when: "18:00" },
-        ],
-      },
-      new Date(),
-    );
-    experiments.push(experiment);
-    await privateStorage.write(EXPERIMENTS_STORAGE_KEY, experiments);
-    await eventApi.record(EventTypes.EXPERIMENT_STARTED, { experimentId: experiment.id });
-  }
-  await writeDaily(ADAPTIVE_PLAN_STORAGE_NAME, {
-    missions,
-    generatedAt: new Date().toISOString(),
-    adaptedFrom: proposal?.type,
-  }, tomorrow);
-  await eventApi.record(EventTypes.PLAN_ADAPTED, {
-    type: proposal?.type,
-    changes: proposal?.changes,
-    forDate: getDateKey(tomorrow),
-  });
-  celebrate("Tomorrow’s plan changed.", { burst: true });
-}
-
-function defaultAuditDate() {
-  const date = new Date();
-  if (date.getHours() < 18) date.setDate(date.getDate() - 1);
-  return date;
-}
-
 function formatQuietDuration(durationMs) {
   const totalMinutes = Math.max(0, Math.round(Number(durationMs) / 60000));
   if (totalMinutes < 1) return "<1m";
@@ -1966,232 +2068,6 @@ function formatQuietDuration(durationMs) {
   const minutes = totalMinutes % 60;
   if (hours > 0) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
   return `${minutes}m`;
-}
-
-async function renderAuditBrowser() {
-  const date = selectedAuditDate;
-  const asOf = new Date();
-  const selectedStart = LockInGoals.startOfDay(date);
-  const weekStart = LockInGoals.startOfDay(LockInGoals.addDays(asOf, -6));
-  const fetchStart = selectedStart < weekStart ? selectedStart : weekStart;
-  const events = await eventApi.getEventsBetween(fetchStart, LockInGoals.endOfDay(asOf));
-  const allDomains = LockInBrowserObserver.getBrowserTimeByDomain(events, date);
-  const totalMs = allDomains.reduce((sum, item) => sum + item.durationMs, 0);
-  const domains = allDomains.slice(0, 6);
-  const totalEl = $("audit-browser-total");
-  const list = $("audit-browser-list");
-  const daysEl = $("audit-browser-days");
-  if (totalEl) {
-    totalEl.textContent = totalMs
-      ? `${formatQuietDuration(totalMs)} in the browser`
-      : "No browser time recorded this day.";
-  }
-  if (list) {
-    list.replaceChildren(
-      ...domains.map(({ domain, durationMs }) => {
-        const row = document.createElement("div");
-        row.className = "audit-browser-row";
-        row.append(
-          createTextElement("span", "audit-browser-domain", domain),
-          createTextElement("span", "audit-browser-time", formatQuietDuration(durationMs)),
-        );
-        return row;
-      }),
-    );
-  }
-  if (daysEl) {
-    const selectedKey = getDateKey(date);
-    const days = LockInBrowserObserver.getBrowserDaySummaries(events, asOf, 7);
-    daysEl.replaceChildren(
-      ...days.map((day) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "audit-browser-day";
-        button.dataset.auditDay = day.dateKey;
-        button.setAttribute("aria-pressed", String(day.dateKey === selectedKey));
-        const parsed = LockInGoals.parseDate(day.dateKey);
-        const weekday = parsed
-          ? parsed.toLocaleDateString([], { weekday: "short" })
-          : day.dateKey;
-        const dateLabel = parsed
-          ? parsed.toLocaleDateString([], { month: "short", day: "numeric" })
-          : day.dateKey;
-        button.append(
-          createTextElement("span", "audit-browser-day__when", `${weekday} · ${dateLabel}`),
-          createTextElement("span", "audit-browser-day__time", day.totalMs ? formatQuietDuration(day.totalMs) : "—"),
-          createTextElement("span", "audit-browser-day__top", day.topDomain || "—"),
-        );
-        button.setAttribute(
-          "aria-label",
-          `${weekday} ${dateLabel}, ${day.totalMs ? formatQuietDuration(day.totalMs) : "no time"}, ${day.topDomain || "no top site"}`,
-        );
-        return button;
-      }),
-    );
-  }
-  return { totalMs };
-}
-
-async function renderDailyAudit() {
-  const date = selectedAuditDate;
-  const today = new Date();
-  const yesterday = LockInGoals.addDays(today, -1);
-  const isToday = getDateKey(date) === getDateKey(today);
-  const isYesterday = getDateKey(date) === getDateKey(yesterday);
-  const relative = isToday
-    ? "Today"
-    : isYesterday
-      ? "Yesterday"
-      : date.toLocaleDateString([], { weekday: "long" });
-  $("audit-date-label").textContent = relative;
-  $("audit-date").textContent = date.toLocaleDateString();
-  $("audit-view-title").textContent = relative;
-  const audit = await auditService.generateDailyAudit(date);
-  const events = await eventApi.getEventsBetween(
-    LockInGoals.startOfDay(date),
-    LockInGoals.endOfDay(date),
-  );
-  const browser = await renderAuditBrowser();
-  const patterns = LockInPatterns.detectMultiDayPatterns({
-    history: missionHistory,
-    events,
-    goals: activeGoals,
-    asOf: date,
-  });
-  const usefulPattern = patterns.find((pattern) => pattern.type !== "INSUFFICIENT_PATTERN_DATA") || patterns[0];
-  const empty =
-    !audit.happened?.length &&
-    !audit.missed?.length &&
-    audit.missions.total === 0 &&
-    !browser.totalMs;
-  $("audit-empty").hidden = !empty;
-  $("audit-content").hidden = empty;
-  const sleep = events.find((event) => event.type === EventTypes.SLEEP_CHECKIN);
-  const energy = events.find((event) => event.type === EventTypes.ENERGY_CHECKIN);
-  const fitness = events.find((event) => event.type === EventTypes.FITNESS_CHECKIN);
-  $("sleep-hours").value = sleep?.metadata?.hours ?? "";
-  $("energy-score").value = energy?.metadata?.score ?? "";
-  $("energy-at").value = energy?.metadata?.at ?? "";
-  $("fitness-activity").value = fitness?.metadata?.activity ?? "";
-  $("fitness-minutes").value = fitness?.metadata?.durationMin ?? "";
-  const dateKey = getDateKey(date);
-  const completedTitles = completedActionLabels(dateKey, events);
-  const happenedExtras = (audit.happened || []).filter((item) => item.evidence !== "missions");
-  const happened = completedTitles.length
-    ? [...completedTitles.map((label) => ({ label })), ...happenedExtras]
-    : happenedExtras.length
-      ? happenedExtras
-      : (audit.happened?.length ? audit.happened : audit.highlights.map((label) => ({ label })));
-  const missed = audit.missed?.length
-    ? audit.missed
-    : audit.misses.map((label) => ({ label }));
-  $("audit-happened").replaceChildren(
-    ...happened.map((item) => createTextElement("p", "", item.label || item)),
-  );
-  $("audit-misses").replaceChildren(
-    ...(missed.length
-      ? missed.map((item) => createTextElement("p", "", item.label || item))
-      : [createTextElement("p", "", "Nothing slipped.")]),
-  );
-  $("audit-kept-count").textContent = audit.missions.total
-    ? `${audit.missions.completed}/${audit.missions.total}`
-    : "0/0";
-  $("audit-missed-count").textContent = String(missed.length);
-  $("audit-signal-count").textContent =
-    usefulPattern && usefulPattern.type !== "INSUFFICIENT_PATTERN_DATA" ? "Found" : "Learning";
-  $("audit-verdict").textContent = audit.missions.total
-    ? audit.missions.completed === audit.missions.total
-      ? "You followed through."
-      : "The day left a signal."
-    : "What actually happened?";
-  $("audit-verdict-copy").textContent =
-    audit.missions.total
-      ? `${audit.missions.completed}/${audit.missions.total} important actions.`
-      : happened.length
-        ? `${happened.length} logs. No planned actions.`
-        : "Quiet day. No plan started.";
-  if (usefulPattern?.type === "PLAN_UNREALISTIC") {
-    const recovery = LockInGoals.buildLapseRecovery(
-      activeGoals.find((goal) => goal.id === usefulPattern.goalId) || activeGoals[0] || {},
-      { missedCount: usefulPattern.missedCount, date },
-    );
-    $("audit-pattern-copy").textContent = `${usefulPattern.copy} ${recovery.message}`;
-  } else {
-    $("audit-pattern-copy").textContent = usefulPattern?.copy || "Not enough days to say.";
-  }
-  $("audit-coach-copy").textContent =
-    usefulPattern?.copy && usefulPattern.type !== "INSUFFICIENT_PATTERN_DATA"
-      ? usefulPattern.copy
-      : "Use Try this to adjust the plan.";
-  const adaptStatus = $("audit-adapt-status");
-  const tryThis = $("try-this");
-  if (tryThis) tryThis.textContent = "Try this";
-  if (adaptStatus) adaptStatus.hidden = true;
-  const finished = experiments.find(
-    (experiment) =>
-      experiment.status === "active" &&
-      experiment.endDate &&
-      experiment.endDate <= getDateKey(date),
-  );
-  const resultCard = $("experiment-result-card");
-  if (finished) {
-    const evaluated = LockInExperiments.evaluateExperiment(
-      finished,
-      missionHistory,
-      [],
-      date,
-    );
-    resultCard.hidden = false;
-    $("experiment-result-copy").textContent =
-      `${evaluated.conclusion} Completion: ${evaluated.result.completedDays}/${evaluated.result.plannedDays}.`;
-    resultCard.dataset.experimentId = finished.id;
-  } else {
-    resultCard.hidden = true;
-  }
-}
-
-async function saveCheckins() {
-  const hours = Number($("sleep-hours").value);
-  const energy = Number($("energy-score").value);
-  const activity = $("fitness-activity").value.trim();
-  const minutes = Number($("fitness-minutes").value);
-  const stamped = new Date(selectedAuditDate);
-  stamped.setHours(21, 0, 0, 0);
-  const at = stamped.toISOString();
-  if (Number.isFinite(hours) && hours > 0) {
-    await eventApi.record(EventTypes.SLEEP_CHECKIN, { hours }, "manual", at);
-  }
-  if (Number.isFinite(energy) && energy >= 1) {
-    await eventApi.record(
-      EventTypes.ENERGY_CHECKIN,
-      { score: energy, at: $("energy-at").value.trim() || "now" },
-      "manual",
-      at,
-    );
-    const active = experiments.find((item) => item.status === "active");
-    if (active) {
-      await eventApi.record(
-        EventTypes.EXPERIMENT_MEASURE,
-        {
-          experimentId: active.id,
-          key: "energy",
-          value: energy,
-        },
-        "lock-in",
-        at,
-      );
-    }
-  }
-  if (activity) {
-    await eventApi.record(
-      EventTypes.FITNESS_CHECKIN,
-      { activity, durationMin: Number.isFinite(minutes) ? minutes : 0 },
-      "manual",
-      at,
-    );
-  }
-  await renderDailyAudit();
-  celebrate("Logged.", { burst: false });
 }
 
 async function renderArcScreen() {
@@ -2399,14 +2275,7 @@ function showScreen(screenId) {
   celebrateRoot?.classList.remove("is-on");
   if (celebrateRoot) celebrateRoot.hidden = true;
   const inApp = APP_SCREENS.has(screenId);
-  if (appNav) appNav.hidden = !inApp;
   document.body.classList.toggle("app-ready", inApp);
-  appNavLinks.forEach((button) => {
-    const current = button.dataset.nav === screenId;
-    button.classList.toggle("is-current", current);
-    if (current) button.setAttribute("aria-current", "page");
-    else button.removeAttribute("aria-current");
-  });
   if (inApp && document.documentElement.classList.contains("is-ready")) void renderCueRail();
   else {
     const rail = $("today-cue-rail");
@@ -2417,7 +2286,6 @@ function showScreen(screenId) {
 function screenFromHash(hash = location.hash) {
   const key = hash.replace(/^#/, "");
   if (key === "events") return "event-debug-screen";
-  if (key === "review" || key === "week") return "daily-audit-screen";
   return HASH_SCREEN[key] || null;
 }
 
@@ -2461,10 +2329,6 @@ function isOnboarded() {
 
 async function loadAppScreen(screenId) {
   if (screenId === "goals-screen") await renderIdentityGoals();
-  if (screenId === "daily-audit-screen") {
-    selectedAuditDate = defaultAuditDate();
-    await renderDailyAudit();
-  }
   if (screenId === "command-center-screen") await CommandCenter();
   if (screenId === "arc-screen") await renderArcScreen();
 }
@@ -2552,24 +2416,6 @@ $("complete-goal")?.addEventListener("click", async () => {
   closeGoalDetail();
   await renderIdentityGoals();
   celebrate("Reached.", { burst: true });
-});
-startFocusButton?.addEventListener("click", () => openFocusMode());
-$("write-goal")?.addEventListener("click", async () => {
-  await openAppScreen("goals-screen");
-  openNewGoal();
-});
-todayFocusList?.addEventListener("click", async (event) => {
-  if (!(event.target instanceof Element)) return;
-  const action = event.target.closest("[data-mission-id]");
-  if (!action) return;
-  const missions = await buildTodayMissions();
-  const mission = missions.find((item) => item.id === action.dataset.missionId);
-  if (!mission) return;
-  if (action.dataset.missionAction === "undo") {
-    await completeMission(mission, { skipped: true, reason: "Undone" });
-    return;
-  }
-  await openFocusMode(mission.id);
 });
 todayTaskForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -2744,157 +2590,22 @@ $("focus-skip-reason")?.addEventListener("keydown", async (event) => {
   await skipCurrentFocus();
 });
 $("focus-skip-confirm")?.addEventListener("click", skipCurrentFocus);
-$("save-checkins")?.addEventListener("click", saveCheckins);
-$("audit-previous")?.addEventListener("click", () => {
-  selectedAuditDate.setDate(selectedAuditDate.getDate() - 1);
-  renderDailyAudit();
-});
-$("audit-next")?.addEventListener("click", () => {
-  selectedAuditDate.setDate(selectedAuditDate.getDate() + 1);
-  renderDailyAudit();
-});
-$("audit-today")?.addEventListener("click", () => {
-  selectedAuditDate = new Date();
-  renderDailyAudit();
-});
-$("audit-browser-days")?.addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-audit-day]");
+$("lockin-browser-week")?.addEventListener("click", async (event) => {
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest("[data-browser-day]");
   if (!button) return;
-  const nextDate = LockInGoals.parseDate(button.dataset.auditDay);
-  if (!nextDate) return;
-  selectedAuditDate = nextDate;
-  await renderDailyAudit();
+  const dateKey = button.dataset.browserDay;
+  selectedBrowserDateKey = dateKey === getDateKey() ? null : dateKey;
+  await renderTodayBrowser();
 });
-$("refresh-audit")?.addEventListener("click", renderDailyAudit);
-
-$("try-this")?.addEventListener("click", async () => {
-  const displayed = $("audit-coach-copy")?.textContent || "";
-  const proposal = LockInPlanBuilder.tryNextProposal(null, displayed);
-  const status = $("audit-adapt-status");
-  const button = $("try-this");
-  if (!proposal.changes) {
-    if (status) {
-      status.hidden = false;
-      status.textContent = "No next action yet.";
-    }
-    return;
-  }
-  if (status) {
-    status.hidden = false;
-    status.textContent = "Working on tomorrow…";
-  }
-  if (button) button.disabled = true;
-  try {
-    await applyAdaptation(proposal);
-    if (status) status.textContent = "Tomorrow’s plan changed.";
-    if (button) button.textContent = "Applied";
-  } catch {
-    if (status) status.textContent = "Could not change tomorrow’s plan.";
-  } finally {
-    if (button) button.disabled = false;
-  }
+$("lockin-browser-today")?.addEventListener("click", async () => {
+  selectedBrowserDateKey = null;
+  await renderTodayBrowser();
 });
-$("keep-experiment")?.addEventListener("click", async () => {
-  const id = $("experiment-result-card").dataset.experimentId;
-  experiments = experiments.map((item) =>
-    item.id === id ? { ...item, status: "kept" } : item,
-  );
-  await privateStorage.write(EXPERIMENTS_STORAGE_KEY, experiments);
-  await eventApi.record(EventTypes.EXPERIMENT_COMPLETED, { experimentId: id, kept: true });
-  $("experiment-result-card").hidden = true;
-  celebrate("Kept.", { burst: true });
-});
-$("discard-experiment")?.addEventListener("click", async () => {
-  const id = $("experiment-result-card").dataset.experimentId;
-  experiments = experiments.map((item) =>
-    item.id === id ? { ...item, status: "discarded" } : item,
-  );
-  await privateStorage.write(EXPERIMENTS_STORAGE_KEY, experiments);
-  await eventApi.record(EventTypes.EXPERIMENT_COMPLETED, { experimentId: id, kept: false });
-  $("experiment-result-card").hidden = true;
-});
-
-function settingsOverlay() {
-  return $("settings-overlay");
-}
-
-function showSettingsHome() {
-  if ($("settings-home")) $("settings-home").hidden = false;
-  if ($("settings-confirm")) $("settings-confirm").hidden = true;
-  if ($("settings-confirm-reset")) $("settings-confirm-reset").hidden = false;
-  const state = calculateArcState(new Date());
-  if ($("settings-arc-copy")) $("settings-arc-copy").textContent = getArcDayLabel(state);
-  applyTheme(appearanceTheme);
-}
-
-function openSettings() {
-  showSettingsHome();
-  const overlay = settingsOverlay();
-  if (overlay) overlay.hidden = false;
-}
-
-function closeSettings() {
-  const overlay = settingsOverlay();
-  if (overlay) overlay.hidden = true;
-  showSettingsHome();
-}
-
-function previewResetArc() {
-  const now = new Date();
-  const preview = LockInGoals.describeInclusiveArc({
-    start: now,
-    end: ARC_END_DATE,
-    asOf: now,
-  });
-  const endLabel = ARC_END_DATE.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-  });
-  if ($("settings-home")) $("settings-home").hidden = true;
-  if ($("settings-confirm")) $("settings-confirm").hidden = false;
-  const canReset = preview.valid && preview.totalDays >= 1;
-  if ($("settings-confirm-reset")) $("settings-confirm-reset").hidden = !canReset;
-  if ($("settings-confirm-copy")) {
-    $("settings-confirm-copy").textContent = canReset
-      ? `Today becomes day 1 of ${preview.totalDays}, through ${endLabel}. Archived and reached goals leave. Active and paused goals stay. This cannot be undone.`
-      : "The arc end is already behind today. Nothing to reset.";
-  }
-}
-
-async function confirmResetArc() {
-  const now = new Date();
-  const preview = LockInGoals.describeInclusiveArc({
-    start: now,
-    end: ARC_END_DATE,
-    asOf: now,
-  });
-  if (!preview.valid || preview.totalDays < 1) return;
-  applyArcStart(now);
-  await privateStorage.write(ARC_START_OVERRIDE_KEY, getDateKey(now));
-  const dropped = LockInGoals.dropClosedGoals(activeGoals, activeBehaviors);
-  activeGoals = dropped.goals;
-  activeBehaviors = dropped.behaviors;
-  await persistGoals();
-  closeGoalDetail();
-  closeSettings();
-  renderArcState();
-  await renderIdentityGoals();
-  if (!document.querySelector("#command-center-screen")?.hidden) await renderToday();
-  if (!document.querySelector("#arc-screen")?.hidden) await renderArcScreen();
-  celebrate("Day 1.", { burst: true });
-}
-
-$("open-settings")?.addEventListener("click", openSettings);
-$("settings-close")?.addEventListener("click", closeSettings);
-$("settings-reset")?.addEventListener("click", previewResetArc);
-$("settings-confirm-cancel")?.addEventListener("click", showSettingsHome);
-$("settings-confirm-reset")?.addEventListener("click", confirmResetArc);
-$("theme-toggle")?.addEventListener("click", (event) => {
-  const choice = event.target?.closest("[data-theme-choice]")?.dataset.themeChoice;
-  if (choice) void persistTheme(choice);
-});
-settingsOverlay()?.addEventListener("click", (event) => {
-  if (event.target === settingsOverlay()) closeSettings();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (document.querySelector("#command-center-screen")?.hidden) return;
+  void tickTodayClock();
 });
 
 enterArcButton.addEventListener("click", () => navigateTo("identity-screen"));
@@ -2955,11 +2666,6 @@ clearEventsButton.addEventListener("click", async () => {
 closeEventsButton.addEventListener("click", closeEventDebug);
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && settingsOverlay() && !settingsOverlay().hidden) {
-    event.preventDefault();
-    closeSettings();
-    return;
-  }
   if (event.key === "Escape" && !document.querySelector("#event-debug-screen").hidden) {
     event.preventDefault();
     closeEventDebug();
@@ -2981,10 +2687,6 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     openEventDebug();
   }
-});
-
-appNavTriggers.forEach((button) => {
-  button.addEventListener("click", () => openAppScreen(button.dataset.nav));
 });
 
 window.addEventListener("popstate", async (event) => {
@@ -3025,7 +2727,6 @@ async function initializeApp() {
       storedHistory,
       storedExperiments,
       storedArcStart,
-      storedTheme,
       storedOnboarded,
     ] = await Promise.all([
       privateStorage.read(GOALS_STORAGE_KEY, []),
@@ -3033,7 +2734,6 @@ async function initializeApp() {
       privateStorage.read(MISSION_HISTORY_STORAGE_KEY, []),
       privateStorage.read(EXPERIMENTS_STORAGE_KEY, []),
       privateStorage.read(ARC_START_OVERRIDE_KEY, ""),
-      privateStorage.read(THEME_STORAGE_KEY, storage.readJson(THEME_STORAGE_KEY, "system")),
       privateStorage.read(ONBOARDING_COMPLETE_STORAGE_KEY, isOnboarded()),
     ]);
     if (storedOnboarded) storage.writeJson(ONBOARDING_COMPLETE_STORAGE_KEY, true);
@@ -3046,11 +2746,10 @@ async function initializeApp() {
     experiments = Array.isArray(storedExperiments)
       ? storedExperiments.map((item) => LockInExperiments.normalizeExperiment(item))
       : [];
-    applyTheme(storedTheme);
-    storage.writeJson(THEME_STORAGE_KEY, appearanceTheme);
     const overrideStart = LockInGoals.parseDate(storedArcStart);
     applyArcStart(overrideStart || CONFIGURED_ARC_START);
     await persistGoals();
+    await backfillMissedDays();
     populateCategorySelect([...selectedIdentities][0]);
     populateLifeAreaSelect(LockInGoals.DEFAULT_LIFE_AREA);
 
@@ -3100,9 +2799,5 @@ if (globalThis.chrome?.storage?.onChanged) {
     if (changes[CUES_STORAGE_KEY] || changes[CUE_STATE_STORAGE_KEY]) {
       void renderCueRail();
     }
-    if (changes[THEME_STORAGE_KEY]) applyTheme(changes[THEME_STORAGE_KEY].newValue);
   });
 }
-window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
-  if (appearanceTheme === "system") applyTheme("system");
-});

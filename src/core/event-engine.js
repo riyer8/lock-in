@@ -31,6 +31,7 @@
     CUE_SNOOZED: "CUE_SNOOZED",
     DAILY_COMPLETED: "DAILY_COMPLETED",
     DAILY_UNCOMPLETED: "DAILY_UNCOMPLETED",
+    DAY_MISSED: "DAY_MISSED",
   });
 
   const supportedEventTypes = new Set(Object.values(EventTypes));

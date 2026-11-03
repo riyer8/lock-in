@@ -33,9 +33,31 @@ test("Today extras let you add repeating dailies, one-offs, and timed cues", () 
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /Every day/);
-  assert.match(html, /Also today/);
+  assert.match(html, /Lock in on/);
   assert.match(html, /today-cue-dismiss/);
   assert.match(html, /every/);
+});
+
+test("Today centers the year countdown with daylight and browser time", () => {
+  for (const id of [
+    "lockin-dial",
+    "lockin-days",
+    "today-day-progress",
+    "today-day-percent",
+    "lockin-next",
+    "lockin-browser-total",
+    "lockin-browser-list",
+    "lockin-browser-week",
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /Where the browser went/);
+  assert.match(html, /src="\.\.\/core\/day-clock\.js"/);
+  assert.doesNotMatch(html, /data-nav="goals-screen"/);
+  assert.doesNotMatch(html, /data-nav="arc-screen"/);
+  assert.doesNotMatch(html, /id="today-focus-list"/);
+  assert.match(js, /async function renderTodayBrowser/);
+  assert.match(js, /LockInClock\.describeYearCountdown/);
 });
 
 test("Today greeting includes a time-of-day emoji", () => {
